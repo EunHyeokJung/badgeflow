@@ -12,6 +12,8 @@ import {
   ImagePlus,
   LayoutTemplate,
   LockKeyhole,
+  MoveHorizontal,
+  MoveVertical,
   MousePointer2,
   Plus,
   Printer,
@@ -72,6 +74,11 @@ type DragState = {
   pointerY: number;
   elementX: number;
   elementY: number;
+};
+
+type SnapGuides = {
+  vertical: boolean;
+  horizontal: boolean;
 };
 
 const PAGE_PRESETS: Record<
@@ -316,6 +323,7 @@ function BadgeContents({
   elements,
   row,
   selectedElementId,
+  snapGuides,
   interactive = false,
   onSelect,
   onPointerDown,
@@ -331,6 +339,7 @@ function BadgeContents({
   elements: TextElement[];
   row: BadgeRow | undefined;
   selectedElementId?: string | null;
+  snapGuides?: SnapGuides;
   interactive?: boolean;
   onSelect?: (id: string) => void;
   onPointerDown?: (
@@ -372,6 +381,19 @@ function BadgeContents({
         }}
         aria-hidden="true"
       />
+      {interactive && snapGuides?.vertical && (
+        <div className="alignment-guide guide-vertical" aria-hidden="true">
+          <span>가로 중앙</span>
+        </div>
+      )}
+      {interactive && snapGuides?.horizontal && (
+        <div className="alignment-guide guide-horizontal" aria-hidden="true">
+          <span>세로 중앙</span>
+        </div>
+      )}
+      {interactive && snapGuides?.vertical && snapGuides.horizontal && (
+        <span className="alignment-center-point" aria-hidden="true" />
+      )}
       {elements.map((element) => {
         const isSelected = selectedElementId === element.id;
         const style = {
@@ -452,10 +474,15 @@ export function BadgeStudio() {
   const [newField, setNewField] = useState("");
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [snapGuides, setSnapGuides] = useState<SnapGuides>({
+    vertical: false,
+    horizontal: false,
+  });
   const [isExporting, setIsExporting] = useState(false);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const guideTimerRef = useRef<number | null>(null);
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
@@ -530,6 +557,13 @@ export function BadgeStudio() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(
+    () => () => {
+      if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    },
+    [],
+  );
+
   function updateElement(id: string, patch: Partial<TextElement>) {
     setElements((current) =>
       current.map((element) =>
@@ -592,6 +626,30 @@ export function BadgeStudio() {
     setSelectedElementId(null);
   }
 
+  function flashGuides(guides: SnapGuides) {
+    if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    setSnapGuides(guides);
+    guideTimerRef.current = window.setTimeout(
+      () => setSnapGuides({ vertical: false, horizontal: false }),
+      650,
+    );
+  }
+
+  function alignSelectedToCenter(axis: "horizontal" | "vertical") {
+    if (!selectedElement) return;
+    if (axis === "horizontal") {
+      updateElement(selectedElement.id, {
+        x: Math.round(((badgeWidth - selectedElement.width) / 2) * 10) / 10,
+      });
+      flashGuides({ vertical: true, horizontal: false });
+      return;
+    }
+    updateElement(selectedElement.id, {
+      y: Math.round((badgeHeight / 2) * 10) / 10,
+    });
+    flashGuides({ vertical: false, horizontal: true });
+  }
+
   function handlePointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
     element: TextElement,
@@ -601,6 +659,8 @@ export function BadgeStudio() {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedElementId(element.id);
+    if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    setSnapGuides({ vertical: false, horizontal: false });
     setDrag({
       id: element.id,
       pointerX: event.clientX,
@@ -615,14 +675,39 @@ export function BadgeStudio() {
     const rect = stageRef.current.getBoundingClientRect();
     const element = elements.find((item) => item.id === drag.id);
     if (!element) return;
-    const nextX =
+    const rawX =
       drag.elementX + ((event.clientX - drag.pointerX) / rect.width) * badgeWidth;
-    const nextY =
+    const rawY =
       drag.elementY + ((event.clientY - drag.pointerY) / rect.height) * badgeHeight;
-    updateElement(drag.id, {
-      x: Math.round(clamp(nextX, 0, badgeWidth - element.width) * 10) / 10,
-      y: Math.round(clamp(nextY, 0, badgeHeight) * 10) / 10,
+    const snapThresholdX = (10 / rect.width) * badgeWidth;
+    const snapThresholdY = (10 / rect.height) * badgeHeight;
+    let nextX = clamp(rawX, 0, badgeWidth - element.width);
+    let nextY = clamp(rawY, 0, badgeHeight);
+    const snapsToVerticalCenter =
+      Math.abs(nextX + element.width / 2 - badgeWidth / 2) <= snapThresholdX;
+    const snapsToHorizontalCenter =
+      Math.abs(nextY - badgeHeight / 2) <= snapThresholdY;
+
+    if (snapsToVerticalCenter) {
+      nextX = (badgeWidth - element.width) / 2;
+    }
+    if (snapsToHorizontalCenter) {
+      nextY = badgeHeight / 2;
+    }
+
+    setSnapGuides({
+      vertical: snapsToVerticalCenter,
+      horizontal: snapsToHorizontalCenter,
     });
+    updateElement(drag.id, {
+      x: Math.round(nextX * 10) / 10,
+      y: Math.round(nextY * 10) / 10,
+    });
+  }
+
+  function handlePointerEnd() {
+    setDrag(null);
+    setSnapGuides({ vertical: false, horizontal: false });
   }
 
   function handleKeyMove(
@@ -1174,11 +1259,12 @@ export function BadgeStudio() {
                     elements={elements}
                     row={selectedRow}
                     selectedElementId={selectedElementId}
+                    snapGuides={snapGuides}
                     interactive
                     onSelect={setSelectedElementId}
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
-                    onPointerUp={() => setDrag(null)}
+                    onPointerUp={handlePointerEnd}
                     onKeyMove={handleKeyMove}
                   />
                 </div>
@@ -1187,7 +1273,7 @@ export function BadgeStudio() {
               <div className="canvas-footer">
                 <span>
                   <MousePointer2 size={15} />
-                  드래그해서 이동 · 방향키 0.5mm · Shift + 방향키 2mm
+                  드래그해서 이동 · 중앙선 근처 자동 스냅 · 방향키 0.5mm
                 </span>
                 <label>
                   안전영역
@@ -1413,6 +1499,35 @@ export function BadgeStudio() {
                           }
                         />
                       </label>
+                    </div>
+                  </section>
+
+                  <section className="panel-section">
+                    <div className="section-title">
+                      <h2>명찰 기준 정렬</h2>
+                      <span>가운데 맞춤</span>
+                    </div>
+                    <div className="center-align-actions">
+                      <button
+                        type="button"
+                        onClick={() => alignSelectedToCenter("horizontal")}
+                      >
+                        <span>
+                          <MoveHorizontal size={18} />
+                        </span>
+                        <strong>가로 중앙</strong>
+                        <small>좌우 가운데 맞춤</small>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => alignSelectedToCenter("vertical")}
+                      >
+                        <span>
+                          <MoveVertical size={18} />
+                        </span>
+                        <strong>세로 중앙</strong>
+                        <small>상하 가운데 맞춤</small>
+                      </button>
                     </div>
                   </section>
 

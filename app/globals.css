@@ -755,6 +755,77 @@ select:focus {
   pointer-events: none;
 }
 
+.alignment-guide {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  animation: guide-in 110ms ease-out both;
+}
+
+.alignment-guide span {
+  position: absolute;
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  border-radius: 5px;
+  background: var(--orange);
+  color: white;
+  padding: 0 6px;
+  box-shadow: 0 2px 5px rgba(112, 47, 10, 0.22);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.guide-vertical {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px dashed var(--orange);
+}
+
+.guide-vertical span {
+  top: 7px;
+  left: 5px;
+}
+
+.guide-horizontal {
+  top: 50%;
+  right: 0;
+  left: 0;
+  border-top: 1px dashed var(--orange);
+}
+
+.guide-horizontal span {
+  top: 5px;
+  left: 7px;
+}
+
+.alignment-center-point {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 2px rgba(200, 77, 10, 0.35);
+  pointer-events: none;
+}
+
+@keyframes guide-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .badge-text {
   position: absolute;
   z-index: 2;
@@ -1012,6 +1083,68 @@ select:focus {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
   font-weight: 650;
+}
+
+.center-align-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.center-align-actions > button {
+  display: grid;
+  min-height: 78px;
+  grid-template-columns: 32px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--paper);
+  padding: 10px;
+  text-align: left;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.center-align-actions > button:hover {
+  border-color: var(--teal);
+  background: var(--teal-pale);
+  box-shadow: 0 3px 8px rgba(13, 148, 136, 0.08);
+}
+
+.center-align-actions > button:active {
+  background: #dff2ef;
+}
+
+.center-align-actions > button > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  grid-row: 1 / 3;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.center-align-actions strong,
+.center-align-actions small {
+  display: block;
+}
+
+.center-align-actions strong {
+  align-self: end;
+  font-size: 11px;
+}
+
+.center-align-actions small {
+  align-self: start;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 600;
 }
 
 .inspector-actions {
