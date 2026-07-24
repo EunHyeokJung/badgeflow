@@ -23,20 +23,20 @@ async function render() {
   );
 }
 
-test("server-renders the BadgeFlow editor", async () => {
+test("server-renders the BadgeFlow size-first landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   assert.match(html, /<title>BadgeFlow \| 명찰 인쇄 스튜디오<\/title>/i);
-  assert.match(html, /명찰 디자인/);
-  assert.match(html, /이미지 · 로고/);
-  assert.match(html, /image\/svg\+xml/);
-  assert.match(html, /레이어/);
-  assert.match(html, /가로 중앙/);
-  assert.match(html, /세로 중앙/);
-  assert.match(html, /PDF 만들기/);
+  assert.match(html, /어떤 명찰을/);
+  assert.match(html, /대표 명찰 규격/);
+  assert.match(html, /목걸이 명찰 · 대형 95 × 123 mm로 시작/);
+  assert.match(html, /A7 행사 명찰/);
+  assert.match(html, /B7 컨퍼런스 패스/);
+  assert.match(html, /CR80 · ID-1/);
+  assert.match(html, /원하는 규격을 직접 입력할게요/);
   assert.doesNotMatch(html, /Your site is taking shape/);
 });
 
@@ -50,6 +50,9 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   ]);
 
   assert.match(studio, /type ImageElement = CommonElement/);
+  assert.match(studio, /const BADGE_PRESETS: BadgePreset\[\]/);
+  assert.match(studio, /function LandingPage/);
+  assert.match(studio, /function startWithPreset/);
   assert.match(studio, /async function readImageAsset/);
   assert.match(studio, /script, foreignObject, iframe, object, embed/);
   assert.match(studio, /function handleCanvasDrop/);
@@ -60,6 +63,7 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
   assert.match(css, /\.badge-image-element/);
+  assert.match(css, /\.preset-grid/);
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
 });

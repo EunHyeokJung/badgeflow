@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const origin = `${protocol}://${host}`;
   const title = "BadgeFlow | 명찰 인쇄 스튜디오";
   const description =
-    "명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 웹 도구";
+    "대표 명찰 규격을 선택하고 디자인과 명단을 연결해 실제 크기 PDF로 출력하는 웹 도구";
 
   return {
     metadataBase: new URL(origin),
@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     openGraph: {
       title,
-      description: "디자인부터 CSV 데이터 연결, 실제 크기 PDF 출력까지 한 번에",
+      description: "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF까지",
       type: "website",
       images: [
         {
@@ -40,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title,
-      description: "디자인부터 CSV 데이터 연결, 실제 크기 PDF 출력까지 한 번에",
+      description: "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF까지",
       images: [`${origin}/og.png`],
     },
   };

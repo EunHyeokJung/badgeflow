@@ -7,14 +7,18 @@ import {
   AlignLeft,
   AlignRight,
   ArrowDown,
+  ArrowRight,
   ArrowUp,
+  BadgeCheck,
   Check,
   Copy,
+  CreditCard,
   Database,
   Download,
   Eye,
   EyeOff,
   FileSpreadsheet,
+  FileText,
   FolderOpen,
   Image as ImageIcon,
   ImagePlus,
@@ -29,7 +33,9 @@ import {
   Plus,
   Printer,
   Redo2,
+  Ruler,
   Settings2,
+  ShieldCheck,
   Trash2,
   Type,
   Undo2,
@@ -49,6 +55,7 @@ import {
 } from "react";
 
 type Mode = "design" | "data" | "print";
+type AppView = "landing" | "studio";
 type Align = "left" | "center" | "right";
 type ElementKind = "variable" | "static";
 type BackgroundFit = "cover" | "contain" | "stretch";
@@ -117,6 +124,17 @@ type SnapGuides = {
   horizontal: boolean;
 };
 
+type BadgePreset = {
+  id: string;
+  name: string;
+  description: string;
+  width: number;
+  height: number;
+  a4Count: number;
+  tag: string;
+  featured?: boolean;
+};
+
 const PAGE_PRESETS: Record<
   Exclude<PagePreset, "custom">,
   { width: number; height: number; label: string }
@@ -127,6 +145,55 @@ const PAGE_PRESETS: Record<
 };
 
 const DEFAULT_FIELDS = ["이름", "팀", "직책"];
+const BADGE_PRESETS: BadgePreset[] = [
+  {
+    id: "lanyard-large",
+    name: "목걸이 명찰 · 대형",
+    description: "행사·컨퍼런스용 케이스에 넉넉하게 들어가는 세로형",
+    width: 95,
+    height: 123,
+    a4Count: 4,
+    tag: "가장 인기",
+    featured: true,
+  },
+  {
+    id: "a7-event",
+    name: "A7 행사 명찰",
+    description: "이름과 소속을 선명하게 보여주는 컴팩트 세로형",
+    width: 74,
+    height: 105,
+    a4Count: 4,
+    tag: "ISO A7",
+  },
+  {
+    id: "b7-pass",
+    name: "B7 컨퍼런스 패스",
+    description: "로고·직책·QR까지 담기 좋은 정보 중심 대형 패스",
+    width: 91,
+    height: 128,
+    a4Count: 4,
+    tag: "대형 세로",
+  },
+  {
+    id: "id-card",
+    name: "사원증 · ID 카드",
+    description: "사원증과 출입증에 쓰이는 국제 표준 카드 비율",
+    width: 85.6,
+    height: 54,
+    a4Count: 10,
+    tag: "CR80 · ID-1",
+  },
+  {
+    id: "name-card",
+    name: "가로 이름표",
+    description: "세미나·교육·테이블 명찰에 쓰기 편한 가로형",
+    width: 90,
+    height: 60,
+    a4Count: 8,
+    tag: "가로형",
+  },
+];
+
 const SAMPLE_ROWS: BadgeRow[] = [
   { id: "row-1", 이름: "김민지", 팀: "브랜드팀", 직책: "디자이너" },
   { id: "row-2", 이름: "박준호", 팀: "제품팀", 직책: "프로덕트 매니저" },
@@ -197,6 +264,219 @@ const DEFAULT_PAGE: PageSettings = {
   showOutline: true,
   showCropMarks: true,
 };
+
+function createPresetElements(width: number, height: number): CanvasElement[] {
+  const isLandscape = width > height;
+  const inset = Math.max(4, Math.round(width * 0.08 * 10) / 10);
+  const contentWidth = Math.round((width - inset * 2) * 10) / 10;
+  const nameSize = isLandscape
+    ? Math.max(14, Math.min(20, Math.round(width * 0.2)))
+    : Math.max(20, Math.min(26, Math.round(width * 0.28)));
+
+  return [
+    {
+      id: "element-team",
+      type: "text",
+      kind: "variable",
+      field: "팀",
+      x: inset,
+      y: Math.round(height * 0.25 * 10) / 10,
+      width: contentWidth,
+      fontSize: isLandscape ? 8 : 11,
+      fontWeight: 600,
+      color: "#64748b",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+    {
+      id: "element-name",
+      type: "text",
+      kind: "variable",
+      field: "이름",
+      x: inset,
+      y: Math.round(height * 0.5 * 10) / 10,
+      width: contentWidth,
+      fontSize: nameSize,
+      fontWeight: 750,
+      color: "#17201f",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+    {
+      id: "element-title",
+      type: "text",
+      kind: "variable",
+      field: "직책",
+      x: inset,
+      y: Math.round(height * 0.74 * 10) / 10,
+      width: contentWidth,
+      fontSize: isLandscape ? 8 : 11,
+      fontWeight: 500,
+      color: "#64748b",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+  ];
+}
+
+function LandingPage({
+  hasSavedDraft,
+  onContinue,
+  onSelectPreset,
+  onCustom,
+}: {
+  hasSavedDraft: boolean;
+  onContinue: () => void;
+  onSelectPreset: (preset: BadgePreset) => void;
+  onCustom: () => void;
+}) {
+  return (
+    <div className="landing-shell">
+      <a className="skip-link" href="#landing-presets">
+        명찰 규격 선택으로 건너뛰기
+      </a>
+      <header className="landing-header">
+        <span className="landing-brand" aria-label="BadgeFlow">
+          <span className="brand-mark">B</span>
+          <span>
+            <strong>BadgeFlow</strong>
+            <small>명찰 인쇄 스튜디오</small>
+          </span>
+        </span>
+        {hasSavedDraft && (
+          <button
+            type="button"
+            className="landing-continue-button"
+            onClick={onContinue}
+          >
+            저장된 작업 이어하기
+            <ArrowRight size={16} />
+          </button>
+        )}
+      </header>
+
+      <main className="landing-main">
+        <section className="landing-hero" aria-labelledby="landing-title">
+          <div className="landing-kicker">
+            <BadgeCheck size={16} />
+            크기부터 인쇄까지 한 번에
+          </div>
+          <h1 id="landing-title">
+            어떤 명찰을
+            <br />
+            만드시나요?
+          </h1>
+          <p>
+            많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을
+            만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.
+          </p>
+          <div className="landing-flow" aria-label="작업 순서">
+            <span>
+              <Ruler size={15} />
+              크기 선택
+            </span>
+            <ArrowRight size={14} aria-hidden="true" />
+            <span>
+              <FileText size={15} />
+              디자인·명단
+            </span>
+            <ArrowRight size={14} aria-hidden="true" />
+            <span>
+              <ShieldCheck size={15} />
+              실제 크기 PDF
+            </span>
+          </div>
+        </section>
+
+        <section
+          id="landing-presets"
+          className="preset-section"
+          aria-labelledby="preset-title"
+        >
+          <div className="preset-heading">
+            <div>
+              <span>POPULAR SIZES</span>
+              <h2 id="preset-title">대표 명찰 규격</h2>
+            </div>
+            <p>선택 후에도 편집기에서 가로·세로를 직접 바꿀 수 있어요.</p>
+          </div>
+
+          <div className="preset-grid">
+            {BADGE_PRESETS.map((preset) => {
+              const isLandscape = preset.width > preset.height;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`preset-card ${preset.featured ? "is-featured" : ""}`}
+                  onClick={() => onSelectPreset(preset)}
+                  aria-label={`${preset.name} ${displayNumber(preset.width)} × ${displayNumber(preset.height)} mm로 시작`}
+                >
+                  <div className="preset-card-top">
+                    <span className="preset-tag">{preset.tag}</span>
+                    <ArrowRight size={17} />
+                  </div>
+                  <div className="preset-card-body">
+                    <span className="preset-visual" aria-hidden="true">
+                      <span
+                        className={`preset-mini-badge ${isLandscape ? "is-landscape" : ""}`}
+                        style={
+                          {
+                            "--preset-ratio": `${preset.width} / ${preset.height}`,
+                          } as CSSProperties
+                        }
+                      >
+                        {!isLandscape && <i />}
+                        <b>김민지</b>
+                        <em>브랜드팀</em>
+                      </span>
+                    </span>
+                    <span className="preset-copy">
+                      <strong>{preset.name}</strong>
+                      <b>
+                        {displayNumber(preset.width)} ×{" "}
+                        {displayNumber(preset.height)} mm
+                      </b>
+                      <small>{preset.description}</small>
+                    </span>
+                  </div>
+                  <span className="preset-card-footer">
+                    <span>A4 기준 약 {preset.a4Count}장</span>
+                    <span>이 규격으로 시작</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="custom-size-button"
+            onClick={onCustom}
+          >
+            <CreditCard size={17} />
+            원하는 규격을 직접 입력할게요
+            <ArrowRight size={16} />
+          </button>
+        </section>
+      </main>
+
+      <footer className="landing-footer">
+        <span>BadgeFlow</span>
+        <span>업로드한 파일은 브라우저 안에서 처리됩니다.</span>
+      </footer>
+    </div>
+  );
+}
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -718,6 +998,7 @@ function BadgeContents({
 }
 
 export function BadgeStudio() {
+  const [view, setView] = useState<AppView>("landing");
   const [mode, setMode] = useState<Mode>("design");
   const [badgeWidth, setBadgeWidth] = useState(95);
   const [badgeHeight, setBadgeHeight] = useState(123);
@@ -747,6 +1028,7 @@ export function BadgeStudio() {
   const [isExporting, setIsExporting] = useState(false);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
@@ -767,6 +1049,7 @@ export function BadgeStudio() {
     try {
       const saved = localStorage.getItem("badgeflow-project-v1");
       if (saved) {
+        setHasSavedDraft(true);
         const parsed = JSON.parse(saved);
         if (typeof parsed.badgeWidth === "number") setBadgeWidth(parsed.badgeWidth);
         if (typeof parsed.badgeHeight === "number")
@@ -931,6 +1214,36 @@ export function BadgeStudio() {
     setElements(cloneElements(next));
   }
 
+  function startWithPreset(preset: BadgePreset) {
+    const presetElements = createPresetElements(preset.width, preset.height);
+    setBadgeWidth(preset.width);
+    setBadgeHeight(preset.height);
+    setSafeArea(preset.width > preset.height ? 3 : 5);
+    setBackgroundColor("#ffffff");
+    setBackground(null);
+    setBackgroundName("");
+    setBackgroundFit("cover");
+    setElements(presetElements);
+    elementsRef.current = presetElements;
+    setHistoryPast([]);
+    setHistoryFuture([]);
+    setSelectedElementId("element-name");
+    setFields(DEFAULT_FIELDS);
+    setRows(SAMPLE_ROWS.map((row) => ({ ...row })));
+    setSelectedRowId("row-1");
+    setPage({ ...DEFAULT_PAGE });
+    setDpi(300);
+    setMode("design");
+    setView("studio");
+    setHasSavedDraft(true);
+    setToast(`${preset.name} ${displayNumber(preset.width)} × ${displayNumber(preset.height)} mm로 시작합니다.`);
+  }
+
+  function startCustomSize() {
+    startWithPreset(BADGE_PRESETS[0]);
+    setToast("왼쪽의 명찰 크기에서 원하는 규격을 입력해 주세요.");
+  }
+
   function addVariableElement(field: string) {
     const element: TextElement = {
       id: makeId("element"),
@@ -964,7 +1277,7 @@ export function BadgeStudio() {
       width: Math.max(20, badgeWidth - 20),
       fontSize: 10,
       fontWeight: 600,
-      color: "#0d9488",
+      color: "#2563eb",
       align: "center",
       opacity: 1,
       rotation: 0,
@@ -1622,6 +1935,17 @@ export function BadgeStudio() {
     { id: "print", label: "출력", icon: Printer },
   ];
 
+  if (view === "landing") {
+    return (
+      <LandingPage
+        hasSavedDraft={hasSavedDraft}
+        onContinue={() => setView("studio")}
+        onSelectPreset={startWithPreset}
+        onCustom={startCustomSize}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -1631,8 +1955,11 @@ export function BadgeStudio() {
         <button
           className="brand"
           type="button"
-          onClick={() => setMode("design")}
-          aria-label="BadgeFlow 디자인 화면으로 이동"
+          onClick={() => {
+            setMode("design");
+            setView("landing");
+          }}
+          aria-label="BadgeFlow 시작 화면으로 이동"
         >
           <span className="brand-mark">B</span>
           <span>
