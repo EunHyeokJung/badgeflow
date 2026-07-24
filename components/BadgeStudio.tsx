@@ -1,31 +1,46 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- User-supplied data URLs and sanitized SVGs are rendered locally. */
+
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  ArrowDown,
+  ArrowUp,
   Check,
   Copy,
   Database,
   Download,
+  Eye,
+  EyeOff,
   FileSpreadsheet,
+  FolderOpen,
+  Image as ImageIcon,
   ImagePlus,
+  Layers3,
   LayoutTemplate,
+  Lock,
   LockKeyhole,
   MoveHorizontal,
   MoveVertical,
   MousePointer2,
+  Palette,
   Plus,
   Printer,
+  Redo2,
   Settings2,
   Trash2,
   Type,
+  Undo2,
+  Unlock,
   Upload,
   X,
 } from "lucide-react";
 import Papa from "papaparse";
 import {
   CSSProperties,
+  DragEvent as ReactDragEvent,
   PointerEvent as ReactPointerEvent,
   useEffect,
   useMemo,
@@ -39,19 +54,40 @@ type ElementKind = "variable" | "static";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
 
-type TextElement = {
+type CommonElement = {
   id: string;
-  kind: ElementKind;
-  field?: string;
-  value?: string;
+  type: "text" | "image";
   x: number;
   y: number;
   width: number;
+  opacity: number;
+  rotation: number;
+  locked: boolean;
+  hidden: boolean;
+};
+
+type TextElement = CommonElement & {
+  type: "text";
+  kind: ElementKind;
+  field?: string;
+  value?: string;
   fontSize: number;
   fontWeight: number;
   color: string;
   align: Align;
 };
+
+type ImageElement = CommonElement & {
+  type: "image";
+  name: string;
+  src: string;
+  mimeType: string;
+  height: number;
+  fit: BackgroundFit;
+  aspectRatio: number;
+};
+
+type CanvasElement = TextElement | ImageElement;
 
 type BadgeRow = {
   id: string;
@@ -98,9 +134,10 @@ const SAMPLE_ROWS: BadgeRow[] = [
   { id: "row-4", 이름: "최현우", 팀: "개발팀", 직책: "엔지니어" },
 ];
 
-const DEFAULT_ELEMENTS: TextElement[] = [
+const DEFAULT_ELEMENTS: CanvasElement[] = [
   {
     id: "element-team",
+    type: "text",
     kind: "variable",
     field: "팀",
     x: 8,
@@ -110,9 +147,14 @@ const DEFAULT_ELEMENTS: TextElement[] = [
     fontWeight: 500,
     color: "#687076",
     align: "center",
+    opacity: 1,
+    rotation: 0,
+    locked: false,
+    hidden: false,
   },
   {
     id: "element-name",
+    type: "text",
     kind: "variable",
     field: "이름",
     x: 8,
@@ -122,9 +164,14 @@ const DEFAULT_ELEMENTS: TextElement[] = [
     fontWeight: 700,
     color: "#17201f",
     align: "center",
+    opacity: 1,
+    rotation: 0,
+    locked: false,
+    hidden: false,
   },
   {
     id: "element-title",
+    type: "text",
     kind: "variable",
     field: "직책",
     x: 8,
@@ -134,6 +181,10 @@ const DEFAULT_ELEMENTS: TextElement[] = [
     fontWeight: 500,
     color: "#687076",
     align: "center",
+    opacity: 1,
+    rotation: 0,
+    locked: false,
+    hidden: false,
   },
 ];
 
@@ -159,6 +210,52 @@ function displayNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function getElementLabel(element: CanvasElement) {
+  if (element.type === "image") return element.name || "이미지";
+  if (element.kind === "variable") return element.field || "매개변수";
+  return element.value || "고정 문구";
+}
+
+function normalizeElement(element: Partial<CanvasElement>): CanvasElement | null {
+  const common = {
+    id: element.id || makeId("element"),
+    x: Number(element.x ?? 0),
+    y: Number(element.y ?? 0),
+    width: Number(element.width ?? 20),
+    opacity: Number(element.opacity ?? 1),
+    rotation: Number(element.rotation ?? 0),
+    locked: Boolean(element.locked),
+    hidden: Boolean(element.hidden),
+  };
+
+  if (element.type === "image" && "src" in element && element.src) {
+    const image = element as Partial<ImageElement>;
+    return {
+      ...common,
+      type: "image",
+      name: image.name || "이미지",
+      src: image.src || "",
+      mimeType: image.mimeType || "image/png",
+      height: Number(image.height ?? 20),
+      fit: image.fit || "contain",
+      aspectRatio: Number(image.aspectRatio ?? 1),
+    };
+  }
+
+  const text = element as Partial<TextElement>;
+  return {
+    ...common,
+    type: "text",
+    kind: text.kind || "static",
+    field: text.field,
+    value: text.value,
+    fontSize: Number(text.fontSize ?? 12),
+    fontWeight: Number(text.fontWeight ?? 500),
+    color: text.color || "#17201f",
+    align: text.align || "center",
+  };
+}
+
 function resolveText(
   element: TextElement,
   row: BadgeRow | undefined,
@@ -168,6 +265,22 @@ function resolveText(
   if (!element.field) return "";
   const value = row?.[element.field];
   return value || (showPlaceholder ? `{{${element.field}}}` : "");
+}
+
+function getElementCenter(element: CanvasElement) {
+  return {
+    x: element.x + element.width / 2,
+    y:
+      element.type === "image"
+        ? element.y + element.height / 2
+        : element.y,
+  };
+}
+
+function getElementMaxY(element: CanvasElement, badgeHeight: number) {
+  return element.type === "image"
+    ? Math.max(0, badgeHeight - element.height)
+    : badgeHeight;
 }
 
 function getPageLayout(
@@ -205,18 +318,61 @@ function getImageType(dataUrl: string) {
   return "PNG";
 }
 
+const imageAssetCache = new Map<string, Promise<HTMLImageElement>>();
+
 function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+  const cached = imageAssetCache.get(src);
+  if (cached) return cached;
+  const promise = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("이미지를 불러오지 못했습니다."));
     image.src = src;
   });
+  imageAssetCache.set(src, promise);
+  return promise;
+}
+
+function drawImageFitted(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fit: BackgroundFit,
+) {
+  context.save();
+  context.beginPath();
+  context.rect(x, y, width, height);
+  context.clip();
+
+  if (fit === "stretch") {
+    context.drawImage(image, x, y, width, height);
+    context.restore();
+    return;
+  }
+
+  const scaleFactor =
+    fit === "cover"
+      ? Math.max(width / image.width, height / image.height)
+      : Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scaleFactor;
+  const drawHeight = image.height * scaleFactor;
+  context.drawImage(
+    image,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  context.restore();
 }
 
 async function renderBadgeImage({
   badgeWidth,
   badgeHeight,
+  backgroundColor,
   background,
   backgroundFit,
   elements,
@@ -225,9 +381,10 @@ async function renderBadgeImage({
 }: {
   badgeWidth: number;
   badgeHeight: number;
+  backgroundColor: string;
   background: string | null;
   backgroundFit: BackgroundFit;
-  elements: TextElement[];
+  elements: CanvasElement[];
   row: BadgeRow;
   dpi: number;
 }) {
@@ -239,34 +396,50 @@ async function renderBadgeImage({
 
   if (!context) throw new Error("인쇄용 캔버스를 만들 수 없습니다.");
 
-  context.fillStyle = "#ffffff";
+  context.fillStyle = backgroundColor;
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
 
   if (background) {
     const image = await loadImage(background);
-
-    if (backgroundFit === "stretch") {
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    } else {
-      const scaleFactor =
-        backgroundFit === "cover"
-          ? Math.max(canvas.width / image.width, canvas.height / image.height)
-          : Math.min(canvas.width / image.width, canvas.height / image.height);
-      const drawWidth = image.width * scaleFactor;
-      const drawHeight = image.height * scaleFactor;
-      context.drawImage(
-        image,
-        (canvas.width - drawWidth) / 2,
-        (canvas.height - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
-    }
+    drawImageFitted(
+      context,
+      image,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+      backgroundFit,
+    );
   }
 
   for (const element of elements) {
+    if (element.hidden) continue;
+
+    if (element.type === "image") {
+      const image = await loadImage(element.src);
+      const x = element.x * scale;
+      const y = element.y * scale;
+      const width = element.width * scale;
+      const height = element.height * scale;
+      context.save();
+      context.globalAlpha = element.opacity;
+      context.translate(x + width / 2, y + height / 2);
+      context.rotate((element.rotation * Math.PI) / 180);
+      drawImageFitted(
+        context,
+        image,
+        -width / 2,
+        -height / 2,
+        width,
+        height,
+        element.fit,
+      );
+      context.restore();
+      continue;
+    }
+
     const text = resolveText(element, row, false);
     if (!text) continue;
 
@@ -291,6 +464,13 @@ async function renderBadgeImage({
       context.font = `${element.fontWeight} ${fontSize}px ${fontFamily}`;
     }
 
+    context.save();
+    context.globalAlpha = element.opacity;
+    const rotationCenterX = (element.x + element.width / 2) * scale;
+    const rotationCenterY = element.y * scale;
+    context.translate(rotationCenterX, rotationCenterY);
+    context.rotate((element.rotation * Math.PI) / 180);
+    context.translate(-rotationCenterX, -rotationCenterY);
     context.fillStyle = element.color;
     context.textBaseline = "middle";
     context.textAlign = element.align;
@@ -309,6 +489,7 @@ async function renderBadgeImage({
     lines.forEach((line, index) => {
       context.fillText(line, x, firstY + index * lineHeight, maxWidth);
     });
+    context.restore();
   }
 
   return canvas.toDataURL("image/jpeg", 0.96);
@@ -318,6 +499,7 @@ function BadgeContents({
   badgeWidth,
   badgeHeight,
   safeArea = 5,
+  backgroundColor = "#ffffff",
   background,
   backgroundFit,
   elements,
@@ -334,9 +516,10 @@ function BadgeContents({
   badgeWidth: number;
   badgeHeight: number;
   safeArea?: number;
+  backgroundColor?: string;
   background: string | null;
   backgroundFit: BackgroundFit;
-  elements: TextElement[];
+  elements: CanvasElement[];
   row: BadgeRow | undefined;
   selectedElementId?: string | null;
   snapGuides?: SnapGuides;
@@ -344,18 +527,19 @@ function BadgeContents({
   onSelect?: (id: string) => void;
   onPointerDown?: (
     event: ReactPointerEvent<HTMLDivElement>,
-    element: TextElement,
+    element: CanvasElement,
   ) => void;
   onPointerMove?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onKeyMove?: (
     event: React.KeyboardEvent<HTMLDivElement>,
-    element: TextElement,
+    element: CanvasElement,
   ) => void;
 }) {
   const stageStyle = {
     "--badge-ratio": `${badgeWidth} / ${badgeHeight}`,
     backgroundImage: background ? `url("${background}")` : undefined,
+    backgroundColor,
     backgroundSize:
       backgroundFit === "stretch" ? "100% 100%" : backgroundFit,
   } as CSSProperties;
@@ -394,8 +578,80 @@ function BadgeContents({
       {interactive && snapGuides?.vertical && snapGuides.horizontal && (
         <span className="alignment-center-point" aria-hidden="true" />
       )}
-      {elements.map((element) => {
+      {elements.map((element, index) => {
+        if (element.hidden) return null;
         const isSelected = selectedElementId === element.id;
+        const elementLabel =
+          element.type === "image"
+            ? element.name
+            : element.kind === "variable"
+              ? element.field
+              : element.value;
+
+        if (element.type === "image") {
+          const imageStyle = {
+            left: `${(element.x / badgeWidth) * 100}%`,
+            top: `${(element.y / badgeHeight) * 100}%`,
+            width: `${(element.width / badgeWidth) * 100}%`,
+            height: `${(element.height / badgeHeight) * 100}%`,
+            opacity: element.opacity,
+            transform: `rotate(${element.rotation}deg)`,
+            zIndex: index + 2,
+            cursor: interactive
+              ? element.locked
+                ? "not-allowed"
+                : "grab"
+              : "default",
+          } as CSSProperties;
+
+          return (
+            <div
+              key={element.id}
+              className={`badge-image-element ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
+              style={imageStyle}
+              role={interactive ? "button" : undefined}
+              tabIndex={interactive ? 0 : undefined}
+              aria-label={interactive ? `${elementLabel} 이미지 요소` : undefined}
+              onClick={
+                interactive
+                  ? (event) => {
+                      event.stopPropagation();
+                      onSelect?.(element.id);
+                    }
+                  : undefined
+              }
+              onPointerDown={
+                interactive
+                  ? (event) => onPointerDown?.(event, element)
+                  : undefined
+              }
+              onKeyDown={
+                interactive
+                  ? (event) => onKeyMove?.(event, element)
+                  : undefined
+              }
+            >
+              <img
+                src={element.src}
+                alt=""
+                draggable={false}
+                style={{
+                  objectFit:
+                    element.fit === "stretch" ? "fill" : element.fit,
+                }}
+              />
+              {interactive && isSelected && (
+                <>
+                  <span className="selection-handle handle-nw" />
+                  <span className="selection-handle handle-ne" />
+                  <span className="selection-handle handle-sw" />
+                  <span className="selection-handle handle-se" />
+                </>
+              )}
+            </div>
+          );
+        }
+
         const style = {
           left: `${(element.x / badgeWidth) * 100}%`,
           top: `${(element.y / badgeHeight) * 100}%`,
@@ -404,19 +660,26 @@ function BadgeContents({
           fontWeight: element.fontWeight,
           color: element.color,
           textAlign: element.align,
-          cursor: interactive ? "grab" : "default",
+          opacity: element.opacity,
+          transform: `translateY(-50%) rotate(${element.rotation}deg)`,
+          zIndex: index + 2,
+          cursor: interactive
+            ? element.locked
+              ? "not-allowed"
+              : "grab"
+            : "default",
         } as CSSProperties;
 
         return (
           <div
             key={element.id}
-            className={`badge-text ${isSelected ? "is-selected" : ""}`}
+            className={`badge-text ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
             style={style}
             role={interactive ? "button" : undefined}
             tabIndex={interactive ? 0 : undefined}
             aria-label={
               interactive
-                ? `${element.kind === "variable" ? element.field : element.value} 텍스트 요소`
+                ? `${elementLabel} 텍스트 요소`
                 : undefined
             }
             onClick={
@@ -459,10 +722,13 @@ export function BadgeStudio() {
   const [badgeWidth, setBadgeWidth] = useState(95);
   const [badgeHeight, setBadgeHeight] = useState(123);
   const [safeArea, setSafeArea] = useState(5);
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [background, setBackground] = useState<string | null>(null);
   const [backgroundName, setBackgroundName] = useState("");
   const [backgroundFit, setBackgroundFit] = useState<BackgroundFit>("cover");
-  const [elements, setElements] = useState<TextElement[]>(DEFAULT_ELEMENTS);
+  const [elements, setElements] = useState<CanvasElement[]>(DEFAULT_ELEMENTS);
+  const [historyPast, setHistoryPast] = useState<CanvasElement[][]>([]);
+  const [historyFuture, setHistoryFuture] = useState<CanvasElement[][]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(
     "element-name",
   );
@@ -483,6 +749,7 @@ export function BadgeStudio() {
   const [hydrated, setHydrated] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const guideTimerRef = useRef<number | null>(null);
+  const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
@@ -496,6 +763,7 @@ export function BadgeStudio() {
     layout.capacity > 0 ? Math.max(1, Math.ceil(rows.length / layout.capacity)) : 0;
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- Hydrate the browser-only draft after SSR. */
     try {
       const saved = localStorage.getItem("badgeflow-project-v1");
       if (saved) {
@@ -504,7 +772,14 @@ export function BadgeStudio() {
         if (typeof parsed.badgeHeight === "number")
           setBadgeHeight(parsed.badgeHeight);
         if (typeof parsed.safeArea === "number") setSafeArea(parsed.safeArea);
-        if (Array.isArray(parsed.elements)) setElements(parsed.elements);
+        if (typeof parsed.backgroundColor === "string")
+          setBackgroundColor(parsed.backgroundColor);
+        if (Array.isArray(parsed.elements)) {
+          const normalized = parsed.elements
+            .map((element: Partial<CanvasElement>) => normalizeElement(element))
+            .filter(Boolean) as CanvasElement[];
+          if (normalized.length) setElements(normalized);
+        }
         if (Array.isArray(parsed.fields)) setFields(parsed.fields);
         if (Array.isArray(parsed.rows)) setRows(parsed.rows);
         if (parsed.page) setPage(parsed.page);
@@ -515,6 +790,7 @@ export function BadgeStudio() {
     } finally {
       setHydrated(true);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
@@ -527,6 +803,7 @@ export function BadgeStudio() {
             badgeWidth,
             badgeHeight,
             safeArea,
+            backgroundColor,
             elements,
             fields,
             rows,
@@ -544,6 +821,7 @@ export function BadgeStudio() {
     badgeWidth,
     badgeHeight,
     safeArea,
+    backgroundColor,
     elements,
     fields,
     rows,
@@ -557,6 +835,10 @@ export function BadgeStudio() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    elementsRef.current = elements;
+  }, [elements]);
+
   useEffect(
     () => () => {
       if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
@@ -564,17 +846,95 @@ export function BadgeStudio() {
     [],
   );
 
-  function updateElement(id: string, patch: Partial<TextElement>) {
-    setElements((current) =>
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.matches(
+          "input, textarea, select, [contenteditable='true']",
+        )
+      ) {
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoElements();
+        else undoElements();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoElements();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+    // The history functions intentionally read the current render's snapshots.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyPast, historyFuture]);
+
+  function cloneElements(source: CanvasElement[]) {
+    return source.map((element) => ({ ...element })) as CanvasElement[];
+  }
+
+  function rememberElements() {
+    const snapshot = cloneElements(elementsRef.current);
+    setHistoryPast((current) => [...current.slice(-39), snapshot]);
+    setHistoryFuture([]);
+  }
+
+  function mutateElements(
+    updater: (current: CanvasElement[]) => CanvasElement[],
+    recordHistory = true,
+  ) {
+    if (recordHistory) rememberElements();
+    setElements((current) => updater(current));
+  }
+
+  function updateElement(
+    id: string,
+    patch: Partial<TextElement> | Partial<ImageElement>,
+    recordHistory = true,
+  ) {
+    mutateElements(
+      (current) =>
       current.map((element) =>
-        element.id === id ? { ...element, ...patch } : element,
-      ),
+          element.id === id
+            ? ({ ...element, ...patch } as CanvasElement)
+            : element,
+        ),
+      recordHistory,
     );
+  }
+
+  function undoElements() {
+    if (!historyPast.length) return;
+    const previous = historyPast[historyPast.length - 1];
+    setHistoryPast((current) => current.slice(0, -1));
+    setHistoryFuture((current) => [
+      cloneElements(elementsRef.current),
+      ...current.slice(0, 39),
+    ]);
+    setElements(cloneElements(previous));
+    setSelectedElementId((current) =>
+      previous.some((element) => element.id === current) ? current : null,
+    );
+  }
+
+  function redoElements() {
+    if (!historyFuture.length) return;
+    const next = historyFuture[0];
+    setHistoryFuture((current) => current.slice(1));
+    setHistoryPast((current) => [
+      ...current.slice(-39),
+      cloneElements(elementsRef.current),
+    ]);
+    setElements(cloneElements(next));
   }
 
   function addVariableElement(field: string) {
     const element: TextElement = {
       id: makeId("element"),
+      type: "text",
       kind: "variable",
       field,
       x: 10,
@@ -584,14 +944,19 @@ export function BadgeStudio() {
       fontWeight: field === "이름" ? 700 : 500,
       color: "#17201f",
       align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
     };
-    setElements((current) => [...current, element]);
+    mutateElements((current) => [...current, element]);
     setSelectedElementId(element.id);
   }
 
   function addStaticElement() {
     const element: TextElement = {
       id: makeId("element"),
+      type: "text",
       kind: "static",
       value: "행사명",
       x: 10,
@@ -601,8 +966,12 @@ export function BadgeStudio() {
       fontWeight: 600,
       color: "#0d9488",
       align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
     };
-    setElements((current) => [...current, element]);
+    mutateElements((current) => [...current, element]);
     setSelectedElementId(element.id);
   }
 
@@ -612,15 +981,20 @@ export function BadgeStudio() {
       ...selectedElement,
       id: makeId("element"),
       x: clamp(selectedElement.x + 3, 0, badgeWidth - selectedElement.width),
-      y: clamp(selectedElement.y + 3, 0, badgeHeight),
-    };
-    setElements((current) => [...current, duplicate]);
+      y: clamp(
+        selectedElement.y + 3,
+        0,
+        getElementMaxY(selectedElement, badgeHeight),
+      ),
+      locked: false,
+    } as CanvasElement;
+    mutateElements((current) => [...current, duplicate]);
     setSelectedElementId(duplicate.id);
   }
 
   function deleteSelected() {
     if (!selectedElementId) return;
-    setElements((current) =>
+    mutateElements((current) =>
       current.filter((element) => element.id !== selectedElementId),
     );
     setSelectedElementId(null);
@@ -645,20 +1019,25 @@ export function BadgeStudio() {
       return;
     }
     updateElement(selectedElement.id, {
-      y: Math.round((badgeHeight / 2) * 10) / 10,
+      y:
+        selectedElement.type === "image"
+          ? Math.round(((badgeHeight - selectedElement.height) / 2) * 10) / 10
+          : Math.round((badgeHeight / 2) * 10) / 10,
     });
     flashGuides({ vertical: false, horizontal: true });
   }
 
   function handlePointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
-    element: TextElement,
+    element: CanvasElement,
   ) {
     if (!stageRef.current) return;
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedElementId(element.id);
+    if (element.locked) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    rememberElements();
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
     setSnapGuides({ vertical: false, horizontal: false });
     setDrag({
@@ -682,27 +1061,35 @@ export function BadgeStudio() {
     const snapThresholdX = (10 / rect.width) * badgeWidth;
     const snapThresholdY = (10 / rect.height) * badgeHeight;
     let nextX = clamp(rawX, 0, badgeWidth - element.width);
-    let nextY = clamp(rawY, 0, badgeHeight);
+    let nextY = clamp(rawY, 0, getElementMaxY(element, badgeHeight));
+    const center = getElementCenter({ ...element, x: nextX, y: nextY });
     const snapsToVerticalCenter =
-      Math.abs(nextX + element.width / 2 - badgeWidth / 2) <= snapThresholdX;
+      Math.abs(center.x - badgeWidth / 2) <= snapThresholdX;
     const snapsToHorizontalCenter =
-      Math.abs(nextY - badgeHeight / 2) <= snapThresholdY;
+      Math.abs(center.y - badgeHeight / 2) <= snapThresholdY;
 
     if (snapsToVerticalCenter) {
       nextX = (badgeWidth - element.width) / 2;
     }
     if (snapsToHorizontalCenter) {
-      nextY = badgeHeight / 2;
+      nextY =
+        element.type === "image"
+          ? (badgeHeight - element.height) / 2
+          : badgeHeight / 2;
     }
 
     setSnapGuides({
       vertical: snapsToVerticalCenter,
       horizontal: snapsToHorizontalCenter,
     });
-    updateElement(drag.id, {
-      x: Math.round(nextX * 10) / 10,
-      y: Math.round(nextY * 10) / 10,
-    });
+    updateElement(
+      drag.id,
+      {
+        x: Math.round(nextX * 10) / 10,
+        y: Math.round(nextY * 10) / 10,
+      },
+      false,
+    );
   }
 
   function handlePointerEnd() {
@@ -712,8 +1099,9 @@ export function BadgeStudio() {
 
   function handleKeyMove(
     event: React.KeyboardEvent<HTMLDivElement>,
-    element: TextElement,
+    element: CanvasElement,
   ) {
+    if (element.locked) return;
     const amount = event.shiftKey ? 2 : 0.5;
     const keyMap: Record<string, { x: number; y: number }> = {
       ArrowLeft: { x: -amount, y: 0 },
@@ -725,13 +1113,17 @@ export function BadgeStudio() {
       event.preventDefault();
       updateElement(element.id, {
         x: clamp(element.x + keyMap[event.key].x, 0, badgeWidth - element.width),
-        y: clamp(element.y + keyMap[event.key].y, 0, badgeHeight),
+        y: clamp(
+          element.y + keyMap[event.key].y,
+          0,
+          getElementMaxY(element, badgeHeight),
+        ),
       });
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       setSelectedElementId(element.id);
-      setElements((current) =>
+      mutateElements((current) =>
         current.filter((item) => item.id !== element.id),
       );
     }
@@ -750,6 +1142,243 @@ export function BadgeStudio() {
       setToast("배경 이미지를 적용했습니다.");
     };
     reader.readAsDataURL(file);
+  }
+
+  async function readImageAsset(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("이미지는 10MB 이하로 올려 주세요.");
+    }
+    const isSvg =
+      file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+    if (isSvg) {
+      const source = await file.text();
+      const documentNode = new DOMParser().parseFromString(
+        source,
+        "image/svg+xml",
+      );
+      if (documentNode.querySelector("parsererror")) {
+        throw new Error("올바른 SVG 파일이 아닙니다.");
+      }
+      const svg = documentNode.documentElement;
+      if (svg.tagName.toLowerCase() !== "svg") {
+        throw new Error("SVG 루트 요소를 찾지 못했습니다.");
+      }
+      documentNode
+        .querySelectorAll("script, foreignObject, iframe, object, embed")
+        .forEach((node) => node.remove());
+      documentNode.querySelectorAll("*").forEach((node) => {
+        Array.from(node.attributes).forEach((attribute) => {
+          const name = attribute.name.toLowerCase();
+          const value = attribute.value.trim();
+          if (name.startsWith("on")) node.removeAttribute(attribute.name);
+          if (
+            (name === "href" || name === "xlink:href") &&
+            /^(https?:|\/\/)/i.test(value)
+          ) {
+            node.removeAttribute(attribute.name);
+          }
+        });
+      });
+      const sanitized = new XMLSerializer().serializeToString(svg);
+      return {
+        src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sanitized)}`,
+        mimeType: "image/svg+xml",
+      };
+    }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      throw new Error("PNG, JPG, WebP 또는 SVG 파일을 선택해 주세요.");
+    }
+    const src = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
+      reader.readAsDataURL(file);
+    });
+    return { src, mimeType: file.type };
+  }
+
+  async function addImageElement(
+    file: File | undefined,
+    dropPoint?: { x: number; y: number },
+  ) {
+    if (!file) return;
+    try {
+      const asset = await readImageAsset(file);
+      const image = await loadImage(asset.src);
+      const naturalRatio =
+        image.naturalWidth > 0 && image.naturalHeight > 0
+          ? image.naturalWidth / image.naturalHeight
+          : 1;
+      let width = Math.min(32, badgeWidth * 0.36);
+      let height = width / naturalRatio;
+      if (height > badgeHeight * 0.38) {
+        height = badgeHeight * 0.38;
+        width = height * naturalRatio;
+      }
+      width = clamp(width, 8, badgeWidth);
+      height = clamp(height, 5, badgeHeight);
+      const x = clamp(
+        (dropPoint?.x ?? badgeWidth / 2) - width / 2,
+        0,
+        badgeWidth - width,
+      );
+      const y = clamp(
+        (dropPoint?.y ?? 18 + height / 2) - height / 2,
+        0,
+        badgeHeight - height,
+      );
+      const element: ImageElement = {
+        id: makeId("image"),
+        type: "image",
+        name: file.name.replace(/\.[^.]+$/, "") || "이미지",
+        src: asset.src,
+        mimeType: asset.mimeType,
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+        width: Math.round(width * 10) / 10,
+        height: Math.round(height * 10) / 10,
+        fit: "contain",
+        aspectRatio: naturalRatio,
+        opacity: 1,
+        rotation: 0,
+        locked: false,
+        hidden: false,
+      };
+      mutateElements((current) => [...current, element]);
+      setSelectedElementId(element.id);
+      setToast(
+        asset.mimeType === "image/svg+xml"
+          ? "SVG 로고를 추가했습니다."
+          : "이미지 레이어를 추가했습니다.",
+      );
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "이미지를 추가하지 못했습니다.",
+      );
+    }
+  }
+
+  async function replaceSelectedImage(file: File | undefined) {
+    if (!file || !selectedElement || selectedElement.type !== "image") return;
+    try {
+      const asset = await readImageAsset(file);
+      const image = await loadImage(asset.src);
+      const aspectRatio =
+        image.naturalWidth > 0 && image.naturalHeight > 0
+          ? image.naturalWidth / image.naturalHeight
+          : selectedElement.aspectRatio;
+      const width = Math.min(
+        selectedElement.width,
+        badgeWidth - selectedElement.x,
+        (badgeHeight - selectedElement.y) * aspectRatio,
+      );
+      updateElement(selectedElement.id, {
+        src: asset.src,
+        mimeType: asset.mimeType,
+        name: file.name.replace(/\.[^.]+$/, "") || selectedElement.name,
+        aspectRatio,
+        width: Math.round(width * 10) / 10,
+        height: Math.round((width / aspectRatio) * 10) / 10,
+      });
+      setToast("이미지를 교체했습니다.");
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "이미지를 교체하지 못했습니다.",
+      );
+    }
+  }
+
+  function handleCanvasDrop(event: ReactDragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (!file || !stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    void addImageElement(file, {
+      x: ((event.clientX - rect.left) / rect.width) * badgeWidth,
+      y: ((event.clientY - rect.top) / rect.height) * badgeHeight,
+    });
+  }
+
+  function moveElementLayer(id: string, direction: "up" | "down") {
+    mutateElements((current) => {
+      const index = current.findIndex((element) => element.id === id);
+      const nextIndex = direction === "up" ? index + 1 : index - 1;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  function exportProject() {
+    const project = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      badgeWidth,
+      badgeHeight,
+      safeArea,
+      backgroundColor,
+      background,
+      backgroundName,
+      backgroundFit,
+      elements,
+      fields,
+      rows,
+      page,
+      dpi,
+    };
+    const blob = new Blob([JSON.stringify(project, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `BadgeFlow_${badgeWidth}x${badgeHeight}mm.badgeflow.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setToast("프로젝트 백업 파일을 저장했습니다.");
+  }
+
+  async function importProject(file: File | undefined) {
+    if (!file) return;
+    try {
+      const project = JSON.parse(await file.text());
+      if (!Array.isArray(project.elements) || !Array.isArray(project.rows)) {
+        throw new Error("BadgeFlow 프로젝트 파일이 아닙니다.");
+      }
+      const importedElements = project.elements
+        .map((element: Partial<CanvasElement>) => normalizeElement(element))
+        .filter(Boolean) as CanvasElement[];
+      setBadgeWidth(Number(project.badgeWidth || 95));
+      setBadgeHeight(Number(project.badgeHeight || 123));
+      setSafeArea(Number(project.safeArea ?? 5));
+      setBackgroundColor(project.backgroundColor || "#ffffff");
+      setBackground(project.background || null);
+      setBackgroundName(project.backgroundName || "");
+      setBackgroundFit(project.backgroundFit || "cover");
+      setElements(importedElements);
+      setFields(Array.isArray(project.fields) ? project.fields : DEFAULT_FIELDS);
+      setRows(project.rows);
+      setPage(project.page || DEFAULT_PAGE);
+      setDpi(Number(project.dpi || 300));
+      setHistoryPast([]);
+      setHistoryFuture([]);
+      setSelectedElementId(importedElements.at(-1)?.id || null);
+      setSelectedRowId(project.rows[0]?.id || "");
+      setToast("프로젝트를 불러왔습니다.");
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "프로젝트를 불러오지 못했습니다.",
+      );
+    }
   }
 
   function handleCsv(file: File | undefined) {
@@ -805,9 +1434,12 @@ export function BadgeStudio() {
         return next;
       }),
     );
-    setElements((current) =>
+    mutateElements((current) =>
       current.filter(
-        (element) => element.kind !== "variable" || element.field !== field,
+        (element) =>
+          element.type !== "text" ||
+          element.kind !== "variable" ||
+          element.field !== field,
       ),
     );
   }
@@ -898,6 +1530,7 @@ export function BadgeStudio() {
             rendered = await renderBadgeImage({
               badgeWidth,
               badgeHeight,
+              backgroundColor,
               background,
               backgroundFit,
               elements,
@@ -1170,12 +1803,57 @@ export function BadgeStudio() {
                     </button>
                   </div>
                 )}
+                <label className="background-color-control">
+                  <span>
+                    <Palette size={15} />
+                    배경색
+                  </span>
+                  <span>
+                    <input
+                      type="color"
+                      value={backgroundColor}
+                      onChange={(event) =>
+                        setBackgroundColor(event.target.value)
+                      }
+                      aria-label="명찰 배경색"
+                    />
+                    <code>{backgroundColor.toUpperCase()}</code>
+                  </span>
+                </label>
+              </section>
+
+              <section className="panel-section">
+                <div className="section-title">
+                  <h2>이미지 · 로고</h2>
+                  <span>레이어로 추가</span>
+                </div>
+                <p className="section-helper">
+                  로고, QR, 서명 이미지를 올리거나 캔버스에 바로 놓으세요.
+                </p>
+                <label className="asset-upload-button">
+                  <span className="upload-icon">
+                    <ImageIcon size={19} />
+                  </span>
+                  <span className="upload-copy">
+                    <strong>이미지 또는 SVG 추가</strong>
+                    <small>PNG, JPG, WebP, SVG · 최대 10MB</small>
+                  </span>
+                  <Plus size={16} />
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                    onChange={(event) => {
+                      void addImageElement(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
               </section>
 
               <section className="panel-section grow-section">
                 <div className="section-title">
                   <h2>텍스트 추가</h2>
-                  <span>{elements.length}개 요소</span>
+                  <span>{elements.length}개 전체 요소</span>
                 </div>
                 <p className="section-helper">
                   매개변수를 누르면 명찰에 텍스트가 추가됩니다.
@@ -1217,6 +1895,48 @@ export function BadgeStudio() {
                   <span>안전영역 {safeArea} mm</span>
                 </div>
                 <div className="toolbar-controls">
+                  <div className="toolbar-icon-group" aria-label="편집 기록">
+                    <button
+                      type="button"
+                      onClick={undoElements}
+                      disabled={!historyPast.length}
+                      title="실행 취소 (⌘Z)"
+                      aria-label="실행 취소"
+                    >
+                      <Undo2 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoElements}
+                      disabled={!historyFuture.length}
+                      title="다시 실행 (⇧⌘Z)"
+                      aria-label="다시 실행"
+                    >
+                      <Redo2 size={16} />
+                    </button>
+                  </div>
+                  <div className="project-tools">
+                    <label title="BadgeFlow 프로젝트 불러오기">
+                      <FolderOpen size={15} />
+                      불러오기
+                      <input
+                        type="file"
+                        accept=".json,.badgeflow.json,application/json"
+                        onChange={(event) => {
+                          void importProject(event.target.files?.[0]);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={exportProject}
+                      title="이미지와 데이터를 포함한 프로젝트 백업"
+                    >
+                      <Download size={15} />
+                      백업
+                    </button>
+                  </div>
                   <label>
                     미리 볼 데이터
                     <select
@@ -1248,12 +1968,15 @@ export function BadgeStudio() {
                 <div
                   className="badge-frame"
                   ref={stageRef}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={handleCanvasDrop}
                   style={{ "--frame-ratio": `${badgeWidth} / ${badgeHeight}` } as CSSProperties}
                 >
                   <BadgeContents
                     badgeWidth={badgeWidth}
                     badgeHeight={badgeHeight}
                     safeArea={safeArea}
+                    backgroundColor={backgroundColor}
                     background={background}
                     backgroundFit={backgroundFit}
                     elements={elements}
@@ -1273,7 +1996,7 @@ export function BadgeStudio() {
               <div className="canvas-footer">
                 <span>
                   <MousePointer2 size={15} />
-                  드래그해서 이동 · 중앙선 근처 자동 스냅 · 방향키 0.5mm
+                  이미지 파일을 놓아 추가 · 드래그 이동 · 중앙 자동 스냅
                 </span>
                 <label>
                   안전영역
@@ -1303,18 +2026,22 @@ export function BadgeStudio() {
                 <>
                   <section className="panel-section selected-summary">
                     <span className="element-type-icon">
-                      <Type size={17} />
+                      {selectedElement.type === "image" ? (
+                        <ImageIcon size={17} />
+                      ) : (
+                        <Type size={17} />
+                      )}
                     </span>
                     <div>
-                      <strong>
-                        {selectedElement.kind === "variable"
-                          ? selectedElement.field
-                          : selectedElement.value}
-                      </strong>
+                      <strong>{getElementLabel(selectedElement)}</strong>
                       <small>
-                        {selectedElement.kind === "variable"
-                          ? "매개변수 텍스트"
-                          : "고정 텍스트"}
+                        {selectedElement.type === "image"
+                          ? selectedElement.mimeType === "image/svg+xml"
+                            ? "SVG 이미지 레이어"
+                            : "이미지 레이어"
+                          : selectedElement.kind === "variable"
+                            ? "매개변수 텍스트"
+                            : "고정 텍스트"}
                       </small>
                     </div>
                     <span className="selected-check">
@@ -1322,135 +2049,192 @@ export function BadgeStudio() {
                     </span>
                   </section>
 
-                  <section className="panel-section">
-                    <div className="section-title">
-                      <h2>내용</h2>
-                    </div>
-                    {selectedElement.kind === "variable" ? (
-                      <label className="stacked-field">
-                        연결할 매개변수
-                        <select
-                          value={selectedElement.field || ""}
-                          onChange={(event) =>
-                            updateElement(selectedElement.id, {
-                              field: event.target.value,
-                            })
-                          }
-                        >
-                          {fields.map((field) => (
-                            <option key={field} value={field}>
-                              {field}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : (
-                      <label className="stacked-field">
-                        표시할 문구
-                        <input
-                          value={selectedElement.value || ""}
-                          onChange={(event) =>
-                            updateElement(selectedElement.id, {
-                              value: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    )}
-                  </section>
+                  {selectedElement.type === "text" ? (
+                    <>
+                      <section className="panel-section">
+                        <div className="section-title">
+                          <h2>내용</h2>
+                        </div>
+                        {selectedElement.kind === "variable" ? (
+                          <label className="stacked-field">
+                            연결할 매개변수
+                            <select
+                              value={selectedElement.field || ""}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  field: event.target.value,
+                                })
+                              }
+                            >
+                              {fields.map((field) => (
+                                <option key={field} value={field}>
+                                  {field}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <label className="stacked-field">
+                            표시할 문구
+                            <input
+                              value={selectedElement.value || ""}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  value: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                      </section>
 
-                  <section className="panel-section">
-                    <div className="section-title">
-                      <h2>타이포그래피</h2>
-                    </div>
-                    <div className="field-grid two-columns">
-                      <label>
-                        크기
-                        <div className="input-with-unit">
+                      <section className="panel-section">
+                        <div className="section-title">
+                          <h2>타이포그래피</h2>
+                        </div>
+                        <div className="field-grid two-columns">
+                          <label>
+                            크기
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                min="6"
+                                max="120"
+                                value={selectedElement.fontSize}
+                                onChange={(event) =>
+                                  updateElement(selectedElement.id, {
+                                    fontSize: Number(event.target.value),
+                                  })
+                                }
+                              />
+                              <span>pt</span>
+                            </div>
+                          </label>
+                          <label>
+                            굵기
+                            <select
+                              value={selectedElement.fontWeight}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  fontWeight: Number(event.target.value),
+                                })
+                              }
+                            >
+                              <option value="400">보통</option>
+                              <option value="500">중간</option>
+                              <option value="600">세미볼드</option>
+                              <option value="700">볼드</option>
+                              <option value="800">엑스트라볼드</option>
+                            </select>
+                          </label>
+                        </div>
+                        <div className="property-row">
+                          <div className="align-control" aria-label="텍스트 정렬">
+                            {(
+                              [
+                                ["left", AlignLeft],
+                                ["center", AlignCenter],
+                                ["right", AlignRight],
+                              ] as const
+                            ).map(([align, Icon]) => (
+                              <button
+                                key={align}
+                                type="button"
+                                className={
+                                  selectedElement.align === align
+                                    ? "is-active"
+                                    : ""
+                                }
+                                onClick={() =>
+                                  updateElement(selectedElement.id, { align })
+                                }
+                                aria-label={
+                                  align === "left"
+                                    ? "왼쪽 정렬"
+                                    : align === "center"
+                                      ? "가운데 정렬"
+                                      : "오른쪽 정렬"
+                                }
+                              >
+                                <Icon size={17} />
+                              </button>
+                            ))}
+                          </div>
+                          <label className="color-control">
+                            <input
+                              type="color"
+                              value={selectedElement.color}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  color: event.target.value,
+                                })
+                              }
+                              aria-label="텍스트 색상"
+                            />
+                            <span>{selectedElement.color.toUpperCase()}</span>
+                          </label>
+                        </div>
+                      </section>
+                    </>
+                  ) : (
+                    <section className="panel-section">
+                      <div className="section-title">
+                        <h2>이미지</h2>
+                        <span>비율 유지</span>
+                      </div>
+                      <div className="image-inspector-preview">
+                        <img src={selectedElement.src} alt="" />
+                        <div>
+                          <strong>{selectedElement.name}</strong>
+                          <small>
+                            {selectedElement.mimeType === "image/svg+xml"
+                              ? "벡터 SVG"
+                              : "래스터 이미지"}
+                          </small>
+                        </div>
+                      </div>
+                      <div className="image-inspector-actions">
+                        <label className="secondary-button">
+                          <ImagePlus size={15} />
+                          이미지 교체
                           <input
-                            type="number"
-                            min="6"
-                            max="120"
-                            value={selectedElement.fontSize}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                            onChange={(event) => {
+                              void replaceSelectedImage(
+                                event.target.files?.[0],
+                              );
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                        <label className="stacked-field compact-fit-field">
+                          맞춤
+                          <select
+                            value={selectedElement.fit}
                             onChange={(event) =>
                               updateElement(selectedElement.id, {
-                                fontSize: Number(event.target.value),
+                                fit: event.target.value as BackgroundFit,
                               })
                             }
-                          />
-                          <span>pt</span>
-                        </div>
-                      </label>
-                      <label>
-                        굵기
-                        <select
-                          value={selectedElement.fontWeight}
-                          onChange={(event) =>
-                            updateElement(selectedElement.id, {
-                              fontWeight: Number(event.target.value),
-                            })
-                          }
-                        >
-                          <option value="400">보통</option>
-                          <option value="500">중간</option>
-                          <option value="600">세미볼드</option>
-                          <option value="700">볼드</option>
-                          <option value="800">엑스트라볼드</option>
-                        </select>
-                      </label>
-                    </div>
-                    <div className="property-row">
-                      <div className="align-control" aria-label="텍스트 정렬">
-                        {(
-                          [
-                            ["left", AlignLeft],
-                            ["center", AlignCenter],
-                            ["right", AlignRight],
-                          ] as const
-                        ).map(([align, Icon]) => (
-                          <button
-                            key={align}
-                            type="button"
-                            className={
-                              selectedElement.align === align ? "is-active" : ""
-                            }
-                            onClick={() =>
-                              updateElement(selectedElement.id, { align })
-                            }
-                            aria-label={
-                              align === "left"
-                                ? "왼쪽 정렬"
-                                : align === "center"
-                                  ? "가운데 정렬"
-                                  : "오른쪽 정렬"
-                            }
                           >
-                            <Icon size={17} />
-                          </button>
-                        ))}
+                            <option value="contain">전체 보이기</option>
+                            <option value="cover">영역 채우기</option>
+                            <option value="stretch">늘려 맞추기</option>
+                          </select>
+                        </label>
                       </div>
-                      <label className="color-control">
-                        <input
-                          type="color"
-                          value={selectedElement.color}
-                          onChange={(event) =>
-                            updateElement(selectedElement.id, {
-                              color: event.target.value,
-                            })
-                          }
-                          aria-label="텍스트 색상"
-                        />
-                        <span>{selectedElement.color.toUpperCase()}</span>
-                      </label>
-                    </div>
-                  </section>
+                    </section>
+                  )}
 
                   <section className="panel-section">
                     <div className="section-title">
-                      <h2>위치와 너비</h2>
+                      <h2>위치와 크기</h2>
                       <span>mm</span>
                     </div>
-                    <div className="field-grid three-columns">
+                    <div
+                      className={`field-grid ${selectedElement.type === "image" ? "two-columns" : "three-columns"}`}
+                    >
                       <label>
                         X
                         <input
@@ -1476,7 +2260,11 @@ export function BadgeStudio() {
                           value={selectedElement.y}
                           onChange={(event) =>
                             updateElement(selectedElement.id, {
-                              y: clamp(Number(event.target.value), 0, badgeHeight),
+                              y: clamp(
+                                Number(event.target.value),
+                                0,
+                                getElementMaxY(selectedElement, badgeHeight),
+                              ),
                             })
                           }
                         />
@@ -1488,16 +2276,112 @@ export function BadgeStudio() {
                           step="0.5"
                           min="5"
                           value={selectedElement.width}
-                          onChange={(event) =>
-                            updateElement(selectedElement.id, {
-                              width: clamp(
+                          onChange={(event) => {
+                            const width = clamp(
+                              Number(event.target.value),
+                              5,
+                              selectedElement.type === "image"
+                                ? Math.min(
+                                    badgeWidth - selectedElement.x,
+                                    (badgeHeight - selectedElement.y) *
+                                      selectedElement.aspectRatio,
+                                  )
+                                : badgeWidth - selectedElement.x,
+                            );
+                            updateElement(
+                              selectedElement.id,
+                              selectedElement.type === "image"
+                                ? {
+                                    width,
+                                    height:
+                                      Math.round(
+                                        (width /
+                                          selectedElement.aspectRatio) *
+                                          10,
+                                      ) / 10,
+                                  }
+                                : { width },
+                            );
+                          }}
+                        />
+                      </label>
+                      {selectedElement.type === "image" && (
+                        <label>
+                          높이
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="5"
+                            value={selectedElement.height}
+                            onChange={(event) => {
+                              const height = clamp(
                                 Number(event.target.value),
                                 5,
-                                badgeWidth - selectedElement.x,
-                              ),
-                            })
-                          }
-                        />
+                                Math.min(
+                                  badgeHeight - selectedElement.y,
+                                  (badgeWidth - selectedElement.x) /
+                                    selectedElement.aspectRatio,
+                                ),
+                              );
+                              updateElement(selectedElement.id, {
+                                height,
+                                width:
+                                  Math.round(
+                                    height *
+                                      selectedElement.aspectRatio *
+                                      10,
+                                  ) / 10,
+                              });
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="field-grid two-columns advanced-fields">
+                      <label>
+                        회전
+                        <div className="input-with-unit">
+                          <input
+                            type="number"
+                            min="-180"
+                            max="180"
+                            step="1"
+                            value={selectedElement.rotation}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                rotation: clamp(
+                                  Number(event.target.value),
+                                  -180,
+                                  180,
+                                ),
+                              })
+                            }
+                          />
+                          <span>°</span>
+                        </div>
+                      </label>
+                      <label>
+                        불투명도
+                        <div className="input-with-unit">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={Math.round(selectedElement.opacity * 100)}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                opacity:
+                                  clamp(
+                                    Number(event.target.value),
+                                    0,
+                                    100,
+                                  ) / 100,
+                              })
+                            }
+                          />
+                          <span>%</span>
+                        </div>
                       </label>
                     </div>
                   </section>
@@ -1535,6 +2419,22 @@ export function BadgeStudio() {
                     <button
                       type="button"
                       className="secondary-button"
+                      onClick={() =>
+                        updateElement(selectedElement.id, {
+                          locked: !selectedElement.locked,
+                        })
+                      }
+                    >
+                      {selectedElement.locked ? (
+                        <Unlock size={16} />
+                      ) : (
+                        <Lock size={16} />
+                      )}
+                      {selectedElement.locked ? "잠금 해제" : "잠금"}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
                       onClick={duplicateSelected}
                     >
                       <Copy size={16} />
@@ -1555,13 +2455,98 @@ export function BadgeStudio() {
                   <span>
                     <MousePointer2 size={23} />
                   </span>
-                  <h3>텍스트를 선택하세요</h3>
+                  <h3>요소를 선택하세요</h3>
                   <p>
-                    캔버스의 텍스트를 누르면 크기, 색상, 위치를 정밀하게
-                    조절할 수 있어요.
+                    캔버스의 텍스트나 이미지를 누르면 위치와 스타일을
+                    정밀하게 조절할 수 있어요.
                   </p>
                 </div>
               )}
+
+              <section className="panel-section layer-panel">
+                <div className="section-title">
+                  <h2>
+                    <Layers3 size={15} />
+                    레이어
+                  </h2>
+                  <span>위가 앞</span>
+                </div>
+                <div className="layer-list">
+                  {[...elements].reverse().map((element) => (
+                    <div
+                      key={element.id}
+                      className={`layer-row ${selectedElementId === element.id ? "is-selected" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="layer-main"
+                        onClick={() => setSelectedElementId(element.id)}
+                      >
+                        {element.type === "image" ? (
+                          <ImageIcon size={14} />
+                        ) : (
+                          <Type size={14} />
+                        )}
+                        <span>{getElementLabel(element)}</span>
+                      </button>
+                      <div className="layer-actions">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateElement(element.id, {
+                              hidden: !element.hidden,
+                            })
+                          }
+                          aria-label={
+                            element.hidden
+                              ? `${getElementLabel(element)} 보이기`
+                              : `${getElementLabel(element)} 숨기기`
+                          }
+                        >
+                          {element.hidden ? (
+                            <EyeOff size={13} />
+                          ) : (
+                            <Eye size={13} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateElement(element.id, {
+                              locked: !element.locked,
+                            })
+                          }
+                          aria-label={
+                            element.locked
+                              ? `${getElementLabel(element)} 잠금 해제`
+                              : `${getElementLabel(element)} 잠금`
+                          }
+                        >
+                          {element.locked ? (
+                            <Lock size={13} />
+                          ) : (
+                            <Unlock size={13} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveElementLayer(element.id, "up")}
+                          aria-label={`${getElementLabel(element)} 앞으로`}
+                        >
+                          <ArrowUp size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveElementLayer(element.id, "down")}
+                          aria-label={`${getElementLabel(element)} 뒤로`}
+                        >
+                          <ArrowDown size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
               <div className="reference-note">
                 <span className="reference-kicker">REFERENCE READY</span>
@@ -1844,6 +2829,7 @@ export function BadgeStudio() {
                           <BadgeContents
                             badgeWidth={badgeWidth}
                             badgeHeight={badgeHeight}
+                            backgroundColor={backgroundColor}
                             background={background}
                             backgroundFit={backgroundFit}
                             elements={elements}
