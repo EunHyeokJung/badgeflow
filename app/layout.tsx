@@ -31,8 +31,9 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: "/",
     },
     icons: {
-      icon: "/favicon.png",
+      icon: "/icons/icon-192.png",
       shortcut: "/favicon.png",
+      apple: "/icons/apple-touch-icon.png",
     },
     openGraph: {
       title,

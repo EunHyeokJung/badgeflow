@@ -1,6 +1,6 @@
 {
   "name": "badgeflow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -42,6 +42,14 @@
   "type": "module",
   "description": "Open-source browser-based name badge design and print studio",
   "license": "MIT",
+  "homepage": "https://badgeflow-studio.silverhyeok-dev.chatgpt.site/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EunHyeokJung/badgeflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/EunHyeokJung/badgeflow/issues"
+  },
   "overrides": {
     "postcss": "8.5.23",
     "sharp": "0.35.3"

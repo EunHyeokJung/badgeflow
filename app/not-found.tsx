@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 export default function NotFound() {
+  const { t } = useI18n();
+
   return (
     <main className="error-page">
       <section>
         <span className="error-code">404</span>
-        <h1>요청한 페이지를 찾을 수 없습니다.</h1>
-        <p>BadgeFlow 시작 화면에서 새 명찰 프로젝트를 열어 주세요.</p>
-        <Link href="/">시작 화면으로</Link>
+        <h1>{t("notFoundTitle")}</h1>
+        <p>{t("notFoundHelp")}</p>
+        <Link href="/">{t("goHome")}</Link>
       </section>
     </main>
   );

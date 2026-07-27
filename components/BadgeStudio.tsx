@@ -59,6 +59,13 @@ import {
   loadProjectDraft,
   saveProjectDraft,
 } from "@/lib/badgeflow/storage";
+import { AppControls } from "@/components/AppControls";
+import {
+  type Locale,
+  type MessageKey,
+  type Translate,
+  useI18n,
+} from "@/lib/i18n";
 
 type Mode = "design" | "data" | "print";
 type AppView = "landing" | "studio";
@@ -132,12 +139,13 @@ type SnapGuides = {
 
 type BadgePreset = {
   id: string;
-  name: string;
-  description: string;
+  nameKey: MessageKey;
+  descriptionKey: MessageKey;
   width: number;
   height: number;
   a4Count: number;
   tag: string;
+  tagKey?: MessageKey;
   featured?: boolean;
 };
 
@@ -190,18 +198,19 @@ const DEFAULT_FIELDS = ["이름", "팀", "직책"];
 const BADGE_PRESETS: BadgePreset[] = [
   {
     id: "lanyard-large",
-    name: "목걸이 명찰 · 대형",
-    description: "행사·컨퍼런스용 케이스에 넉넉하게 들어가는 세로형",
+    nameKey: "presetLanyard",
+    descriptionKey: "presetLanyardDescription",
     width: 95,
     height: 123,
     a4Count: 4,
-    tag: "가장 인기",
+    tag: "",
+    tagKey: "mostPopular",
     featured: true,
   },
   {
     id: "a7-event",
-    name: "A7 행사 명찰",
-    description: "이름과 소속을 선명하게 보여주는 컴팩트 세로형",
+    nameKey: "presetA7",
+    descriptionKey: "presetA7Description",
     width: 74,
     height: 105,
     a4Count: 4,
@@ -209,17 +218,18 @@ const BADGE_PRESETS: BadgePreset[] = [
   },
   {
     id: "b7-pass",
-    name: "B7 컨퍼런스 패스",
-    description: "로고·직책·QR까지 담기 좋은 정보 중심 대형 패스",
+    nameKey: "presetB7",
+    descriptionKey: "presetB7Description",
     width: 91,
     height: 128,
     a4Count: 4,
-    tag: "대형 세로",
+    tag: "",
+    tagKey: "largePortrait",
   },
   {
     id: "id-card",
-    name: "사원증 · ID 카드",
-    description: "사원증과 출입증에 쓰이는 국제 표준 카드 비율",
+    nameKey: "presetId",
+    descriptionKey: "presetIdDescription",
     width: 85.6,
     height: 54,
     a4Count: 10,
@@ -227,12 +237,13 @@ const BADGE_PRESETS: BadgePreset[] = [
   },
   {
     id: "name-card",
-    name: "가로 이름표",
-    description: "세미나·교육·테이블 명찰에 쓰기 편한 가로형",
+    nameKey: "presetLandscape",
+    descriptionKey: "presetLandscapeDescription",
     width: 90,
     height: 60,
     a4Count: 8,
-    tag: "가로형",
+    tag: "",
+    tagKey: "landscape",
   },
 ];
 
@@ -375,70 +386,83 @@ function LandingPage({
   onContinue,
   onSelectPreset,
   onCustom,
+  locale,
+  setLocale,
+  t,
 }: {
   hasSavedDraft: boolean;
   onContinue: () => void;
   onSelectPreset: (preset: BadgePreset) => void;
   onCustom: () => void;
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  t: Translate;
 }) {
+  const [heroLineOne, heroLineTwo] = t("heroTitle").split("\n");
+
   return (
     <div className="landing-shell">
       <a className="skip-link" href="#landing-presets">
-        명찰 규격 선택으로 건너뛰기
+        {t("skipPresets")}
       </a>
       <header className="landing-header">
         <span className="landing-brand">
           <span className="brand-mark">B</span>
           <span>
             <strong>BadgeFlow</strong>
-            <small>명찰 인쇄 스튜디오</small>
+            <small>{t("studio")}</small>
           </span>
         </span>
-        {hasSavedDraft && (
-          <button
-            type="button"
-            className="landing-continue-button"
-            onClick={onContinue}
-          >
-            저장된 작업 이어하기
-            <ArrowRight size={16} />
-          </button>
-        )}
+        <div className="landing-header-actions">
+          <AppControls
+            locale={locale}
+            setLocale={setLocale}
+            t={t}
+            compact
+          />
+          {hasSavedDraft && (
+            <button
+              type="button"
+              className="landing-continue-button"
+              onClick={onContinue}
+            >
+              {t("continueDraft")}
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="landing-main">
         <section className="landing-hero" aria-labelledby="landing-title">
           <div className="landing-kicker">
             <BadgeCheck size={16} />
-            크기부터 인쇄까지 한 번에
+            {t("heroKicker")}
           </div>
           <h1 id="landing-title">
-            어떤 명찰을
+            {heroLineOne}
             <br />
-            만드시나요?
+            {heroLineTwo}
           </h1>
-          <p>
-            많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을
-            만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.
-          </p>
-          <ol className="landing-flow" aria-label="작업 순서">
+          <p>{t("heroDescription")}</p>
+          <ol className="landing-flow" aria-label={t("workflow")}>
             <li>
               <Ruler size={15} />
-              크기 선택
+              {t("chooseSize")}
             </li>
             <li className="landing-flow-arrow" aria-hidden="true">
               <ArrowRight size={14} />
             </li>
             <li>
               <FileText size={15} />
-              디자인·명단
+              {t("designRoster")}
             </li>
             <li className="landing-flow-arrow" aria-hidden="true">
               <ArrowRight size={14} />
             </li>
             <li>
               <ShieldCheck size={15} />
-              실제 크기 PDF
+              {t("actualPdf")}
             </li>
           </ol>
         </section>
@@ -450,25 +474,31 @@ function LandingPage({
         >
           <div className="preset-heading">
             <div>
-              <span>POPULAR SIZES</span>
-              <h2 id="preset-title">대표 명찰 규격</h2>
+              <span>{t("popularSizes")}</span>
+              <h2 id="preset-title">{t("presetTitle")}</h2>
             </div>
-            <p>선택 후에도 편집기에서 가로·세로를 직접 바꿀 수 있어요.</p>
+            <p>{t("presetHelper")}</p>
           </div>
 
           <div className="preset-grid">
             {BADGE_PRESETS.map((preset) => {
               const isLandscape = preset.width > preset.height;
+              const presetName = t(preset.nameKey);
+              const presetTag = preset.tagKey ? t(preset.tagKey) : preset.tag;
               return (
                 <button
                   key={preset.id}
                   type="button"
                   className={`preset-card ${preset.featured ? "is-featured" : ""}`}
                   onClick={() => onSelectPreset(preset)}
-                  aria-label={`${preset.name} ${displayNumber(preset.width)} × ${displayNumber(preset.height)} mm로 시작`}
+                  aria-label={t("startSize", {
+                    name: presetName,
+                    width: displayNumber(preset.width),
+                    height: displayNumber(preset.height),
+                  })}
                 >
                   <div className="preset-card-top">
-                    <span className="preset-tag">{preset.tag}</span>
+                    <span className="preset-tag">{presetTag}</span>
                     <ArrowRight size={17} />
                   </div>
                   <div className="preset-card-body">
@@ -487,17 +517,17 @@ function LandingPage({
                       </span>
                     </span>
                     <span className="preset-copy">
-                      <strong>{preset.name}</strong>
+                      <strong>{presetName}</strong>
                       <b>
                         {displayNumber(preset.width)} ×{" "}
                         {displayNumber(preset.height)} mm
                       </b>
-                      <small>{preset.description}</small>
+                      <small>{t(preset.descriptionKey)}</small>
                     </span>
                   </div>
                   <span className="preset-card-footer">
-                    <span>A4 기준 약 {preset.a4Count}장</span>
-                    <span>이 규격으로 시작</span>
+                    <span>{t("perA4", { count: preset.a4Count })}</span>
+                    <span>{t("usePreset")}</span>
                   </span>
                 </button>
               );
@@ -510,7 +540,7 @@ function LandingPage({
             onClick={onCustom}
           >
             <CreditCard size={17} />
-            원하는 규격을 직접 입력할게요
+            {t("customSize")}
             <ArrowRight size={16} />
           </button>
         </section>
@@ -518,7 +548,7 @@ function LandingPage({
 
       <footer className="landing-footer">
         <span>BadgeFlow</span>
-        <span>업로드한 파일은 브라우저 안에서 처리됩니다.</span>
+        <span>{t("localOnly")}</span>
       </footer>
     </div>
   );
@@ -540,10 +570,12 @@ function displayNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function getElementLabel(element: CanvasElement) {
-  if (element.type === "image") return element.name || "이미지";
-  if (element.kind === "variable") return element.field || "매개변수";
-  return element.value || "고정 문구";
+function getElementLabel(element: CanvasElement, t?: Translate) {
+  if (element.type === "image")
+    return element.name || t?.("imageGeneric") || "Image";
+  if (element.kind === "variable")
+    return element.field || t?.("variable") || "Variable";
+  return element.value || t?.("fixedText") || "Fixed text";
 }
 
 function cloneElements(source: CanvasElement[]) {
@@ -606,7 +638,7 @@ function normalizeElement(element: unknown): CanvasElement | null {
     return {
       ...common,
       type: "image",
-      name: boundedString(element.name, "이미지", 160) || "이미지",
+      name: boundedString(element.name, "Image", 160) || "Image",
       src: element.src,
       mimeType: boundedString(element.mimeType, "image/png", 80),
       height: boundedNumber(element.height, 20, 1, 500),
@@ -803,7 +835,7 @@ function resolveText(
   row: BadgeRow | undefined,
   showPlaceholder = true,
 ) {
-  if (element.kind === "static") return element.value || "고정 문구";
+  if (element.kind === "static") return element.value || "Fixed text";
   if (!element.field) return "";
   const value = row?.[element.field];
   return value || (showPlaceholder ? `{{${element.field}}}` : "");
@@ -869,7 +901,7 @@ function loadImage(src: string) {
   const promise = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("이미지를 불러오지 못했습니다."));
+    image.onerror = () => reject(new Error("Could not load the image."));
     image.src = src;
   });
   imageAssetCache.set(src, promise);
@@ -942,7 +974,7 @@ async function renderBadgeImage({
   canvas.height = Math.max(1, Math.round(badgeHeight * scale));
   const context = canvas.getContext("2d");
 
-  if (!context) throw new Error("인쇄용 캔버스를 만들 수 없습니다.");
+  if (!context) throw new Error("Could not create the print canvas.");
 
   context.fillStyle = backgroundColor;
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -1060,6 +1092,7 @@ function BadgeContents({
   onPointerMove,
   onPointerUp,
   onKeyMove,
+  t,
 }: {
   badgeWidth: number;
   badgeHeight: number;
@@ -1069,6 +1102,7 @@ function BadgeContents({
   backgroundFit: BackgroundFit;
   elements: CanvasElement[];
   row: BadgeRow | undefined;
+  t: Translate;
   selectedElementId?: string | null;
   snapGuides?: SnapGuides;
   interactive?: boolean;
@@ -1103,7 +1137,7 @@ function BadgeContents({
       {!background && interactive && (
         <div className="empty-background" aria-hidden="true">
           <ImagePlus size={22} />
-          <span>배경 이미지를 추가해 보세요</span>
+          <span>{t("emptyBackground")}</span>
         </div>
       )}
       <div
@@ -1115,12 +1149,12 @@ function BadgeContents({
       />
       {interactive && snapGuides?.vertical && (
         <div className="alignment-guide guide-vertical" aria-hidden="true">
-          <span>가로 중앙</span>
+          <span>{t("guideHorizontal")}</span>
         </div>
       )}
       {interactive && snapGuides?.horizontal && (
         <div className="alignment-guide guide-horizontal" aria-hidden="true">
-          <span>세로 중앙</span>
+          <span>{t("guideVertical")}</span>
         </div>
       )}
       {interactive && snapGuides?.vertical && snapGuides.horizontal && (
@@ -1155,7 +1189,7 @@ function BadgeContents({
             ? {
                 role: "button" as const,
                 tabIndex: 0,
-                "aria-label": `${elementLabel} 이미지 요소`,
+                "aria-label": t("imageElement", { name: elementLabel || "" }),
                 onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                   event.stopPropagation();
                   onSelect?.(element.id);
@@ -1217,7 +1251,7 @@ function BadgeContents({
           ? {
               role: "button" as const,
               tabIndex: 0,
-              "aria-label": `${elementLabel} 텍스트 요소`,
+              "aria-label": t("textElement", { name: elementLabel || "" }),
               onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                 event.stopPropagation();
                 onSelect?.(element.id);
@@ -1253,6 +1287,7 @@ function BadgeContents({
 }
 
 export function BadgeStudio() {
+  const { locale, setLocale, t } = useI18n();
   const [view, setView] = useState<AppView>("landing");
   const [mode, setMode] = useState<Mode>("design");
   const [badgeWidth, setBadgeWidth] = useState(95);
@@ -1505,12 +1540,18 @@ export function BadgeStudio() {
     setMode("design");
     setView("studio");
     setHasSavedDraft(true);
-    setToast(`${preset.name} ${displayNumber(preset.width)} × ${displayNumber(preset.height)} mm로 시작합니다.`);
+    setToast(
+      t("toastPreset", {
+        name: t(preset.nameKey),
+        width: displayNumber(preset.width),
+        height: displayNumber(preset.height),
+      }),
+    );
   }
 
   function startCustomSize() {
     startWithPreset(BADGE_PRESETS[0]);
-    setToast("왼쪽의 명찰 크기에서 원하는 규격을 입력해 주세요.");
+    setToast(t("toastCustom"));
   }
 
   function addVariableElement(field: string) {
@@ -1540,7 +1581,7 @@ export function BadgeStudio() {
       id: makeId("element"),
       type: "text",
       kind: "static",
-      value: "행사명",
+      value: t("eventName"),
       x: 10,
       y: 102,
       width: Math.max(20, badgeWidth - 20),
@@ -1717,19 +1758,19 @@ export function BadgeStudio() {
       const asset = await readImageAsset(file);
       setBackground(asset.src);
       setBackgroundName(file.name);
-      setToast("배경 이미지를 적용했습니다.");
+      setToast(t("toastBackground"));
     } catch (error) {
       setToast(
         error instanceof Error
           ? error.message
-          : "배경 이미지를 적용하지 못했습니다.",
+          : t("toastBackgroundFailed"),
       );
     }
   }
 
   async function readImageAsset(file: File) {
     if (file.size > MAX_IMAGE_BYTES) {
-      throw new Error("이미지는 10MB 이하로 올려 주세요.");
+      throw new Error(t("errorImageLimit"));
     }
     const isSvg =
       file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
@@ -1740,11 +1781,11 @@ export function BadgeStudio() {
         "image/svg+xml",
       );
       if (documentNode.querySelector("parsererror")) {
-        throw new Error("올바른 SVG 파일이 아닙니다.");
+        throw new Error(t("errorSvgInvalid"));
       }
       const svg = documentNode.documentElement;
       if (svg.tagName.toLowerCase() !== "svg") {
-        throw new Error("SVG 루트 요소를 찾지 못했습니다.");
+        throw new Error(t("errorSvgRoot"));
       }
       documentNode
         .querySelectorAll("script, foreignObject, iframe, object, embed")
@@ -1784,21 +1825,21 @@ export function BadgeStudio() {
         mimeType: "image/svg+xml",
       };
       if (!isSafeImageDataUrl(asset.src)) {
-        throw new Error("SVG 파일이 너무 크거나 지원하지 않는 형식입니다.");
+        throw new Error(t("errorSvgUnsupported"));
       }
       return asset;
     }
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      throw new Error("PNG, JPG, WebP 또는 SVG 파일을 선택해 주세요.");
+      throw new Error(t("errorImageType"));
     }
     const src = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
+      reader.onerror = () => reject(new Error(t("errorImageRead")));
       reader.readAsDataURL(file);
     });
     if (!isSafeImageDataUrl(src)) {
-      throw new Error("이미지 파일이 너무 크거나 지원하지 않는 형식입니다.");
+      throw new Error(t("errorImageUnsupported"));
     }
     return { src, mimeType: file.type };
   }
@@ -1836,7 +1877,7 @@ export function BadgeStudio() {
       const element: ImageElement = {
         id: makeId("image"),
         type: "image",
-        name: file.name.replace(/\.[^.]+$/, "") || "이미지",
+        name: file.name.replace(/\.[^.]+$/, "") || t("imageGeneric"),
         src: asset.src,
         mimeType: asset.mimeType,
         x: Math.round(x * 10) / 10,
@@ -1854,14 +1895,14 @@ export function BadgeStudio() {
       setSelectedElementId(element.id);
       setToast(
         asset.mimeType === "image/svg+xml"
-          ? "SVG 로고를 추가했습니다."
-          : "이미지 레이어를 추가했습니다.",
+          ? t("toastSvgAdded")
+          : t("toastImageAdded"),
       );
     } catch (error) {
       setToast(
         error instanceof Error
           ? error.message
-          : "이미지를 추가하지 못했습니다.",
+          : t("toastImageFailed"),
       );
     }
   }
@@ -1888,12 +1929,12 @@ export function BadgeStudio() {
         width: Math.round(width * 10) / 10,
         height: Math.round((width / aspectRatio) * 10) / 10,
       });
-      setToast("이미지를 교체했습니다.");
+      setToast(t("toastImageReplaced"));
     } catch (error) {
       setToast(
         error instanceof Error
           ? error.message
-          : "이미지를 교체하지 못했습니다.",
+          : t("toastImageReplaceFailed"),
       );
     }
   }
@@ -1948,14 +1989,14 @@ export function BadgeStudio() {
     anchor.download = `BadgeFlow_${badgeWidth}x${badgeHeight}mm.badgeflow.json`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-    setToast("프로젝트 백업 파일을 저장했습니다.");
+    setToast(t("toastProjectExported"));
   }
 
   async function importProject(file: File | undefined) {
     if (!file) return;
     try {
       if (file.size > MAX_PROJECT_BYTES) {
-        throw new Error("프로젝트 파일은 30MB 이하만 불러올 수 있습니다.");
+        throw new Error(t("errorProjectLimit"));
       }
       const rawProject: unknown = JSON.parse(await file.text());
       if (
@@ -1963,19 +2004,17 @@ export function BadgeStudio() {
         !Array.isArray(rawProject.elements) ||
         !Array.isArray(rawProject.rows)
       ) {
-        throw new Error("BadgeFlow 프로젝트 파일이 아닙니다.");
+        throw new Error(t("errorProjectInvalid"));
       }
       if (rawProject.elements.length > MAX_ELEMENTS) {
-        throw new Error(`프로젝트에는 요소를 최대 ${MAX_ELEMENTS}개까지 넣을 수 있습니다.`);
+        throw new Error(t("errorProjectElements", { count: MAX_ELEMENTS }));
       }
       if (rawProject.rows.length > MAX_ROWS) {
-        throw new Error(`명찰 데이터는 최대 ${MAX_ROWS}행까지 불러올 수 있습니다.`);
+        throw new Error(t("errorProjectRows", { count: MAX_ROWS }));
       }
       const project = normalizeProject(rawProject);
       if (!project) {
-        throw new Error(
-          "지원하지 않거나 손상된 BadgeFlow 프로젝트 파일입니다.",
-        );
+        throw new Error(t("errorProjectDamaged"));
       }
       setBadgeWidth(project.badgeWidth);
       setBadgeHeight(project.badgeHeight);
@@ -1994,12 +2033,12 @@ export function BadgeStudio() {
       setHistoryFuture([]);
       setSelectedElementId(project.elements.at(-1)?.id || null);
       setSelectedRowId(project.rows[0]?.id || "");
-      setToast("프로젝트를 불러왔습니다.");
+      setToast(t("toastProjectImported"));
     } catch (error) {
       setToast(
         error instanceof Error
           ? error.message
-          : "프로젝트를 불러오지 못했습니다.",
+          : t("toastProjectImportFailed"),
       );
     }
   }
@@ -2008,7 +2047,7 @@ export function BadgeStudio() {
     if (!file) return;
     setCsvError("");
     if (file.size > MAX_CSV_BYTES) {
-      setCsvError("CSV 파일은 5MB 이하만 불러올 수 있습니다.");
+      setCsvError(t("errorCsvLimit"));
       return;
     }
     Papa.parse<Record<string, string>>(file, {
@@ -2018,21 +2057,21 @@ export function BadgeStudio() {
       preview: MAX_ROWS + 1,
       complete: (result) => {
         if (result.errors.some((error) => error.type === "Quotes")) {
-          setCsvError("CSV 따옴표 형식이 올바르지 않습니다.");
+          setCsvError(t("errorCsvQuotes"));
           return;
         }
         if ((result.meta.fields || []).length > MAX_FIELDS) {
-          setCsvError(`CSV 열은 최대 ${MAX_FIELDS}개까지 불러올 수 있습니다.`);
+          setCsvError(t("errorCsvFields", { count: MAX_FIELDS }));
           return;
         }
         if (result.data.length > MAX_ROWS) {
-          setCsvError(`CSV 데이터는 최대 ${MAX_ROWS}행까지 불러올 수 있습니다.`);
+          setCsvError(t("errorCsvRows", { count: MAX_ROWS }));
           return;
         }
         const sourceFields = result.meta.fields || [];
         const importedFields = normalizeFields(sourceFields, []);
         if (!importedFields.length || !result.data.length) {
-          setCsvError("헤더와 한 개 이상의 데이터 행이 있는 CSV가 필요합니다.");
+          setCsvError(t("errorCsvEmpty"));
           return;
         }
         const importedRows = result.data.map((row) => {
@@ -2053,10 +2092,10 @@ export function BadgeStudio() {
         setFields(importedFields);
         setRows(importedRows);
         setSelectedRowId(importedRows[0].id);
-        setToast(`${importedRows.length}명의 데이터를 불러왔습니다.`);
+        setToast(t("toastCsvImported", { count: importedRows.length }));
       },
       error: () => {
-        setCsvError("CSV 파일을 읽지 못했습니다. UTF-8 형식인지 확인해 주세요.");
+        setCsvError(t("errorCsvRead"));
       },
     });
   }
@@ -2065,15 +2104,15 @@ export function BadgeStudio() {
     const value = newField.trim();
     if (!value || fields.includes(value)) return;
     if (FORBIDDEN_FIELD_NAMES.has(value)) {
-      setToast("이 필드 이름은 사용할 수 없습니다.");
+      setToast(t("errorFieldReserved"));
       return;
     }
     if (value.length > MAX_FIELD_LENGTH) {
-      setToast(`필드 이름은 ${MAX_FIELD_LENGTH}자 이하로 입력해 주세요.`);
+      setToast(t("errorFieldLength", { count: MAX_FIELD_LENGTH }));
       return;
     }
     if (fields.length >= MAX_FIELDS) {
-      setToast(`필드는 최대 ${MAX_FIELDS}개까지 추가할 수 있습니다.`);
+      setToast(t("errorFieldCount", { count: MAX_FIELDS }));
       return;
     }
     setFields((current) => [...current, value]);
@@ -2083,7 +2122,7 @@ export function BadgeStudio() {
 
   function removeField(field: string) {
     if (fields.length <= 1) {
-      setToast("필드는 최소 한 개가 필요합니다.");
+      setToast(t("errorFieldMinimum"));
       return;
     }
     setFields((current) => current.filter((item) => item !== field));
@@ -2106,7 +2145,7 @@ export function BadgeStudio() {
 
   function addRow() {
     if (rows.length >= MAX_ROWS) {
-      setToast(`명찰 데이터는 최대 ${MAX_ROWS}행까지 추가할 수 있습니다.`);
+      setToast(t("errorRowCount", { count: MAX_ROWS }));
       return;
     }
     const row: BadgeRow = { id: makeId("row") };
@@ -2151,11 +2190,11 @@ export function BadgeStudio() {
 
   async function exportPdf() {
     if (!layout.fits) {
-      setToast("명찰이 용지보다 큽니다. 크기 설정을 확인해 주세요.");
+      setToast(t("errorPaperFit"));
       return;
     }
     if (!rows.length) {
-      setToast("먼저 명찰 데이터를 한 행 이상 추가해 주세요.");
+      setToast(t("errorRowsRequired"));
       return;
     }
 
@@ -2170,8 +2209,8 @@ export function BadgeStudio() {
         compress: true,
       });
       doc.setProperties({
-        title: "BadgeFlow 명찰 인쇄",
-        subject: `${badgeWidth} × ${badgeHeight} mm 명찰`,
+        title: `BadgeFlow — ${t("printPreview")}`,
+        subject: `${badgeWidth} × ${badgeHeight} mm`,
         creator: "BadgeFlow",
       });
 
@@ -2277,13 +2316,13 @@ export function BadgeStudio() {
       }
 
       const date = new Date().toISOString().slice(0, 10);
-      doc.save(`명찰_${badgeWidth}x${badgeHeight}mm_${date}.pdf`);
-      setToast("인쇄용 PDF를 만들었습니다.");
+      doc.save(`BadgeFlow_${badgeWidth}x${badgeHeight}mm_${date}.pdf`);
+      setToast(t("toastPdfReady"));
     } catch (error) {
       setToast(
         error instanceof Error
-          ? `PDF를 만들지 못했습니다: ${error.message}`
-          : "PDF 생성 중 문제가 생겼습니다. 다시 시도해 주세요.",
+          ? t("errorPdf", { message: error.message })
+          : t("errorPdfGeneric"),
       );
     } finally {
       setIsExporting(false);
@@ -2296,9 +2335,9 @@ export function BadgeStudio() {
     label: string;
     icon: typeof LayoutTemplate;
   }> = [
-    { id: "design", label: "디자인", icon: LayoutTemplate },
-    { id: "data", label: "데이터", icon: Database },
-    { id: "print", label: "출력", icon: Printer },
+    { id: "design", label: t("design"), icon: LayoutTemplate },
+    { id: "data", label: t("data"), icon: Database },
+    { id: "print", label: t("print"), icon: Printer },
   ];
 
   if (view === "landing") {
@@ -2308,6 +2347,9 @@ export function BadgeStudio() {
         onContinue={() => setView("studio")}
         onSelectPreset={startWithPreset}
         onCustom={startCustomSize}
+        locale={locale}
+        setLocale={setLocale}
+        t={t}
       />
     );
   }
@@ -2315,7 +2357,7 @@ export function BadgeStudio() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
-        편집 영역으로 건너뛰기
+        {t("skipEditor")}
       </a>
       <header className="topbar">
         <button
@@ -2325,16 +2367,16 @@ export function BadgeStudio() {
             setMode("design");
             setView("landing");
           }}
-          aria-label="BadgeFlow 시작 화면으로 이동"
+          aria-label={t("startScreen")}
         >
           <span className="brand-mark">B</span>
           <span>
             <strong>BadgeFlow</strong>
-            <small>명찰 인쇄 스튜디오</small>
+            <small>{t("studio")}</small>
           </span>
         </button>
 
-        <nav className="mode-nav" aria-label="작업 단계">
+        <nav className="mode-nav" aria-label={t("steps")}>
           {modeItems.map((item, index) => {
             const Icon = item.icon;
             return (
@@ -2354,12 +2396,18 @@ export function BadgeStudio() {
         </nav>
 
         <div className="topbar-actions">
+          <AppControls
+            locale={locale}
+            setLocale={setLocale}
+            t={t}
+            compact
+          />
           <span
             className={`save-state is-${saveStatus}`}
             title={
               saveStatus === "error"
-                ? "브라우저 저장 공간을 확인해 주세요"
-                : "이 브라우저의 IndexedDB에 자동 저장됩니다"
+                ? t("saveErrorHelp")
+                : t("saveHelp")
             }
             role="status"
             aria-live="polite"
@@ -2372,10 +2420,10 @@ export function BadgeStudio() {
               <Check size={14} />
             )}
             {saveStatus === "saving"
-              ? "저장 중"
+              ? t("saving")
               : saveStatus === "error"
-                ? "저장 실패"
-                : "저장됨"}
+                ? t("saveFailed")
+                : t("saved")}
           </span>
           <button
             className="primary-button top-export"
@@ -2384,7 +2432,9 @@ export function BadgeStudio() {
             disabled={isExporting}
           >
             <Download size={17} />
-            {isExporting ? `PDF ${exportProgress}%` : "PDF 만들기"}
+            {isExporting
+              ? t("pdfProgress", { progress: exportProgress })
+              : t("createPdf")}
           </button>
         </div>
       </header>
@@ -2392,11 +2442,11 @@ export function BadgeStudio() {
       <main id="main-content" className="main-content">
         {mode === "design" && (
           <div className="design-workspace">
-            <aside className="panel left-panel" aria-label="디자인 도구">
+            <aside className="panel left-panel" aria-label={t("designTools")}>
               <div className="panel-heading">
                 <div>
                   <span className="eyebrow">SETUP</span>
-                  <h1>명찰 디자인</h1>
+                  <h1>{t("badgeDesign")}</h1>
                 </div>
                 <span className="dimension-badge">
                   {displayNumber(badgeWidth)} × {displayNumber(badgeHeight)} mm
@@ -2405,12 +2455,12 @@ export function BadgeStudio() {
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>명찰 크기</h2>
+                  <h2>{t("badgeSize")}</h2>
                   <span>mm</span>
                 </div>
                 <div className="field-grid two-columns">
                   <label>
-                    너비
+                    {t("width")}
                     <input
                       type="number"
                       min="20"
@@ -2423,7 +2473,7 @@ export function BadgeStudio() {
                     />
                   </label>
                   <label>
-                    높이
+                    {t("height")}
                     <input
                       type="number"
                       min="20"
@@ -2444,16 +2494,16 @@ export function BadgeStudio() {
                     setBadgeHeight(123);
                   }}
                 >
-                  <span>목걸이 명찰</span>
+                  <span>{t("lanyardBadge")}</span>
                   <strong>95 × 123</strong>
                 </button>
               </section>
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>배경 이미지</h2>
+                  <h2>{t("backgroundImage")}</h2>
                   <span className="private-label">
-                    <LockKeyhole size={12} /> 브라우저에서만 처리
+                    <LockKeyhole size={12} /> {t("browserOnly")}
                   </span>
                 </div>
                 <label className="upload-dropzone">
@@ -2471,8 +2521,8 @@ export function BadgeStudio() {
                         style={{ backgroundImage: `url("${background}")` }}
                       />
                       <span className="upload-copy">
-                        <strong>{backgroundName || "배경 이미지"}</strong>
-                        <small>클릭해서 이미지 바꾸기</small>
+                        <strong>{backgroundName || t("backgroundImage")}</strong>
+                        <small>{t("changeImage")}</small>
                       </span>
                     </>
                   ) : (
@@ -2481,8 +2531,8 @@ export function BadgeStudio() {
                         <ImagePlus size={20} />
                       </span>
                       <span className="upload-copy">
-                        <strong>이미지 선택</strong>
-                        <small>PNG, JPG, WebP · 최대 품질 유지</small>
+                        <strong>{t("chooseImage")}</strong>
+                        <small>{t("backgroundHint")}</small>
                       </span>
                     </>
                   )}
@@ -2490,16 +2540,16 @@ export function BadgeStudio() {
                 {background && (
                   <div className="inline-actions">
                     <label className="compact-select">
-                      맞춤
+                      {t("fit")}
                       <select
                         value={backgroundFit}
                         onChange={(event) =>
                           setBackgroundFit(event.target.value as BackgroundFit)
                         }
                       >
-                        <option value="cover">가득 채우기</option>
-                        <option value="contain">전체 보이기</option>
-                        <option value="stretch">늘려 맞추기</option>
+                        <option value="cover">{t("cover")}</option>
+                        <option value="contain">{t("contain")}</option>
+                        <option value="stretch">{t("stretch")}</option>
                       </select>
                     </label>
                     <button
@@ -2511,14 +2561,14 @@ export function BadgeStudio() {
                       }}
                     >
                       <Trash2 size={15} />
-                      제거
+                      {t("remove")}
                     </button>
                   </div>
                 )}
                 <label className="background-color-control">
                   <span>
                     <Palette size={15} />
-                    배경색
+                    {t("backgroundColor")}
                   </span>
                   <span>
                     <input
@@ -2527,7 +2577,7 @@ export function BadgeStudio() {
                       onChange={(event) =>
                         setBackgroundColor(event.target.value)
                       }
-                      aria-label="명찰 배경색"
+                      aria-label={t("backgroundColor")}
                     />
                     <code>{backgroundColor.toUpperCase()}</code>
                   </span>
@@ -2536,19 +2586,19 @@ export function BadgeStudio() {
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>이미지 · 로고</h2>
-                  <span>레이어로 추가</span>
+                  <h2>{t("imageLogo")}</h2>
+                  <span>{t("addAsLayer")}</span>
                 </div>
                 <p className="section-helper">
-                  로고, QR, 서명 이미지를 올리거나 캔버스에 바로 놓으세요.
+                  {t("imageLogoHelp")}
                 </p>
                 <label className="asset-upload-button">
                   <span className="upload-icon">
                     <ImageIcon size={19} />
                   </span>
                   <span className="upload-copy">
-                    <strong>이미지 또는 SVG 추가</strong>
-                    <small>PNG, JPG, WebP, SVG · 최대 10MB</small>
+                    <strong>{t("addImageSvg")}</strong>
+                    <small>{t("assetHint")}</small>
                   </span>
                   <Plus size={16} />
                   <input
@@ -2564,11 +2614,11 @@ export function BadgeStudio() {
 
               <section className="panel-section grow-section">
                 <div className="section-title">
-                  <h2>텍스트 추가</h2>
-                  <span>{elements.length}개 전체 요소</span>
+                  <h2>{t("addText")}</h2>
+                  <span>{t("totalElements", { count: elements.length })}</span>
                 </div>
                 <p className="section-helper">
-                  매개변수를 누르면 명찰에 텍스트가 추가됩니다.
+                  {t("variableHint")}
                 </p>
                 <div className="variable-list">
                   {fields.map((field) => (
@@ -2594,29 +2644,29 @@ export function BadgeStudio() {
                   onClick={addStaticElement}
                 >
                   <Plus size={16} />
-                  고정 문구 추가
+                  {t("addStaticText")}
                 </button>
               </section>
             </aside>
 
-            <section className="canvas-workspace" aria-label="명찰 편집 캔버스">
+            <section className="canvas-workspace" aria-label={t("badgeCanvas")}>
               <div className="canvas-toolbar">
                 <div>
                   <span className="status-dot" />
-                  <strong>앞면</strong>
-                  <span>안전영역 {safeArea} mm</span>
+                  <strong>{t("front")}</strong>
+                  <span>{t("safeArea", { value: safeArea })}</span>
                 </div>
                 <div className="toolbar-controls">
                   <fieldset
                     className="toolbar-icon-group"
-                    aria-label="편집 기록"
+                    aria-label={t("editingHistory")}
                   >
                     <button
                       type="button"
                       onClick={undoElements}
                       disabled={!historyPast.length}
-                      title="실행 취소 (⌘Z)"
-                      aria-label="실행 취소"
+                      title={`${t("undo")} (⌘Z)`}
+                      aria-label={t("undo")}
                     >
                       <Undo2 size={16} />
                     </button>
@@ -2624,16 +2674,16 @@ export function BadgeStudio() {
                       type="button"
                       onClick={redoElements}
                       disabled={!historyFuture.length}
-                      title="다시 실행 (⇧⌘Z)"
-                      aria-label="다시 실행"
+                      title={`${t("redo")} (⇧⌘Z)`}
+                      aria-label={t("redo")}
                     >
                       <Redo2 size={16} />
                     </button>
                   </fieldset>
                   <div className="project-tools">
-                    <label title="BadgeFlow 프로젝트 불러오기">
+                    <label title={t("loadProjectTitle")}>
                       <FolderOpen size={15} />
-                      불러오기
+                      {t("loadProject")}
                       <input
                         type="file"
                         accept=".json,.badgeflow.json,application/json"
@@ -2646,21 +2696,21 @@ export function BadgeStudio() {
                     <button
                       type="button"
                       onClick={exportProject}
-                      title="이미지와 데이터를 포함한 프로젝트 백업"
+                      title={t("backupTitle")}
                     >
                       <Download size={15} />
-                      백업
+                      {t("backup")}
                     </button>
                   </div>
                   <label>
-                    미리 볼 데이터
+                    {t("previewData")}
                     <select
                       value={selectedRow?.id || ""}
                       onChange={(event) => setSelectedRowId(event.target.value)}
                     >
                       {rows.map((row, index) => (
                         <option key={row.id} value={row.id}>
-                          {row.이름 || `명찰 ${index + 1}`}
+                          {row.이름 || t("badgeNumber", { count: index + 1 })}
                         </option>
                       ))}
                     </select>
@@ -2705,6 +2755,7 @@ export function BadgeStudio() {
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerEnd}
                     onKeyMove={handleKeyMove}
+                    t={t}
                   />
                 </div>
               </div>
@@ -2712,10 +2763,10 @@ export function BadgeStudio() {
               <div className="canvas-footer">
                 <span>
                   <MousePointer2 size={15} />
-                  이미지 파일을 놓아 추가 · 드래그 이동 · 중앙 자동 스냅
+                  {t("canvasHelp")}
                 </span>
                 <label>
-                  안전영역
+                  {t("safeArea", { value: "" }).replace(" mm", "")}
                   <input
                     type="range"
                     min="0"
@@ -2729,11 +2780,11 @@ export function BadgeStudio() {
               </div>
             </section>
 
-            <aside className="panel right-panel" aria-label="요소 속성">
+            <aside className="panel right-panel" aria-label={t("elementProperties")}>
               <div className="panel-heading compact">
                 <div>
                   <span className="eyebrow">INSPECTOR</span>
-                  <h2>요소 속성</h2>
+                  <h2>{t("elementProperties")}</h2>
                 </div>
                 <Settings2 size={19} />
               </div>
@@ -2749,15 +2800,15 @@ export function BadgeStudio() {
                       )}
                     </span>
                     <div>
-                      <strong>{getElementLabel(selectedElement)}</strong>
+                      <strong>{getElementLabel(selectedElement, t)}</strong>
                       <small>
                         {selectedElement.type === "image"
                           ? selectedElement.mimeType === "image/svg+xml"
-                            ? "SVG 이미지 레이어"
-                            : "이미지 레이어"
+                            ? t("svgImageLayer")
+                            : t("imageLayer")
                           : selectedElement.kind === "variable"
-                            ? "매개변수 텍스트"
-                            : "고정 텍스트"}
+                            ? t("variableTextLayer")
+                            : t("fixedTextLayer")}
                       </small>
                     </div>
                     <span className="selected-check">
@@ -2769,11 +2820,11 @@ export function BadgeStudio() {
                     <>
                       <section className="panel-section">
                         <div className="section-title">
-                          <h2>내용</h2>
+                          <h2>{t("content")}</h2>
                         </div>
                         {selectedElement.kind === "variable" ? (
                           <label className="stacked-field">
-                            연결할 매개변수
+                            {t("linkedVariable")}
                             <select
                               value={selectedElement.field || ""}
                               onChange={(event) =>
@@ -2791,7 +2842,7 @@ export function BadgeStudio() {
                           </label>
                         ) : (
                           <label className="stacked-field">
-                            표시할 문구
+                            {t("displayText")}
                             <input
                               value={selectedElement.value || ""}
                               onChange={(event) =>
@@ -2806,11 +2857,11 @@ export function BadgeStudio() {
 
                       <section className="panel-section">
                         <div className="section-title">
-                          <h2>타이포그래피</h2>
+                          <h2>{t("typography")}</h2>
                         </div>
                         <div className="field-grid two-columns">
                           <label>
-                            크기
+                            {t("size")}
                             <div className="input-with-unit">
                               <input
                                 type="number"
@@ -2827,7 +2878,7 @@ export function BadgeStudio() {
                             </div>
                           </label>
                           <label>
-                            굵기
+                            {t("weight")}
                             <select
                               value={selectedElement.fontWeight}
                               onChange={(event) =>
@@ -2836,18 +2887,18 @@ export function BadgeStudio() {
                                 })
                               }
                             >
-                              <option value="400">보통</option>
-                              <option value="500">중간</option>
-                              <option value="600">세미볼드</option>
-                              <option value="700">볼드</option>
-                              <option value="800">엑스트라볼드</option>
+                              <option value="400">{t("normal")}</option>
+                              <option value="500">{t("medium")}</option>
+                              <option value="600">{t("semibold")}</option>
+                              <option value="700">{t("bold")}</option>
+                              <option value="800">{t("extraBold")}</option>
                             </select>
                           </label>
                         </div>
                         <div className="property-row">
                           <fieldset
                             className="align-control"
-                            aria-label="텍스트 정렬"
+                            aria-label={t("textAlignment")}
                           >
                             {(
                               [
@@ -2869,10 +2920,10 @@ export function BadgeStudio() {
                                 }
                                 aria-label={
                                   align === "left"
-                                    ? "왼쪽 정렬"
+                                    ? t("alignLeft")
                                     : align === "center"
-                                      ? "가운데 정렬"
-                                      : "오른쪽 정렬"
+                                      ? t("alignCenter")
+                                      : t("alignRight")
                                 }
                               >
                                 <Icon size={17} />
@@ -2888,7 +2939,7 @@ export function BadgeStudio() {
                                   color: event.target.value,
                                 })
                               }
-                              aria-label="텍스트 색상"
+                              aria-label={t("textColor")}
                             />
                             <span>{selectedElement.color.toUpperCase()}</span>
                           </label>
@@ -2898,8 +2949,8 @@ export function BadgeStudio() {
                   ) : (
                     <section className="panel-section">
                       <div className="section-title">
-                        <h2>이미지</h2>
-                        <span>비율 유지</span>
+                        <h2>{t("image")}</h2>
+                        <span>{t("keepRatio")}</span>
                       </div>
                       <div className="image-inspector-preview">
                         <img src={selectedElement.src} alt="" />
@@ -2907,15 +2958,15 @@ export function BadgeStudio() {
                           <strong>{selectedElement.name}</strong>
                           <small>
                             {selectedElement.mimeType === "image/svg+xml"
-                              ? "벡터 SVG"
-                              : "래스터 이미지"}
+                              ? t("vectorSvg")
+                              : t("rasterImage")}
                           </small>
                         </div>
                       </div>
                       <div className="image-inspector-actions">
                         <label className="secondary-button">
                           <ImagePlus size={15} />
-                          이미지 교체
+                          {t("replaceImage")}
                           <input
                             type="file"
                             accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
@@ -2928,7 +2979,7 @@ export function BadgeStudio() {
                           />
                         </label>
                         <label className="stacked-field compact-fit-field">
-                          맞춤
+                          {t("fit")}
                           <select
                             value={selectedElement.fit}
                             onChange={(event) =>
@@ -2937,9 +2988,9 @@ export function BadgeStudio() {
                               })
                             }
                           >
-                            <option value="contain">전체 보이기</option>
-                            <option value="cover">영역 채우기</option>
-                            <option value="stretch">늘려 맞추기</option>
+                            <option value="contain">{t("contain")}</option>
+                            <option value="cover">{t("fillArea")}</option>
+                            <option value="stretch">{t("stretch")}</option>
                           </select>
                         </label>
                       </div>
@@ -2948,7 +2999,7 @@ export function BadgeStudio() {
 
                   <section className="panel-section">
                     <div className="section-title">
-                      <h2>위치와 크기</h2>
+                      <h2>{t("positionSize")}</h2>
                       <span>mm</span>
                     </div>
                     <div
@@ -2989,7 +3040,7 @@ export function BadgeStudio() {
                         />
                       </label>
                       <label>
-                        너비
+                        {t("width")}
                         <input
                           type="number"
                           step="0.5"
@@ -3026,7 +3077,7 @@ export function BadgeStudio() {
                       </label>
                       {selectedElement.type === "image" && (
                         <label>
-                          높이
+                          {t("height")}
                           <input
                             type="number"
                             step="0.5"
@@ -3058,7 +3109,7 @@ export function BadgeStudio() {
                     </div>
                     <div className="field-grid two-columns advanced-fields">
                       <label>
-                        회전
+                        {t("rotation")}
                         <div className="input-with-unit">
                           <input
                             type="number"
@@ -3080,7 +3131,7 @@ export function BadgeStudio() {
                         </div>
                       </label>
                       <label>
-                        불투명도
+                        {t("opacity")}
                         <div className="input-with-unit">
                           <input
                             type="number"
@@ -3107,8 +3158,8 @@ export function BadgeStudio() {
 
                   <section className="panel-section">
                     <div className="section-title">
-                      <h2>명찰 기준 정렬</h2>
-                      <span>가운데 맞춤</span>
+                      <h2>{t("badgeAlignment")}</h2>
+                      <span>{t("centerAlignment")}</span>
                     </div>
                     <div className="center-align-actions">
                       <button
@@ -3118,8 +3169,8 @@ export function BadgeStudio() {
                         <span>
                           <MoveHorizontal size={18} />
                         </span>
-                        <strong>가로 중앙</strong>
-                        <small>좌우 가운데 맞춤</small>
+                        <strong>{t("horizontalCenter")}</strong>
+                        <small>{t("horizontalCenterHelp")}</small>
                       </button>
                       <button
                         type="button"
@@ -3128,8 +3179,8 @@ export function BadgeStudio() {
                         <span>
                           <MoveVertical size={18} />
                         </span>
-                        <strong>세로 중앙</strong>
-                        <small>상하 가운데 맞춤</small>
+                        <strong>{t("verticalCenter")}</strong>
+                        <small>{t("verticalCenterHelp")}</small>
                       </button>
                     </div>
                   </section>
@@ -3149,7 +3200,7 @@ export function BadgeStudio() {
                       ) : (
                         <Lock size={16} />
                       )}
-                      {selectedElement.locked ? "잠금 해제" : "잠금"}
+                      {selectedElement.locked ? t("unlock") : t("lock")}
                     </button>
                     <button
                       type="button"
@@ -3157,7 +3208,7 @@ export function BadgeStudio() {
                       onClick={duplicateSelected}
                     >
                       <Copy size={16} />
-                      복제
+                      {t("duplicate")}
                     </button>
                     <button
                       type="button"
@@ -3165,7 +3216,7 @@ export function BadgeStudio() {
                       onClick={deleteSelected}
                     >
                       <Trash2 size={16} />
-                      삭제
+                      {t("delete")}
                     </button>
                   </div>
                 </>
@@ -3174,11 +3225,8 @@ export function BadgeStudio() {
                   <span>
                     <MousePointer2 size={23} />
                   </span>
-                  <h3>요소를 선택하세요</h3>
-                  <p>
-                    캔버스의 텍스트나 이미지를 누르면 위치와 스타일을
-                    정밀하게 조절할 수 있어요.
-                  </p>
+                  <h3>{t("selectElement")}</h3>
+                  <p>{t("selectElementHelp")}</p>
                 </div>
               )}
 
@@ -3186,9 +3234,9 @@ export function BadgeStudio() {
                 <div className="section-title">
                   <h2>
                     <Layers3 size={15} />
-                    레이어
+                    {t("layers")}
                   </h2>
-                  <span>위가 앞</span>
+                  <span>{t("topIsFront")}</span>
                 </div>
                 <div className="layer-list">
                   {[...elements].reverse().map((element) => (
@@ -3206,7 +3254,7 @@ export function BadgeStudio() {
                         ) : (
                           <Type size={14} />
                         )}
-                        <span>{getElementLabel(element)}</span>
+                        <span>{getElementLabel(element, t)}</span>
                       </button>
                       <div className="layer-actions">
                         <button
@@ -3218,8 +3266,12 @@ export function BadgeStudio() {
                           }
                           aria-label={
                             element.hidden
-                              ? `${getElementLabel(element)} 보이기`
-                              : `${getElementLabel(element)} 숨기기`
+                              ? t("showElement", {
+                                  name: getElementLabel(element, t),
+                                })
+                              : t("hideElement", {
+                                  name: getElementLabel(element, t),
+                                })
                           }
                         >
                           {element.hidden ? (
@@ -3237,8 +3289,12 @@ export function BadgeStudio() {
                           }
                           aria-label={
                             element.locked
-                              ? `${getElementLabel(element)} 잠금 해제`
-                              : `${getElementLabel(element)} 잠금`
+                              ? t("unlockElement", {
+                                  name: getElementLabel(element, t),
+                                })
+                              : t("lockElement", {
+                                  name: getElementLabel(element, t),
+                                })
                           }
                         >
                           {element.locked ? (
@@ -3250,14 +3306,18 @@ export function BadgeStudio() {
                         <button
                           type="button"
                           onClick={() => moveElementLayer(element.id, "up")}
-                          aria-label={`${getElementLabel(element)} 앞으로`}
+                          aria-label={t("moveForward", {
+                            name: getElementLabel(element, t),
+                          })}
                         >
                           <ArrowUp size={13} />
                         </button>
                         <button
                           type="button"
                           onClick={() => moveElementLayer(element.id, "down")}
-                          aria-label={`${getElementLabel(element)} 뒤로`}
+                          aria-label={t("moveBackward", {
+                            name: getElementLabel(element, t),
+                          })}
                         >
                           <ArrowDown size={13} />
                         </button>
@@ -3270,7 +3330,7 @@ export function BadgeStudio() {
               <div className="reference-note">
                 <span className="reference-kicker">REFERENCE READY</span>
                 <strong>A4 · 95 × 123 mm · 4-UP</strong>
-                <p>제공해 주신 인쇄 양식과 같은 실제 크기 배치입니다.</p>
+                <p>{t("referenceReady")}</p>
               </div>
             </aside>
           </div>
@@ -3282,16 +3342,13 @@ export function BadgeStudio() {
               <div className="workspace-heading">
                 <div>
                   <span className="eyebrow">DATA SOURCE</span>
-                  <h1>명찰 데이터</h1>
-                  <p>
-                    CSV를 불러오거나 표에 직접 입력하세요. 한 행이 명찰 한
-                    장이 됩니다.
-                  </p>
+                  <h1>{t("badgeData")}</h1>
+                  <p>{t("dataHelp")}</p>
                 </div>
                 <div className="heading-actions">
                   <label className="secondary-button file-button">
                     <Upload size={16} />
-                    CSV 업로드
+                    {t("csvUpload")}
                     <input
                       type="file"
                       accept=".csv,text/csv"
@@ -3303,7 +3360,8 @@ export function BadgeStudio() {
                     className="primary-button"
                     onClick={addRow}
                   >
-                    <Plus size={17} />행 추가
+                    <Plus size={17} />
+                    {t("addRow")}
                   </button>
                 </div>
               </div>
@@ -3317,10 +3375,10 @@ export function BadgeStudio() {
               <div className="data-toolbar">
                 <span>
                   <FileSpreadsheet size={17} />
-                  총 <strong>{rows.length}</strong>명
+                  {t("totalPeople", { count: rows.length })}
                 </span>
                 <span className="data-hint">
-                  첫 행을 헤더로 인식합니다 · UTF-8 CSV · 최대 {MAX_ROWS}행
+                  {t("csvHint", { count: MAX_ROWS })}
                 </span>
               </div>
 
@@ -3335,13 +3393,13 @@ export function BadgeStudio() {
                           <button
                             type="button"
                             onClick={() => removeField(field)}
-                            aria-label={`${field} 필드 삭제`}
+                            aria-label={t("deleteField", { name: field })}
                           >
                             <X size={13} />
                           </button>
                         </th>
                       ))}
-                      <th className="row-actions">관리</th>
+                      <th className="row-actions">{t("manage")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3362,7 +3420,10 @@ export function BadgeStudio() {
                               onChange={(event) =>
                                 updateRow(row.id, field, event.target.value)
                               }
-                              aria-label={`${rowIndex + 1}행 ${field}`}
+                              aria-label={t("rowField", {
+                                row: rowIndex + 1,
+                                name: field,
+                              })}
                             />
                           </td>
                         ))}
@@ -3373,7 +3434,7 @@ export function BadgeStudio() {
                               event.stopPropagation();
                               removeRow(row.id);
                             }}
-                            aria-label={`${rowIndex + 1}행 삭제`}
+                            aria-label={t("deleteRow", { row: rowIndex + 1 })}
                           >
                             <Trash2 size={15} />
                           </button>
@@ -3385,15 +3446,15 @@ export function BadgeStudio() {
                 {!rows.length && (
                   <div className="empty-table">
                     <Database size={24} />
-                    <strong>아직 데이터가 없습니다</strong>
-                    <span>CSV를 올리거나 행을 추가해 시작하세요.</span>
+                    <strong>{t("noData")}</strong>
+                    <span>{t("noDataHelp")}</span>
                   </div>
                 )}
               </div>
 
               <button type="button" className="add-row-bar" onClick={addRow}>
                 <Plus size={16} />
-                새 행 추가
+                {t("newRow")}
               </button>
             </section>
 
@@ -3401,13 +3462,13 @@ export function BadgeStudio() {
               <div className="panel-heading compact">
                 <div>
                   <span className="eyebrow">SCHEMA</span>
-                  <h2>매개변수 관리</h2>
+                  <h2>{t("variables")}</h2>
                 </div>
                 <span className="count-badge">{fields.length}</span>
               </div>
               <section className="panel-section">
                 <p className="section-helper">
-                  CSV의 열 이름이 텍스트 매개변수가 됩니다.
+                  {t("variableHelp")}
                 </p>
                 <div className="schema-list">
                   {fields.map((field) => (
@@ -3422,7 +3483,7 @@ export function BadgeStudio() {
                       <button
                         type="button"
                         onClick={() => removeField(field)}
-                        aria-label={`${field} 필드 삭제`}
+                        aria-label={t("deleteField", { name: field })}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -3430,7 +3491,7 @@ export function BadgeStudio() {
                   ))}
                 </div>
                 <div className="add-field-control">
-                  <label htmlFor="new-field">새 매개변수</label>
+                  <label htmlFor="new-field">{t("newVariable")}</label>
                   <div>
                     <input
                       id="new-field"
@@ -3440,12 +3501,12 @@ export function BadgeStudio() {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") addField();
                       }}
-                      placeholder="예: 사번"
+                      placeholder={t("employeeNumber")}
                     />
                     <button
                       type="button"
                       onClick={addField}
-                      aria-label="매개변수 추가"
+                      aria-label={t("addVariable")}
                     >
                       <Plus size={17} />
                     </button>
@@ -3458,7 +3519,7 @@ export function BadgeStudio() {
                   <FileSpreadsheet size={19} />
                 </span>
                 <div>
-                  <strong>CSV 형식 예시</strong>
+                  <strong>{t("csvExample")}</strong>
                   <code>이름,팀,직책</code>
                   <code>김민지,브랜드팀,디자이너</code>
                 </div>
@@ -3471,21 +3532,21 @@ export function BadgeStudio() {
                   setFields(DEFAULT_FIELDS);
                   setRows(SAMPLE_ROWS);
                   setSelectedRowId(SAMPLE_ROWS[0].id);
-                  setToast("예시 데이터를 채웠습니다.");
+                  setToast(t("toastSampleData"));
                 }}
               >
-                예시 데이터 채우기
+                {t("fillSample")}
               </button>
 
               <div className="side-next-step">
-                <span>다음 단계</span>
-                <strong>{rows.length}개 명찰 출력 준비</strong>
+                <span>{t("nextStep")}</span>
+                <strong>{t("badgesReady", { count: rows.length })}</strong>
                 <button
                   type="button"
                   className="primary-button full-width"
                   onClick={() => setMode("print")}
                 >
-                  출력 설정으로
+                  {t("goPrint")}
                   <Printer size={16} />
                 </button>
               </div>
@@ -3499,20 +3560,17 @@ export function BadgeStudio() {
               <div className="workspace-heading print-heading">
                 <div>
                   <span className="eyebrow">PRINT PREVIEW</span>
-                  <h1>인쇄 미리보기</h1>
-                  <p>
-                    용지 중앙에 자동 배치됩니다. PDF 인쇄 시 배율은 반드시
-                    100% 또는 실제 크기를 선택하세요.
-                  </p>
+                  <h1>{t("printPreview")}</h1>
+                  <p>{t("printHelp")}</p>
                 </div>
                 <div className="print-stats">
                   <span>
                     <strong>{layout.capacity}</strong>
-                    장/페이지
+                    {t("perPage")}
                   </span>
                   <span>
                     <strong>{pageCount}</strong>
-                    페이지
+                    {t("page")}
                   </span>
                 </div>
               </div>
@@ -3555,20 +3613,21 @@ export function BadgeStudio() {
                             backgroundFit={backgroundFit}
                             elements={elements}
                             row={row}
+                            t={t}
                           />
                         </div>
                       );
                     })}
                   {!layout.fits && (
                     <div className="page-error">
-                      <strong>명찰이 용지보다 큽니다</strong>
-                      <span>명찰 또는 용지 크기를 조정해 주세요.</span>
+                      <strong>{t("badgeTooLarge")}</strong>
+                      <span>{t("badgeTooLargeHelp")}</span>
                     </div>
                   )}
                 </div>
                 <div className="page-caption">
                   <span>
-                    1 / {pageCount || 1} 페이지
+                    1 / {pageCount || 1} {t("page")}
                   </span>
                   <strong>
                     {displayNumber(page.width)} × {displayNumber(page.height)} mm
@@ -3581,17 +3640,17 @@ export function BadgeStudio() {
               <div className="panel-heading compact">
                 <div>
                   <span className="eyebrow">OUTPUT</span>
-                  <h2>출력 설정</h2>
+                  <h2>{t("outputSettings")}</h2>
                 </div>
                 <Printer size={19} />
               </div>
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>용지</h2>
+                  <h2>{t("paper")}</h2>
                 </div>
                 <label className="stacked-field">
-                  용지 규격
+                  {t("paperPreset")}
                   <select
                     value={page.preset}
                     onChange={(event) =>
@@ -3603,12 +3662,12 @@ export function BadgeStudio() {
                         {preset.label}
                       </option>
                     ))}
-                    <option value="custom">사용자 지정</option>
+                    <option value="custom">{t("custom")}</option>
                   </select>
                 </label>
                 <div className="field-grid two-columns">
                   <label>
-                    용지 너비
+                    {t("paperWidth")}
                     <div className="input-with-unit">
                       <input
                         type="number"
@@ -3627,7 +3686,7 @@ export function BadgeStudio() {
                     </div>
                   </label>
                   <label>
-                    용지 높이
+                    {t("paperHeight")}
                     <div className="input-with-unit">
                       <input
                         type="number"
@@ -3657,18 +3716,18 @@ export function BadgeStudio() {
                     }))
                   }
                 >
-                  가로·세로 방향 바꾸기
+                  {t("swapOrientation")}
                 </button>
               </section>
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>배치 간격</h2>
-                  <span>자동 중앙 정렬</span>
+                  <h2>{t("spacing")}</h2>
+                  <span>{t("autoCenter")}</span>
                 </div>
                 <div className="field-grid two-columns">
                   <label>
-                    가로 간격
+                    {t("horizontalGap")}
                     <div className="input-with-unit">
                       <input
                         type="number"
@@ -3686,7 +3745,7 @@ export function BadgeStudio() {
                     </div>
                   </label>
                   <label>
-                    세로 간격
+                    {t("verticalGap")}
                     <div className="input-with-unit">
                       <input
                         type="number"
@@ -3706,20 +3765,23 @@ export function BadgeStudio() {
                 </div>
                 <div className="layout-result">
                   <span>
-                    {layout.columns}열 × {layout.rows}행
+                    {t("gridLayout", {
+                      columns: layout.columns,
+                      rows: layout.rows,
+                    })}
                   </span>
-                  <strong>한 장에 {layout.capacity}개</strong>
+                  <strong>{t("perSheet", { count: layout.capacity })}</strong>
                 </div>
               </section>
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>재단 표시</h2>
+                  <h2>{t("cutDisplay")}</h2>
                 </div>
                 <label className="switch-row">
                   <span>
-                    <strong>외곽선</strong>
-                    <small>명찰 테두리를 얇게 표시</small>
+                    <strong>{t("outline")}</strong>
+                    <small>{t("outlineHelp")}</small>
                   </span>
                   <input
                     type="checkbox"
@@ -3734,8 +3796,8 @@ export function BadgeStudio() {
                 </label>
                 <label className="switch-row">
                   <span>
-                    <strong>재단선</strong>
-                    <small>모서리 바깥쪽에 절단 가이드 표시</small>
+                    <strong>{t("cropMarks")}</strong>
+                    <small>{t("cropMarksHelp")}</small>
                   </span>
                   <input
                     type="checkbox"
@@ -3752,25 +3814,27 @@ export function BadgeStudio() {
 
               <section className="panel-section">
                 <div className="section-title">
-                  <h2>PDF 품질</h2>
+                  <h2>{t("pdfQuality")}</h2>
                 </div>
                 <label className="stacked-field">
-                  이미지 해상도
+                  {t("resolution")}
                   <select
                     value={dpi}
                     onChange={(event) => setDpi(Number(event.target.value))}
                   >
-                    <option value="150">150 DPI · 초안</option>
-                    <option value="300">300 DPI · 인쇄 권장</option>
-                    <option value="600">600 DPI · 고품질</option>
+                    <option value="150">150 DPI · {t("draft")}</option>
+                    <option value="300">
+                      300 DPI · {t("printRecommended")}
+                    </option>
+                    <option value="600">600 DPI · {t("highQuality")}</option>
                   </select>
                 </label>
               </section>
 
               <div className="export-summary">
                 <div>
-                  <span>명찰 {rows.length}개</span>
-                  <span>PDF {pageCount}페이지</span>
+                  <span>{t("badgeCount", { count: rows.length })}</span>
+                  <span>{t("pdfPages", { count: pageCount })}</span>
                 </div>
                 <button
                   className="primary-button full-width export-button"
@@ -3780,13 +3844,10 @@ export function BadgeStudio() {
                 >
                   <Download size={18} />
                   {isExporting
-                    ? `PDF 만드는 중 · ${exportProgress}%`
-                    : "인쇄용 PDF 다운로드"}
+                    ? t("creatingPdf", { progress: exportProgress })
+                    : t("downloadPdf")}
                 </button>
-                <p>
-                  다운로드한 PDF는 인쇄 창에서 <strong>실제 크기 100%</strong>로
-                  출력하세요.
-                </p>
+                <p>{t("printTip", { size: t("actualSize") })}</p>
               </div>
             </aside>
           </div>

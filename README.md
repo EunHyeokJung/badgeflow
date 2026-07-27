@@ -2,7 +2,7 @@
 
 브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
-[라이브 데모](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)
+[웹 앱 실행](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [English README](README.en.md)
 
 ![BadgeFlow 미리보기](public/og.png)
 
@@ -17,8 +17,20 @@
 - 재단선, 외곽선, 간격, DPI를 반영한 실제 크기 PDF
 - 이미지와 데이터를 포함하는 프로젝트 백업/복원
 - IndexedDB 자동 저장과 localStorage 폴백
+- 한국어, English, 日本語, 简体中文, 繁體中文, Español, Français, Deutsch UI
+- 데스크톱·모바일 홈 화면에 설치할 수 있는 오프라인 지원 PWA
 
 업로드한 이미지와 CSV는 서버로 전송하지 않습니다. 디자인, 자동 저장, PDF 생성은 브라우저 안에서 처리됩니다.
+
+## 앱 설치
+
+BadgeFlow는 별도 앱 스토어 없이 설치하는 PWA입니다.
+
+1. [BadgeFlow 웹 앱](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)을 Chrome, Edge 또는 Safari로 엽니다.
+2. 상단의 **앱 설치**를 누릅니다. 버튼이 보이지 않으면 브라우저 메뉴의 **앱 설치** 또는 **홈 화면에 추가**를 선택합니다.
+3. 설치 후에는 앱 창과 홈 화면 아이콘으로 실행할 수 있으며, 한 번 연 화면은 네트워크가 불안정해도 다시 열 수 있습니다.
+
+언어는 상단 메뉴에서 즉시 변경할 수 있습니다. 번역되지 않은 새 문구는 영어로 안전하게 폴백합니다. CSV 열 이름과 명찰에 들어가는 실제 데이터는 언어 변경 시 자동 번역하지 않습니다.
 
 ## 빠른 시작
 
@@ -28,7 +40,7 @@
 - npm 10 이상
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+git clone https://github.com/EunHyeokJung/badgeflow.git
 cd badgeflow
 npm ci
 npm run dev
@@ -71,7 +83,7 @@ tests/               서버 렌더링 및 배포 계약 테스트
 docs/                아키텍처 문서
 ```
 
-상세한 데이터 흐름과 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md)를 참고하세요.
+상세한 데이터 흐름과 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md), 번역 추가 방법은 [다국어 가이드](docs/I18N.md)를 참고하세요.
 
 ## 배포
 

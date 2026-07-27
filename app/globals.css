@@ -132,6 +132,93 @@ select:focus-visible,
   margin: 0 auto;
 }
 
+.landing-header-actions,
+.app-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-control {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+  padding: 0 8px 0 10px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.language-control select {
+  width: auto;
+  min-width: 92px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 22px 0 2px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.install-control {
+  position: relative;
+}
+
+.install-app-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #93c5fd;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.install-app-button:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.install-help {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(260px, 80vw);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--ink-soft);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-md);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.app-controls.is-compact .language-control > span {
+  display: none;
+}
+
+.app-controls.is-compact .language-control select {
+  min-width: 82px;
+}
+
 .landing-brand {
   display: inline-flex;
   align-items: center;
@@ -2692,6 +2779,12 @@ select:focus {
     display: none;
   }
 
+  .topbar .install-app-button {
+    width: 40px;
+    padding: 0;
+    font-size: 0;
+  }
+
   .canvas-stage {
     padding-right: 54px;
     padding-left: 54px;
@@ -2820,10 +2913,34 @@ select:focus {
     min-height: 68px;
   }
 
+  .landing-header-actions {
+    gap: 5px;
+  }
+
+  .landing-header .language-control > span {
+    display: none;
+  }
+
+  .landing-header .install-app-button {
+    width: 40px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .landing-header .language-control {
+    padding: 0 6px;
+  }
+
+  .landing-header .language-control select {
+    min-width: 76px;
+  }
+
   .landing-continue-button {
+    width: 40px;
     min-height: 44px;
-    padding: 0 10px;
-    font-size: 9px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
   }
 
   .landing-main {
@@ -2903,6 +3020,20 @@ select:focus {
   .topbar {
     min-height: 62px;
     padding: 7px 10px;
+  }
+
+  .topbar .language-control {
+    min-height: 38px;
+    padding: 0 5px;
+  }
+
+  .topbar .language-control > svg {
+    display: none;
+  }
+
+  .topbar .language-control select {
+    min-width: 72px;
+    padding-right: 16px;
   }
 
   .brand small,

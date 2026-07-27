@@ -83,6 +83,37 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(storage, /LEGACY_LOCAL_STORAGE_KEY/);
 });
 
+test("ships an installable multilingual PWA contract", async () => {
+  const [manifestResponse, i18n, controls, serviceWorker] = await Promise.all([
+    render("/manifest.webmanifest"),
+    readFile(new URL("../lib/i18n.ts", import.meta.url), "utf8"),
+    readFile(new URL("../components/AppControls.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.equal(manifestResponse.status, 200);
+  assert.match(
+    manifestResponse.headers.get("content-type") ?? "",
+    /^application\/manifest\+json\b/i,
+  );
+  const manifest = await manifestResponse.json();
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/");
+  assert.deepEqual(
+    manifest.icons.map(({ sizes }) => sizes),
+    ["192x192", "512x512"],
+  );
+
+  for (const locale of ["ko", "en", "ja", "zh-CN", "zh-TW", "es", "fr", "de"]) {
+    assert.match(i18n, new RegExp(`code: "${locale.replace("-", "\\-")}"`));
+  }
+  assert.match(i18n, /DICTIONARIES\[locale\]\[key\] \?\? en\[key\]/);
+  assert.match(controls, /beforeinstallprompt/);
+  assert.match(controls, /navigator\.serviceWorker\.register\("\/sw\.js"\)/);
+  assert.match(serviceWorker, /badgeflow-app-v1/);
+  assert.match(serviceWorker, /request\.mode === "navigate"/);
+});
+
 test("renders a recoverable not-found page", async () => {
   const response = await render("/missing-page");
   assert.equal(response.status, 404);
