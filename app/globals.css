@@ -238,10 +238,13 @@ select:focus-visible,
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 28px;
+  margin-bottom: 0;
+  padding: 0;
   color: #94a3b8;
+  list-style: none;
 }
 
-.landing-flow span {
+.landing-flow > li:not(.landing-flow-arrow) {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
@@ -255,8 +258,13 @@ select:focus-visible,
   font-weight: 750;
 }
 
-.landing-flow span svg {
+.landing-flow > li:not(.landing-flow-arrow) svg {
   color: #2563eb;
+}
+
+.landing-flow-arrow {
+  display: grid;
+  place-items: center;
 }
 
 .preset-section {
@@ -680,6 +688,21 @@ select:focus-visible,
 
 .save-state svg {
   color: var(--teal);
+}
+
+.save-state.is-error,
+.save-state.is-error svg {
+  color: var(--danger);
+}
+
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .primary-button,
@@ -1228,6 +1251,10 @@ select:focus {
   padding: 2px;
 }
 
+.toolbar-icon-group {
+  margin: 0;
+}
+
 .toolbar-icon-group button,
 .project-tools button,
 .project-tools label {
@@ -1695,6 +1722,8 @@ select:focus {
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
+  margin: 0;
+  padding: 0;
 }
 
 .align-control button {
@@ -2583,6 +2612,65 @@ select:focus {
   }
 }
 
+.error-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 10%, #dbeafe 0, transparent 32%),
+    var(--canvas);
+}
+
+.error-page section {
+  width: min(100%, 520px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  padding: 40px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.error-code {
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.error-page h1 {
+  margin: 18px 0 8px;
+  color: var(--ink);
+  font-size: clamp(24px, 5vw, 34px);
+  line-height: 1.2;
+}
+
+.error-page p {
+  margin: 0 auto 24px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.error-page button,
+.error-page a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9px;
+  background: var(--teal);
+  color: white;
+  padding: 0 18px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 @media (max-width: 1180px) {
   .preset-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2757,11 +2845,11 @@ select:focus {
     margin-top: 22px;
   }
 
-  .landing-flow > svg {
+  .landing-flow-arrow {
     display: none;
   }
 
-  .landing-flow span {
+  .landing-flow > li:not(.landing-flow-arrow) {
     min-height: 34px;
     padding: 0 8px;
     font-size: 9px;

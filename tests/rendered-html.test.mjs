@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(new URL(pathname, "http://localhost/"), {
       headers: { accept: "text/html" },
     }),
     {
@@ -27,6 +27,16 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.equal(
+    response.headers.get("cross-origin-opener-policy"),
+    "same-origin",
+  );
+  assert.match(
+    response.headers.get("content-security-policy") ?? "",
+    /frame-ancestors 'none'/,
+  );
 
   const html = await response.text();
   assert.match(html, /<title>BadgeFlow \| 명찰 인쇄 스튜디오<\/title>/i);
@@ -41,11 +51,12 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
 });
 
 test("keeps image editing, project backup, and PDF rendering connected", async () => {
-  const [studio, css] = await Promise.all([
+  const [studio, storage, css] = await Promise.all([
     readFile(
       new URL("../components/BadgeStudio.tsx", import.meta.url),
       "utf8",
     ),
+    readFile(new URL("../lib/badgeflow/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
@@ -59,11 +70,21 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /function moveElementLayer/);
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
-  assert.match(studio, /function undoElements/);
+  assert.match(studio, /function normalizeProject/);
+  assert.match(studio, /MAX_ROWS = 500/);
+  assert.match(studio, /const undoElements = useCallback/);
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
+  assert.match(storage, /indexedDB\.open/);
+  assert.match(storage, /LEGACY_LOCAL_STORAGE_KEY/);
+});
+
+test("renders a recoverable not-found page", async () => {
+  const response = await render("/missing-page");
+  assert.equal(response.status, 404);
+  assert.match(await response.text(), /요청한 페이지를 찾을 수 없습니다/);
 });

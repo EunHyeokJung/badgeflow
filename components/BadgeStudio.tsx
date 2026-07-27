@@ -1,11 +1,10 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- User-supplied data URLs and sanitized SVGs are rendered locally. */
-
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  AlertTriangle,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -26,6 +25,7 @@ import {
   LayoutTemplate,
   Lock,
   LockKeyhole,
+  LoaderCircle,
   MoveHorizontal,
   MoveVertical,
   MousePointer2,
@@ -45,14 +45,20 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import {
-  CSSProperties,
-  DragEvent as ReactDragEvent,
-  PointerEvent as ReactPointerEvent,
+  type CSSProperties,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import {
+  loadProjectDraft,
+  saveProjectDraft,
+} from "@/lib/badgeflow/storage";
 
 type Mode = "design" | "data" | "print";
 type AppView = "landing" | "studio";
@@ -134,6 +140,42 @@ type BadgePreset = {
   tag: string;
   featured?: boolean;
 };
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+type BadgeProject = {
+  version: number;
+  updatedAt: string;
+  badgeWidth: number;
+  badgeHeight: number;
+  safeArea: number;
+  backgroundColor: string;
+  background: string | null;
+  backgroundName: string;
+  backgroundFit: BackgroundFit;
+  elements: CanvasElement[];
+  fields: string[];
+  rows: BadgeRow[];
+  page: PageSettings;
+  dpi: number;
+};
+
+const PROJECT_VERSION = 3;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_PROJECT_BYTES = 30 * 1024 * 1024;
+const MAX_CSV_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_DATA_URL_LENGTH = 14 * 1024 * 1024;
+const MAX_ELEMENTS = 200;
+const MAX_ROWS = 500;
+const MAX_FIELDS = 50;
+const MAX_FIELD_LENGTH = 80;
+const MAX_CELL_LENGTH = 2_000;
+const FORBIDDEN_FIELD_NAMES = new Set([
+  "id",
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
 
 const PAGE_PRESETS: Record<
   Exclude<PagePreset, "custom">,
@@ -345,7 +387,7 @@ function LandingPage({
         명찰 규격 선택으로 건너뛰기
       </a>
       <header className="landing-header">
-        <span className="landing-brand" aria-label="BadgeFlow">
+        <span className="landing-brand">
           <span className="brand-mark">B</span>
           <span>
             <strong>BadgeFlow</strong>
@@ -379,22 +421,26 @@ function LandingPage({
             많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을
             만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.
           </p>
-          <div className="landing-flow" aria-label="작업 순서">
-            <span>
+          <ol className="landing-flow" aria-label="작업 순서">
+            <li>
               <Ruler size={15} />
               크기 선택
-            </span>
-            <ArrowRight size={14} aria-hidden="true" />
-            <span>
+            </li>
+            <li className="landing-flow-arrow" aria-hidden="true">
+              <ArrowRight size={14} />
+            </li>
+            <li>
               <FileText size={15} />
               디자인·명단
-            </span>
-            <ArrowRight size={14} aria-hidden="true" />
-            <span>
+            </li>
+            <li className="landing-flow-arrow" aria-hidden="true">
+              <ArrowRight size={14} />
+            </li>
+            <li>
               <ShieldCheck size={15} />
               실제 크기 PDF
-            </span>
-          </div>
+            </li>
+          </ol>
         </section>
 
         <section
@@ -479,7 +525,11 @@ function LandingPage({
 }
 
 function makeId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const suffix =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${suffix}`;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -496,43 +546,255 @@ function getElementLabel(element: CanvasElement) {
   return element.value || "고정 문구";
 }
 
-function normalizeElement(element: Partial<CanvasElement>): CanvasElement | null {
+function cloneElements(source: CanvasElement[]) {
+  return source.map((element) => ({ ...element })) as CanvasElement[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function boundedNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? clamp(parsed, min, max) : fallback;
+}
+
+function boundedString(value: unknown, fallback = "", maxLength = MAX_CELL_LENGTH) {
+  return typeof value === "string"
+    ? value.split(String.fromCharCode(0)).join("").slice(0, maxLength)
+    : fallback;
+}
+
+function isSafeImageDataUrl(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length > MAX_IMAGE_DATA_URL_LENGTH
+  ) {
+    return false;
+  }
+  return (
+    /^data:image\/(?:png|jpeg|webp);base64,/i.test(value) ||
+    /^data:image\/svg\+xml(?:;charset=utf-8)?,/i.test(value)
+  );
+}
+
+function normalizeElement(element: unknown): CanvasElement | null {
+  if (!isRecord(element)) return null;
   const common = {
-    id: element.id || makeId("element"),
-    x: Number(element.x ?? 0),
-    y: Number(element.y ?? 0),
-    width: Number(element.width ?? 20),
-    opacity: Number(element.opacity ?? 1),
-    rotation: Number(element.rotation ?? 0),
+    id: boundedString(element.id, makeId("element"), 120) || makeId("element"),
+    x: boundedNumber(element.x, 0, 0, 500),
+    y: boundedNumber(element.y, 0, 0, 500),
+    width: boundedNumber(element.width, 20, 1, 500),
+    opacity: boundedNumber(element.opacity, 1, 0, 1),
+    rotation: boundedNumber(element.rotation, 0, -180, 180),
     locked: Boolean(element.locked),
     hidden: Boolean(element.hidden),
   };
 
-  if (element.type === "image" && "src" in element && element.src) {
-    const image = element as Partial<ImageElement>;
+  if (element.type === "image") {
+    if (!isSafeImageDataUrl(element.src)) return null;
+    const fit: BackgroundFit = ["cover", "contain", "stretch"].includes(
+      String(element.fit),
+    )
+      ? (element.fit as BackgroundFit)
+      : "contain";
     return {
       ...common,
       type: "image",
-      name: image.name || "이미지",
-      src: image.src || "",
-      mimeType: image.mimeType || "image/png",
-      height: Number(image.height ?? 20),
-      fit: image.fit || "contain",
-      aspectRatio: Number(image.aspectRatio ?? 1),
+      name: boundedString(element.name, "이미지", 160) || "이미지",
+      src: element.src,
+      mimeType: boundedString(element.mimeType, "image/png", 80),
+      height: boundedNumber(element.height, 20, 1, 500),
+      fit,
+      aspectRatio: boundedNumber(element.aspectRatio, 1, 0.01, 100),
     };
   }
 
-  const text = element as Partial<TextElement>;
+  if (element.type !== "text") return null;
+  const kind: ElementKind =
+    element.kind === "variable" ? "variable" : "static";
+  const align: Align = ["left", "center", "right"].includes(
+    String(element.align),
+  )
+    ? (element.align as Align)
+    : "center";
+  const color =
+    typeof element.color === "string" &&
+    /^#[\da-f]{3,8}$/i.test(element.color)
+      ? element.color
+      : "#17201f";
+  const field = boundedString(element.field, "", MAX_FIELD_LENGTH);
   return {
     ...common,
     type: "text",
-    kind: text.kind || "static",
-    field: text.field,
-    value: text.value,
-    fontSize: Number(text.fontSize ?? 12),
-    fontWeight: Number(text.fontWeight ?? 500),
-    color: text.color || "#17201f",
-    align: text.align || "center",
+    kind,
+    field:
+      kind === "variable"
+        ? FORBIDDEN_FIELD_NAMES.has(field)
+          ? ""
+          : field
+        : undefined,
+    value:
+      kind === "static"
+        ? boundedString(element.value, "", MAX_CELL_LENGTH)
+        : undefined,
+    fontSize: boundedNumber(element.fontSize, 12, 1, 200),
+    fontWeight: boundedNumber(element.fontWeight, 500, 100, 900),
+    color,
+    align,
+  };
+}
+
+function normalizeFields(
+  value: unknown,
+  fallback: string[] = DEFAULT_FIELDS,
+) {
+  if (!Array.isArray(value)) return [...fallback];
+  const fields = value
+    .map((field) => boundedString(field, "", MAX_FIELD_LENGTH).trim())
+    .filter(
+      (field, index, list) =>
+        Boolean(field) &&
+        !FORBIDDEN_FIELD_NAMES.has(field) &&
+        list.indexOf(field) === index,
+    )
+    .slice(0, MAX_FIELDS);
+  return fields.length ? fields : [...fallback];
+}
+
+function normalizeRows(value: unknown, fields: string[]) {
+  if (!Array.isArray(value)) return SAMPLE_ROWS.map((row) => ({ ...row }));
+  const usedIds = new Set<string>();
+  return value.slice(0, MAX_ROWS).flatMap((candidate) => {
+    if (!isRecord(candidate)) return [];
+    let id = boundedString(candidate.id, makeId("row"), 120) || makeId("row");
+    if (usedIds.has(id)) id = makeId("row");
+    usedIds.add(id);
+    const row: BadgeRow = {
+      id,
+    };
+    fields.forEach((field) => {
+      row[field] = boundedString(candidate[field], "", MAX_CELL_LENGTH);
+    });
+    return [row];
+  });
+}
+
+function normalizePage(value: unknown): PageSettings {
+  if (!isRecord(value)) return { ...DEFAULT_PAGE };
+  const preset: PagePreset = ["A4", "A3", "Letter", "custom"].includes(
+    String(value.preset),
+  )
+    ? (value.preset as PagePreset)
+    : "A4";
+  return {
+    preset,
+    width: boundedNumber(value.width, DEFAULT_PAGE.width, 50, 2_000),
+    height: boundedNumber(value.height, DEFAULT_PAGE.height, 50, 2_000),
+    gapX: boundedNumber(value.gapX, 0, 0, 100),
+    gapY: boundedNumber(value.gapY, 0, 0, 100),
+    showOutline:
+      typeof value.showOutline === "boolean"
+        ? value.showOutline
+        : DEFAULT_PAGE.showOutline,
+    showCropMarks:
+      typeof value.showCropMarks === "boolean"
+        ? value.showCropMarks
+        : DEFAULT_PAGE.showCropMarks,
+  };
+}
+
+function normalizeProject(value: unknown): BadgeProject | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.version === "number" &&
+    value.version > PROJECT_VERSION
+  ) {
+    return null;
+  }
+  const badgeWidth = boundedNumber(value.badgeWidth, 95, 20, 500);
+  const badgeHeight = boundedNumber(value.badgeHeight, 123, 20, 500);
+  const fields = normalizeFields(value.fields);
+  const rows = normalizeRows(value.rows, fields);
+  const usedElementIds = new Set<string>();
+  const elements = Array.isArray(value.elements)
+    ? value.elements
+        .slice(0, MAX_ELEMENTS)
+        .map(normalizeElement)
+        .filter((element): element is CanvasElement => Boolean(element))
+        .map((element) => {
+          const width = Math.min(element.width, badgeWidth);
+          const x = clamp(element.x, 0, badgeWidth - width);
+          if (element.type === "image") {
+            const height = Math.min(element.height, badgeHeight);
+            return {
+              ...element,
+              x,
+              y: clamp(element.y, 0, badgeHeight - height),
+              width,
+              height,
+            };
+          }
+          return {
+            ...element,
+            x,
+            y: clamp(element.y, 0, badgeHeight),
+            width,
+          };
+        })
+        .map((element) => {
+          let id = element.id;
+          if (usedElementIds.has(id)) id = makeId("element");
+          usedElementIds.add(id);
+          return id === element.id ? element : { ...element, id };
+        })
+    : [];
+  if (!elements.length) return null;
+
+  const backgroundFit: BackgroundFit = ["cover", "contain", "stretch"].includes(
+    String(value.backgroundFit),
+  )
+    ? (value.backgroundFit as BackgroundFit)
+    : "cover";
+  const background =
+    value.background === null || value.background === undefined
+      ? null
+      : isSafeImageDataUrl(value.background)
+        ? value.background
+        : null;
+  const backgroundColor =
+    typeof value.backgroundColor === "string" &&
+    /^#[\da-f]{3,8}$/i.test(value.backgroundColor)
+      ? value.backgroundColor
+      : "#ffffff";
+
+  return {
+    version: PROJECT_VERSION,
+    updatedAt: new Date().toISOString(),
+    badgeWidth,
+    badgeHeight,
+    safeArea: boundedNumber(
+      value.safeArea,
+      5,
+      0,
+      Math.min(badgeWidth, badgeHeight) / 2,
+    ),
+    backgroundColor,
+    background,
+    backgroundName: boundedString(value.backgroundName, "", 240),
+    backgroundFit,
+    elements,
+    fields,
+    rows,
+    page: normalizePage(value.page),
+    dpi: [150, 300, 600].includes(Number(value.dpi))
+      ? Number(value.dpi)
+      : 300,
   };
 }
 
@@ -599,6 +861,7 @@ function getImageType(dataUrl: string) {
 }
 
 const imageAssetCache = new Map<string, Promise<HTMLImageElement>>();
+const MAX_CACHED_IMAGES = 64;
 
 function loadImage(src: string) {
   const cached = imageAssetCache.get(src);
@@ -610,6 +873,11 @@ function loadImage(src: string) {
     image.src = src;
   });
   imageAssetCache.set(src, promise);
+  if (imageAssetCache.size > MAX_CACHED_IMAGES) {
+    const oldestKey = imageAssetCache.keys().next().value;
+    if (oldestKey) imageAssetCache.delete(oldestKey);
+  }
+  promise.catch(() => imageAssetCache.delete(src));
   return promise;
 }
 
@@ -883,33 +1151,29 @@ function BadgeContents({
                 : "grab"
               : "default",
           } as CSSProperties;
+          const interactionProps = interactive
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                "aria-label": `${elementLabel} 이미지 요소`,
+                onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+                  event.stopPropagation();
+                  onSelect?.(element.id);
+                },
+                onPointerDown: (
+                  event: ReactPointerEvent<HTMLDivElement>,
+                ) => onPointerDown?.(event, element),
+                onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
+                  onKeyMove?.(event, element),
+              }
+            : {};
 
           return (
             <div
               key={element.id}
               className={`badge-image-element ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
               style={imageStyle}
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-label={interactive ? `${elementLabel} 이미지 요소` : undefined}
-              onClick={
-                interactive
-                  ? (event) => {
-                      event.stopPropagation();
-                      onSelect?.(element.id);
-                    }
-                  : undefined
-              }
-              onPointerDown={
-                interactive
-                  ? (event) => onPointerDown?.(event, element)
-                  : undefined
-              }
-              onKeyDown={
-                interactive
-                  ? (event) => onKeyMove?.(event, element)
-                  : undefined
-              }
+              {...interactionProps}
             >
               <img
                 src={element.src}
@@ -949,37 +1213,28 @@ function BadgeContents({
               : "grab"
             : "default",
         } as CSSProperties;
+        const interactionProps = interactive
+          ? {
+              role: "button" as const,
+              tabIndex: 0,
+              "aria-label": `${elementLabel} 텍스트 요소`,
+              onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+                event.stopPropagation();
+                onSelect?.(element.id);
+              },
+              onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) =>
+                onPointerDown?.(event, element),
+              onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
+                onKeyMove?.(event, element),
+            }
+          : {};
 
         return (
           <div
             key={element.id}
             className={`badge-text ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
             style={style}
-            role={interactive ? "button" : undefined}
-            tabIndex={interactive ? 0 : undefined}
-            aria-label={
-              interactive
-                ? `${elementLabel} 텍스트 요소`
-                : undefined
-            }
-            onClick={
-              interactive
-                ? (event) => {
-                    event.stopPropagation();
-                    onSelect?.(element.id);
-                  }
-                : undefined
-            }
-            onPointerDown={
-              interactive
-                ? (event) => onPointerDown?.(event, element)
-                : undefined
-            }
-            onKeyDown={
-              interactive
-                ? (event) => onKeyMove?.(event, element)
-                : undefined
-            }
+            {...interactionProps}
           >
             {resolveText(element, row)}
             {interactive && isSelected && (
@@ -1026,12 +1281,15 @@ export function BadgeStudio() {
     horizontal: false,
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const stageRef = useRef<HTMLDivElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
+  const saveRevisionRef = useRef(0);
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
@@ -1045,59 +1303,73 @@ export function BadgeStudio() {
     layout.capacity > 0 ? Math.max(1, Math.ceil(rows.length / layout.capacity)) : 0;
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- Hydrate the browser-only draft after SSR. */
-    try {
-      const saved = localStorage.getItem("badgeflow-project-v1");
-      if (saved) {
+    let cancelled = false;
+    void loadProjectDraft<unknown>()
+      .then((saved) => {
+        if (cancelled || !saved) return;
+        const project = normalizeProject(saved);
+        if (!project) return;
         setHasSavedDraft(true);
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.badgeWidth === "number") setBadgeWidth(parsed.badgeWidth);
-        if (typeof parsed.badgeHeight === "number")
-          setBadgeHeight(parsed.badgeHeight);
-        if (typeof parsed.safeArea === "number") setSafeArea(parsed.safeArea);
-        if (typeof parsed.backgroundColor === "string")
-          setBackgroundColor(parsed.backgroundColor);
-        if (Array.isArray(parsed.elements)) {
-          const normalized = parsed.elements
-            .map((element: Partial<CanvasElement>) => normalizeElement(element))
-            .filter(Boolean) as CanvasElement[];
-          if (normalized.length) setElements(normalized);
-        }
-        if (Array.isArray(parsed.fields)) setFields(parsed.fields);
-        if (Array.isArray(parsed.rows)) setRows(parsed.rows);
-        if (parsed.page) setPage(parsed.page);
-        if (parsed.backgroundFit) setBackgroundFit(parsed.backgroundFit);
-      }
-    } catch {
-      // A malformed local draft should never block the editor.
-    } finally {
-      setHydrated(true);
-    }
-    /* eslint-enable react-hooks/set-state-in-effect */
+        setBadgeWidth(project.badgeWidth);
+        setBadgeHeight(project.badgeHeight);
+        setSafeArea(project.safeArea);
+        setBackgroundColor(project.backgroundColor);
+        setBackground(project.background);
+        setBackgroundName(project.backgroundName);
+        setBackgroundFit(project.backgroundFit);
+        setElements(project.elements);
+        elementsRef.current = project.elements;
+        setFields(project.fields);
+        setRows(project.rows);
+        setSelectedRowId(project.rows[0]?.id || "");
+        setPage(project.page);
+        setDpi(project.dpi);
+        setSaveStatus("saved");
+      })
+      .catch(() => {
+        // A blocked browser storage API should not prevent editing.
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
+    const revision = saveRevisionRef.current + 1;
+    saveRevisionRef.current = revision;
+    setSaveStatus("saving");
     const timer = window.setTimeout(() => {
-      try {
-        localStorage.setItem(
-          "badgeflow-project-v1",
-          JSON.stringify({
-            badgeWidth,
-            badgeHeight,
-            safeArea,
-            backgroundColor,
-            elements,
-            fields,
-            rows,
-            page,
-            backgroundFit,
-          }),
-        );
-      } catch {
-        // Background images are intentionally kept in memory, so quota errors are harmless.
-      }
-    }, 250);
+      const project: BadgeProject = {
+        version: PROJECT_VERSION,
+        updatedAt: new Date().toISOString(),
+        badgeWidth,
+        badgeHeight,
+        safeArea,
+        backgroundColor,
+        background,
+        backgroundName,
+        backgroundFit,
+        elements,
+        fields,
+        rows,
+        page,
+        dpi,
+      };
+      void saveProjectDraft(project)
+        .then(() => {
+          if (saveRevisionRef.current !== revision) return;
+          setHasSavedDraft(true);
+          setSaveStatus("saved");
+        })
+        .catch(() => {
+          if (saveRevisionRef.current !== revision) return;
+          setSaveStatus("error");
+        });
+    }, 400);
     return () => window.clearTimeout(timer);
   }, [
     hydrated,
@@ -1105,11 +1377,14 @@ export function BadgeStudio() {
     badgeHeight,
     safeArea,
     backgroundColor,
+    background,
+    backgroundName,
     elements,
     fields,
     rows,
     page,
     backgroundFit,
+    dpi,
   ]);
 
   useEffect(() => {
@@ -1128,6 +1403,61 @@ export function BadgeStudio() {
     },
     [],
   );
+
+  function rememberElements() {
+    const snapshot = cloneElements(elementsRef.current);
+    setHistoryPast((current) => [...current.slice(-39), snapshot]);
+    setHistoryFuture([]);
+  }
+
+  function mutateElements(
+    updater: (current: CanvasElement[]) => CanvasElement[],
+    recordHistory = true,
+  ) {
+    if (recordHistory) rememberElements();
+    setElements((current) => updater(current));
+  }
+
+  function updateElement(
+    id: string,
+    patch: Partial<TextElement> | Partial<ImageElement>,
+    recordHistory = true,
+  ) {
+    mutateElements(
+      (current) =>
+        current.map((element) =>
+          element.id === id
+            ? ({ ...element, ...patch } as CanvasElement)
+            : element,
+        ),
+      recordHistory,
+    );
+  }
+
+  const undoElements = useCallback(() => {
+    if (!historyPast.length) return;
+    const previous = historyPast[historyPast.length - 1];
+    setHistoryPast((current) => current.slice(0, -1));
+    setHistoryFuture((current) => [
+      cloneElements(elementsRef.current),
+      ...current.slice(0, 39),
+    ]);
+    setElements(cloneElements(previous));
+    setSelectedElementId((current) =>
+      previous.some((element) => element.id === current) ? current : null,
+    );
+  }, [historyPast]);
+
+  const redoElements = useCallback(() => {
+    if (!historyFuture.length) return;
+    const next = historyFuture[0];
+    setHistoryFuture((current) => current.slice(1));
+    setHistoryPast((current) => [
+      ...current.slice(-39),
+      cloneElements(elementsRef.current),
+    ]);
+    setElements(cloneElements(next));
+  }, [historyFuture]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -1151,68 +1481,7 @@ export function BadgeStudio() {
     };
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-    // The history functions intentionally read the current render's snapshots.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyPast, historyFuture]);
-
-  function cloneElements(source: CanvasElement[]) {
-    return source.map((element) => ({ ...element })) as CanvasElement[];
-  }
-
-  function rememberElements() {
-    const snapshot = cloneElements(elementsRef.current);
-    setHistoryPast((current) => [...current.slice(-39), snapshot]);
-    setHistoryFuture([]);
-  }
-
-  function mutateElements(
-    updater: (current: CanvasElement[]) => CanvasElement[],
-    recordHistory = true,
-  ) {
-    if (recordHistory) rememberElements();
-    setElements((current) => updater(current));
-  }
-
-  function updateElement(
-    id: string,
-    patch: Partial<TextElement> | Partial<ImageElement>,
-    recordHistory = true,
-  ) {
-    mutateElements(
-      (current) =>
-      current.map((element) =>
-          element.id === id
-            ? ({ ...element, ...patch } as CanvasElement)
-            : element,
-        ),
-      recordHistory,
-    );
-  }
-
-  function undoElements() {
-    if (!historyPast.length) return;
-    const previous = historyPast[historyPast.length - 1];
-    setHistoryPast((current) => current.slice(0, -1));
-    setHistoryFuture((current) => [
-      cloneElements(elementsRef.current),
-      ...current.slice(0, 39),
-    ]);
-    setElements(cloneElements(previous));
-    setSelectedElementId((current) =>
-      previous.some((element) => element.id === current) ? current : null,
-    );
-  }
-
-  function redoElements() {
-    if (!historyFuture.length) return;
-    const next = historyFuture[0];
-    setHistoryFuture((current) => current.slice(1));
-    setHistoryPast((current) => [
-      ...current.slice(-39),
-      cloneElements(elementsRef.current),
-    ]);
-    setElements(cloneElements(next));
-  }
+  }, [redoElements, undoElements]);
 
   function startWithPreset(preset: BadgePreset) {
     const presetElements = createPresetElements(preset.width, preset.height);
@@ -1442,23 +1711,24 @@ export function BadgeStudio() {
     }
   }
 
-  function handleBackground(file: File | undefined) {
+  async function handleBackground(file: File | undefined) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setToast("PNG, JPG, WebP 이미지 파일을 선택해 주세요.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBackground(String(reader.result));
+    try {
+      const asset = await readImageAsset(file);
+      setBackground(asset.src);
       setBackgroundName(file.name);
       setToast("배경 이미지를 적용했습니다.");
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "배경 이미지를 적용하지 못했습니다.",
+      );
+    }
   }
 
   async function readImageAsset(file: File) {
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_IMAGE_BYTES) {
       throw new Error("이미지는 10MB 이하로 올려 주세요.");
     }
     const isSvg =
@@ -1478,7 +1748,15 @@ export function BadgeStudio() {
       }
       documentNode
         .querySelectorAll("script, foreignObject, iframe, object, embed")
-        .forEach((node) => node.remove());
+        .forEach((node) => {
+          node.remove();
+        });
+      documentNode.querySelectorAll("style").forEach((node) => {
+        const css = node.textContent || "";
+        if (/@import|url\s*\(|expression\s*\(|-moz-binding|behavior\s*:/i.test(css)) {
+          node.remove();
+        }
+      });
       documentNode.querySelectorAll("*").forEach((node) => {
         Array.from(node.attributes).forEach((attribute) => {
           const name = attribute.name.toLowerCase();
@@ -1486,17 +1764,29 @@ export function BadgeStudio() {
           if (name.startsWith("on")) node.removeAttribute(attribute.name);
           if (
             (name === "href" || name === "xlink:href") &&
-            /^(https?:|\/\/)/i.test(value)
+            !/^(?:#|data:image\/(?:png|jpeg|webp);base64,)/i.test(value)
+          ) {
+            node.removeAttribute(attribute.name);
+          }
+          if (
+            name === "style" &&
+            /@import|url\s*\(|expression\s*\(|-moz-binding|behavior\s*:/i.test(
+              value,
+            )
           ) {
             node.removeAttribute(attribute.name);
           }
         });
       });
       const sanitized = new XMLSerializer().serializeToString(svg);
-      return {
+      const asset = {
         src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sanitized)}`,
         mimeType: "image/svg+xml",
       };
+      if (!isSafeImageDataUrl(asset.src)) {
+        throw new Error("SVG 파일이 너무 크거나 지원하지 않는 형식입니다.");
+      }
+      return asset;
     }
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
       throw new Error("PNG, JPG, WebP 또는 SVG 파일을 선택해 주세요.");
@@ -1507,6 +1797,9 @@ export function BadgeStudio() {
       reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
       reader.readAsDataURL(file);
     });
+    if (!isSafeImageDataUrl(src)) {
+      throw new Error("이미지 파일이 너무 크거나 지원하지 않는 형식입니다.");
+    }
     return { src, mimeType: file.type };
   }
 
@@ -1630,9 +1923,9 @@ export function BadgeStudio() {
   }
 
   function exportProject() {
-    const project = {
-      version: 2,
-      exportedAt: new Date().toISOString(),
+    const project: BadgeProject = {
+      version: PROJECT_VERSION,
+      updatedAt: new Date().toISOString(),
       badgeWidth,
       badgeHeight,
       safeArea,
@@ -1654,35 +1947,52 @@ export function BadgeStudio() {
     anchor.href = url;
     anchor.download = `BadgeFlow_${badgeWidth}x${badgeHeight}mm.badgeflow.json`;
     anchor.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     setToast("프로젝트 백업 파일을 저장했습니다.");
   }
 
   async function importProject(file: File | undefined) {
     if (!file) return;
     try {
-      const project = JSON.parse(await file.text());
-      if (!Array.isArray(project.elements) || !Array.isArray(project.rows)) {
+      if (file.size > MAX_PROJECT_BYTES) {
+        throw new Error("프로젝트 파일은 30MB 이하만 불러올 수 있습니다.");
+      }
+      const rawProject: unknown = JSON.parse(await file.text());
+      if (
+        !isRecord(rawProject) ||
+        !Array.isArray(rawProject.elements) ||
+        !Array.isArray(rawProject.rows)
+      ) {
         throw new Error("BadgeFlow 프로젝트 파일이 아닙니다.");
       }
-      const importedElements = project.elements
-        .map((element: Partial<CanvasElement>) => normalizeElement(element))
-        .filter(Boolean) as CanvasElement[];
-      setBadgeWidth(Number(project.badgeWidth || 95));
-      setBadgeHeight(Number(project.badgeHeight || 123));
-      setSafeArea(Number(project.safeArea ?? 5));
-      setBackgroundColor(project.backgroundColor || "#ffffff");
-      setBackground(project.background || null);
-      setBackgroundName(project.backgroundName || "");
-      setBackgroundFit(project.backgroundFit || "cover");
-      setElements(importedElements);
-      setFields(Array.isArray(project.fields) ? project.fields : DEFAULT_FIELDS);
+      if (rawProject.elements.length > MAX_ELEMENTS) {
+        throw new Error(`프로젝트에는 요소를 최대 ${MAX_ELEMENTS}개까지 넣을 수 있습니다.`);
+      }
+      if (rawProject.rows.length > MAX_ROWS) {
+        throw new Error(`명찰 데이터는 최대 ${MAX_ROWS}행까지 불러올 수 있습니다.`);
+      }
+      const project = normalizeProject(rawProject);
+      if (!project) {
+        throw new Error(
+          "지원하지 않거나 손상된 BadgeFlow 프로젝트 파일입니다.",
+        );
+      }
+      setBadgeWidth(project.badgeWidth);
+      setBadgeHeight(project.badgeHeight);
+      setSafeArea(project.safeArea);
+      setBackgroundColor(project.backgroundColor);
+      setBackground(project.background);
+      setBackgroundName(project.backgroundName);
+      setBackgroundFit(project.backgroundFit);
+      setElements(project.elements);
+      elementsRef.current = project.elements;
+      setFields(project.fields);
       setRows(project.rows);
-      setPage(project.page || DEFAULT_PAGE);
-      setDpi(Number(project.dpi || 300));
+      setPage(project.page);
+      setDpi(project.dpi);
       setHistoryPast([]);
       setHistoryFuture([]);
-      setSelectedElementId(importedElements.at(-1)?.id || null);
+      setSelectedElementId(project.elements.at(-1)?.id || null);
       setSelectedRowId(project.rows[0]?.id || "");
       setToast("프로젝트를 불러왔습니다.");
     } catch (error) {
@@ -1697,13 +2007,30 @@ export function BadgeStudio() {
   function handleCsv(file: File | undefined) {
     if (!file) return;
     setCsvError("");
+    if (file.size > MAX_CSV_BYTES) {
+      setCsvError("CSV 파일은 5MB 이하만 불러올 수 있습니다.");
+      return;
+    }
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: "greedy",
+      worker: true,
+      preview: MAX_ROWS + 1,
       complete: (result) => {
-        const importedFields = (result.meta.fields || [])
-          .map((field) => field.trim())
-          .filter(Boolean);
+        if (result.errors.some((error) => error.type === "Quotes")) {
+          setCsvError("CSV 따옴표 형식이 올바르지 않습니다.");
+          return;
+        }
+        if ((result.meta.fields || []).length > MAX_FIELDS) {
+          setCsvError(`CSV 열은 최대 ${MAX_FIELDS}개까지 불러올 수 있습니다.`);
+          return;
+        }
+        if (result.data.length > MAX_ROWS) {
+          setCsvError(`CSV 데이터는 최대 ${MAX_ROWS}행까지 불러올 수 있습니다.`);
+          return;
+        }
+        const sourceFields = result.meta.fields || [];
+        const importedFields = normalizeFields(sourceFields, []);
         if (!importedFields.length || !result.data.length) {
           setCsvError("헤더와 한 개 이상의 데이터 행이 있는 CSV가 필요합니다.");
           return;
@@ -1711,7 +2038,15 @@ export function BadgeStudio() {
         const importedRows = result.data.map((row) => {
           const normalized: BadgeRow = { id: makeId("row") };
           importedFields.forEach((field) => {
-            normalized[field] = String(row[field] ?? "");
+            const sourceField =
+              sourceFields.find(
+                (candidate) =>
+                  candidate.trim().slice(0, MAX_FIELD_LENGTH) === field,
+              ) || field;
+            normalized[field] = String(row[sourceField] ?? "").slice(
+              0,
+              MAX_CELL_LENGTH,
+            );
           });
           return normalized;
         });
@@ -1729,6 +2064,18 @@ export function BadgeStudio() {
   function addField() {
     const value = newField.trim();
     if (!value || fields.includes(value)) return;
+    if (FORBIDDEN_FIELD_NAMES.has(value)) {
+      setToast("이 필드 이름은 사용할 수 없습니다.");
+      return;
+    }
+    if (value.length > MAX_FIELD_LENGTH) {
+      setToast(`필드 이름은 ${MAX_FIELD_LENGTH}자 이하로 입력해 주세요.`);
+      return;
+    }
+    if (fields.length >= MAX_FIELDS) {
+      setToast(`필드는 최대 ${MAX_FIELDS}개까지 추가할 수 있습니다.`);
+      return;
+    }
     setFields((current) => [...current, value]);
     setRows((current) => current.map((row) => ({ ...row, [value]: "" })));
     setNewField("");
@@ -1758,6 +2105,10 @@ export function BadgeStudio() {
   }
 
   function addRow() {
+    if (rows.length >= MAX_ROWS) {
+      setToast(`명찰 데이터는 최대 ${MAX_ROWS}행까지 추가할 수 있습니다.`);
+      return;
+    }
     const row: BadgeRow = { id: makeId("row") };
     fields.forEach((field) => {
       row[field] = "";
@@ -1776,7 +2127,11 @@ export function BadgeStudio() {
 
   function updateRow(id: string, field: string, value: string) {
     setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+      current.map((row) =>
+        row.id === id
+          ? { ...row, [field]: value.slice(0, MAX_CELL_LENGTH) }
+          : row,
+      ),
     );
   }
 
@@ -1805,6 +2160,7 @@ export function BadgeStudio() {
     }
 
     setIsExporting(true);
+    setExportProgress(0);
     try {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({
@@ -1819,7 +2175,7 @@ export function BadgeStudio() {
         creator: "BadgeFlow",
       });
 
-      const badgeCache = new Map<string, string>();
+      let processedRows = 0;
       for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
         if (pageIndex > 0) {
           doc.addPage(
@@ -1838,20 +2194,16 @@ export function BadgeStudio() {
           const rowIndex = Math.floor(index / layout.columns);
           const x = layout.startX + column * (badgeWidth + page.gapX);
           const y = layout.startY + rowIndex * (badgeHeight + page.gapY);
-          let rendered = badgeCache.get(row.id);
-          if (!rendered) {
-            rendered = await renderBadgeImage({
-              badgeWidth,
-              badgeHeight,
-              backgroundColor,
-              background,
-              backgroundFit,
-              elements,
-              row,
-              dpi,
-            });
-            badgeCache.set(row.id, rendered);
-          }
+          const rendered = await renderBadgeImage({
+            badgeWidth,
+            badgeHeight,
+            backgroundColor,
+            background,
+            backgroundFit,
+            elements,
+            row,
+            dpi,
+          });
 
           doc.addImage(
             rendered,
@@ -1909,7 +2261,17 @@ export function BadgeStudio() {
                 x + badgeWidth,
                 y + badgeHeight + offset + mark,
               ],
-            ].forEach(([x1, y1, x2, y2]) => doc.line(x1, y1, x2, y2));
+            ].forEach(([x1, y1, x2, y2]) => {
+              doc.line(x1, y1, x2, y2);
+            });
+          }
+
+          processedRows += 1;
+          setExportProgress(Math.round((processedRows / rows.length) * 100));
+          if (processedRows % 4 === 0) {
+            await new Promise<void>((resolve) =>
+              window.requestAnimationFrame(() => resolve()),
+            );
           }
         }
       }
@@ -1918,10 +2280,14 @@ export function BadgeStudio() {
       doc.save(`명찰_${badgeWidth}x${badgeHeight}mm_${date}.pdf`);
       setToast("인쇄용 PDF를 만들었습니다.");
     } catch (error) {
-      console.error(error);
-      setToast("PDF 생성 중 문제가 생겼습니다. 다시 시도해 주세요.");
+      setToast(
+        error instanceof Error
+          ? `PDF를 만들지 못했습니다: ${error.message}`
+          : "PDF 생성 중 문제가 생겼습니다. 다시 시도해 주세요.",
+      );
     } finally {
       setIsExporting(false);
+      setExportProgress(0);
     }
   }
 
@@ -1988,9 +2354,28 @@ export function BadgeStudio() {
         </nav>
 
         <div className="topbar-actions">
-          <span className="save-state" title="이 브라우저에 자동 저장됩니다">
-            <Check size={14} />
-            자동 저장
+          <span
+            className={`save-state is-${saveStatus}`}
+            title={
+              saveStatus === "error"
+                ? "브라우저 저장 공간을 확인해 주세요"
+                : "이 브라우저의 IndexedDB에 자동 저장됩니다"
+            }
+            role="status"
+            aria-live="polite"
+          >
+            {saveStatus === "saving" ? (
+              <LoaderCircle className="spin" size={14} />
+            ) : saveStatus === "error" ? (
+              <AlertTriangle size={14} />
+            ) : (
+              <Check size={14} />
+            )}
+            {saveStatus === "saving"
+              ? "저장 중"
+              : saveStatus === "error"
+                ? "저장 실패"
+                : "저장됨"}
           </span>
           <button
             className="primary-button top-export"
@@ -1999,7 +2384,7 @@ export function BadgeStudio() {
             disabled={isExporting}
           >
             <Download size={17} />
-            {isExporting ? "PDF 만드는 중…" : "PDF 만들기"}
+            {isExporting ? `PDF ${exportProgress}%` : "PDF 만들기"}
           </button>
         </div>
       </header>
@@ -2222,7 +2607,10 @@ export function BadgeStudio() {
                   <span>안전영역 {safeArea} mm</span>
                 </div>
                 <div className="toolbar-controls">
-                  <div className="toolbar-icon-group" aria-label="편집 기록">
+                  <fieldset
+                    className="toolbar-icon-group"
+                    aria-label="편집 기록"
+                  >
                     <button
                       type="button"
                       onClick={undoElements}
@@ -2241,7 +2629,7 @@ export function BadgeStudio() {
                     >
                       <Redo2 size={16} />
                     </button>
-                  </div>
+                  </fieldset>
                   <div className="project-tools">
                     <label title="BadgeFlow 프로젝트 불러오기">
                       <FolderOpen size={15} />
@@ -2282,7 +2670,7 @@ export function BadgeStudio() {
 
               <div
                 className="canvas-stage"
-                onClick={() => setSelectedElementId(null)}
+                onPointerDown={() => setSelectedElementId(null)}
               >
                 <div className="measurement measurement-top">
                   <span>0</span>
@@ -2292,6 +2680,7 @@ export function BadgeStudio() {
                   <span>0</span>
                   <strong>{displayNumber(badgeHeight)} mm</strong>
                 </div>
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: Drag and drop is supplementary to the accessible image file picker. */}
                 <div
                   className="badge-frame"
                   ref={stageRef}
@@ -2456,7 +2845,10 @@ export function BadgeStudio() {
                           </label>
                         </div>
                         <div className="property-row">
-                          <div className="align-control" aria-label="텍스트 정렬">
+                          <fieldset
+                            className="align-control"
+                            aria-label="텍스트 정렬"
+                          >
                             {(
                               [
                                 ["left", AlignLeft],
@@ -2486,7 +2878,7 @@ export function BadgeStudio() {
                                 <Icon size={17} />
                               </button>
                             ))}
-                          </div>
+                          </fieldset>
                           <label className="color-control">
                             <input
                               type="color"
@@ -2928,7 +3320,7 @@ export function BadgeStudio() {
                   총 <strong>{rows.length}</strong>명
                 </span>
                 <span className="data-hint">
-                  첫 행을 헤더로 인식합니다 · UTF-8 CSV 권장
+                  첫 행을 헤더로 인식합니다 · UTF-8 CSV · 최대 {MAX_ROWS}행
                 </span>
               </div>
 
@@ -2966,6 +3358,7 @@ export function BadgeStudio() {
                           <td key={field}>
                             <input
                               value={row[field] || ""}
+                              maxLength={MAX_CELL_LENGTH}
                               onChange={(event) =>
                                 updateRow(row.id, field, event.target.value)
                               }
@@ -3042,6 +3435,7 @@ export function BadgeStudio() {
                     <input
                       id="new-field"
                       value={newField}
+                      maxLength={MAX_FIELD_LENGTH}
                       onChange={(event) => setNewField(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") addField();
@@ -3385,7 +3779,9 @@ export function BadgeStudio() {
                   disabled={isExporting || !layout.fits}
                 >
                   <Download size={18} />
-                  {isExporting ? "PDF 만드는 중…" : "인쇄용 PDF 다운로드"}
+                  {isExporting
+                    ? `PDF 만드는 중 · ${exportProgress}%`
+                    : "인쇄용 PDF 다운로드"}
                 </button>
                 <p>
                   다운로드한 PDF는 인쇄 창에서 <strong>실제 크기 100%</strong>로

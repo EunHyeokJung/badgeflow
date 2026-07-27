@@ -1,98 +1,94 @@
-# vinext-starter
+# BadgeFlow
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
-## Prerequisites
+[라이브 데모](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)
 
-- Node.js `>=22.13.0`
+![BadgeFlow 미리보기](public/og.png)
 
-## Quick Start
+## 주요 기능
+
+- 95 × 123 mm 목걸이 명찰, A7, B7, CR80 등 대표 규격으로 바로 시작
+- A3, A4, Letter 및 사용자 지정 출력 용지
+- 텍스트, 매개변수 텍스트, PNG/JPG/WebP/SVG 이미지 레이어
+- 드래그 앤 드롭, 키보드 이동, 정렬, 레이어 순서, 잠금, 숨김, 실행 취소
+- 가로·세로 중앙 정렬 버튼과 중앙 자석 스냅 가이드
+- CSV 업로드 또는 표 직접 편집
+- 재단선, 외곽선, 간격, DPI를 반영한 실제 크기 PDF
+- 이미지와 데이터를 포함하는 프로젝트 백업/복원
+- IndexedDB 자동 저장과 localStorage 폴백
+
+업로드한 이미지와 CSV는 서버로 전송하지 않습니다. 디자인, 자동 저장, PDF 생성은 브라우저 안에서 처리됩니다.
+
+## 빠른 시작
+
+요구 사항:
+
+- Node.js 22.13 이상
+- npm 10 이상
 
 ```bash
-npm install
+git clone <YOUR_REPOSITORY_URL>
+cd badgeflow
+npm ci
 npm run dev
+```
+
+개발 서버가 출력한 로컬 주소를 브라우저에서 여세요.
+
+## 명령어
+
+```bash
+npm run dev        # 로컬 개발 서버
+npm run lint       # Biome 정적 분석
+npm run typecheck  # TypeScript 검사
+npm test           # 프로덕션 빌드 + 렌더링 통합 테스트
+npm run check      # lint + typecheck + test
+npm run build      # 프로덕션 빌드
+npm run start      # 빌드 결과 로컬 실행
+```
+
+## 지원 범위와 안전 제한
+
+| 항목 | 지원 및 제한 |
+| --- | --- |
+| 이미지 | PNG, JPEG, WebP, SVG · 파일당 최대 10MB |
+| CSV | UTF-8 권장 · 최대 5MB, 500행, 50열 |
+| 프로젝트 | `.badgeflow.json` · 최대 30MB |
+| PDF | 150, 300, 600 DPI |
+| 저장 | IndexedDB 우선, localStorage 폴백 |
+
+SVG는 스크립트, 외부 리소스 참조, 위험한 CSS를 제거한 뒤 사용합니다. 프로젝트 import도 허용된 데이터 URL과 유효한 수치 범위만 받아들입니다.
+
+## 구조
+
+```text
+app/                 Next.js App Router, 메타데이터, 오류 화면
+components/          BadgeFlow 편집기 UI와 PDF 렌더링
+lib/badgeflow/       브라우저 저장소 어댑터
+worker/              Cloudflare Worker 엔트리와 보안 헤더
+tests/               서버 렌더링 및 배포 계약 테스트
+docs/                아키텍처 문서
+```
+
+상세한 데이터 흐름과 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md)를 참고하세요.
+
+## 배포
+
+현재 구성은 vinext를 사용해 Next.js App Router를 Cloudflare Worker 런타임으로 빌드합니다.
+
+```bash
+npm ci
+npm run check
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+호스팅 환경에는 정적 에셋을 제공하는 `ASSETS` 바인딩이 필요합니다. 플랫폼별 배포 설정은 해당 플랫폼의 비밀 저장소에 두고 저장소에는 토큰이나 `.env` 파일을 커밋하지 마세요.
 
-## Included Shape
+## 기여
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+버그 수정과 기능 제안을 환영합니다. 작업 전 [기여 가이드](CONTRIBUTING.md), [행동 강령](CODE_OF_CONDUCT.md), [보안 정책](SECURITY.md)을 읽어 주세요.
 
-## Workspace Auth Headers
+## 라이선스
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+[MIT](LICENSE) © BadgeFlow contributors

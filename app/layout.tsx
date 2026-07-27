@@ -1,16 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
-  const host =
+  const requestedHost =
     requestHeaders.get("x-forwarded-host") ||
     requestHeaders.get("host") ||
     "localhost:3000";
+  const host = /^[a-z0-9.-]+(?::\d+)?$/i.test(requestedHost)
+    ? requestedHost
+    : "localhost:3000";
+  const forwardedProtocol = requestHeaders.get("x-forwarded-proto");
   const protocol =
-    requestHeaders.get("x-forwarded-proto") ||
-    (host.includes("localhost") ? "http" : "https");
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? forwardedProtocol
+      : host.includes("localhost")
+        ? "http"
+        : "https";
   const origin = `${protocol}://${host}`;
   const title = "BadgeFlow | 명찰 인쇄 스튜디오";
   const description =
@@ -20,6 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     title,
     description,
+    alternates: {
+      canonical: "/",
+    },
     icons: {
       icon: "/favicon.png",
       shortcut: "/favicon.png",
@@ -45,6 +55,11 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#2563eb",
+};
 
 export default function RootLayout({
   children,

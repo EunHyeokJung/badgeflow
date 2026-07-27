@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 보안 취약점
+    url: https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/privately-reporting-a-security-vulnerability
+    about: 공개 이슈를 만들지 말고 저장소의 Private vulnerability reporting을 사용해 주세요.
