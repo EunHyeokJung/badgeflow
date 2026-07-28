@@ -103,4 +103,4 @@ npm run build
 
 ## 라이선스
 
-[MIT](LICENSE) © BadgeFlow contributors
+[MIT](LICENSE) © EunHyeokJung

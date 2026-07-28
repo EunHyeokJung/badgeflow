@@ -42,6 +42,11 @@
   "type": "module",
   "description": "Open-source browser-based name badge design and print studio",
   "license": "MIT",
+  "author": {
+    "name": "EunHyeokJung",
+    "email": "silverhyeok.dev@gmail.com",
+    "url": "https://github.com/EunHyeokJung"
+  },
   "homepage": "https://badgeflow-studio.silverhyeok-dev.chatgpt.site/",
   "repository": {
     "type": "git",

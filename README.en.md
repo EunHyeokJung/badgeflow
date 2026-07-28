@@ -57,4 +57,4 @@ SVG uploads are sanitized by removing scripts, external resource references, dan
 
 ## License
 
-[MIT](LICENSE) © BadgeFlow contributors
+[MIT](LICENSE) © EunHyeokJung
