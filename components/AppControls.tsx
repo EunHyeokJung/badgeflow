@@ -7,6 +7,7 @@ import {
   SUPPORTED_LOCALES,
   type Translate,
 } from "@/lib/i18n";
+import { withBasePath } from "@/lib/site";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -30,7 +31,9 @@ export function usePwaInstall() {
     setInstalled(isStandalone());
 
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      void navigator.serviceWorker.register("/sw.js");
+      void navigator.serviceWorker.register(withBasePath("/sw.js"), {
+        scope: withBasePath("/"),
+      });
     }
 
     const handlePrompt = (event: Event) => {

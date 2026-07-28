@@ -1,10 +1,16 @@
-const CACHE_NAME = "badgeflow-app-v1";
+const CACHE_NAME = "badgeflow-app-v2";
+const SCOPE_URL = new URL(self.registration.scope);
+const SCOPE_PATH = SCOPE_URL.pathname.endsWith("/")
+  ? SCOPE_URL.pathname
+  : `${SCOPE_URL.pathname}/`;
+const scopedPath = (pathname) =>
+  new URL(pathname.replace(/^\/+/, ""), SCOPE_URL).pathname;
 const APP_SHELL = [
-  "/",
-  "/manifest.webmanifest",
-  "/favicon.png",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
+  SCOPE_PATH,
+  scopedPath("manifest.webmanifest"),
+  scopedPath("favicon.png"),
+  scopedPath("icons/icon-192.png"),
+  scopedPath("icons/icon-512.png"),
 ];
 
 self.addEventListener("install", (event) => {
@@ -41,10 +47,12 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          void caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(SCOPE_PATH, copy));
           return response;
         })
-        .catch(() => caches.match("/")),
+        .catch(() => caches.match(SCOPE_PATH)),
     );
     return;
   }

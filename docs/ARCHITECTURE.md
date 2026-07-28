@@ -23,7 +23,8 @@ BadgeFlow는 계정이나 서버 데이터베이스 없이 명찰 디자인부�
 - `components/BadgeStudio.tsx`: 편집 상태, 캔버스 상호작용, import/export, PDF 생성
 - `lib/badgeflow/storage.ts`: IndexedDB 저장과 localStorage 폴백
 - `worker/index.ts`: vinext 요청 처리, 이미지 최적화, 공통 보안 헤더
-- `app/layout.tsx`: 동적 canonical origin을 사용하는 메타데이터
+- `lib/site.ts`: 기본 배포와 GitHub Pages 하위 경로를 정규화하는 URL 도우미
+- `app/layout.tsx`: 배포 대상별 canonical 및 공유 메타데이터
 
 ## 단위 체계
 
@@ -36,6 +37,7 @@ BadgeFlow는 계정이나 서버 데이터베이스 없이 명찰 디자인부�
 - 프로젝트는 알려진 필드만 읽고 수치 범위와 데이터 URL을 제한합니다.
 - 브라우저 저장 실패는 편집을 막지 않고 UI에 상태로 표시합니다.
 - Worker는 CSP, frame 차단, MIME sniffing 차단 등 공통 헤더를 추가합니다.
+- GitHub Pages 미러는 정적 호스팅이므로 Worker 응답 헤더 대신 저장소의 정적 export 계약을 사용합니다.
 
 ## 향후 분리 후보
 

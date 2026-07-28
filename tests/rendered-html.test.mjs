@@ -109,9 +109,49 @@ test("ships an installable multilingual PWA contract", async () => {
   }
   assert.match(i18n, /DICTIONARIES\[locale\]\[key\] \?\? en\[key\]/);
   assert.match(controls, /beforeinstallprompt/);
-  assert.match(controls, /navigator\.serviceWorker\.register\("\/sw\.js"\)/);
-  assert.match(serviceWorker, /badgeflow-app-v1/);
+  assert.match(
+    controls,
+    /navigator\.serviceWorker\.register\(withBasePath\("\/sw\.js"\)/,
+  );
+  assert.match(serviceWorker, /badgeflow-app-v2/);
+  assert.match(serviceWorker, /self\.registration\.scope/);
+  assert.match(serviceWorker, /cache\.put\(SCOPE_PATH, copy\)/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
+});
+
+test("keeps the desktop editor inside the dynamic viewport", async () => {
+  const css = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(css, /@media \(min-width: 981px\)/);
+  assert.match(css, /\.app-shell\s*{[^}]*height: 100dvh/s);
+  assert.match(css, /\.main-content\s*{[^}]*overflow: hidden/s);
+  assert.match(css, /\.canvas-stage\s*{[^}]*overflow: auto/s);
+  assert.match(
+    css,
+    /@media \(max-width: 980px\)[\s\S]*?\.topbar\s*{[^}]*backdrop-filter: none/,
+  );
+});
+
+test("defines a GitHub Pages static-export contract", async () => {
+  const [nextConfig, packageJson, workflow, sitePaths] = await Promise.all([
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.github/workflows/pages.yml", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(nextConfig, /output: "export"/);
+  assert.match(nextConfig, /basePath: "\/badgeflow"/);
+  assert.match(packageJson, /"build:pages"/);
+  assert.match(workflow, /actions\/upload-pages-artifact@v4/);
+  assert.match(workflow, /actions\/deploy-pages@v4/);
+  assert.match(sitePaths, /NEXT_PUBLIC_BASE_PATH/);
 });
 
 test("renders a recoverable not-found page", async () => {

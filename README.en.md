@@ -2,7 +2,7 @@
 
 BadgeFlow is an open-source, browser-based name badge designer that connects CSV data to reusable layouts and exports print-ready PDFs at true physical size.
 
-[Open the web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [Download the latest release](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [한국어 README](README.md)
+[Open the web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages mirror](https://eunhyeokjung.github.io/badgeflow/) · [Download the latest release](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [한국어 README](README.md)
 
 ![BadgeFlow preview](public/og.png)
 
@@ -46,8 +46,15 @@ npm run typecheck
 npm test
 npm run check
 npm run build
+npm run build:pages
 npm run start
 ```
+
+The primary deployment uses the vinext Cloudflare Worker build. Pushes to
+`main` also run a static Next.js export and publish the project-scoped
+[GitHub Pages mirror](https://eunhyeokjung.github.io/badgeflow/). The static
+mirror includes base-path-aware PWA assets; Worker response headers remain
+specific to the primary deployment.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), and [docs/PWA.md](docs/PWA.md) for contribution and implementation details.
 

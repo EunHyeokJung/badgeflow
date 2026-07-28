@@ -1,61 +1,50 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
+import {
+  absoluteSiteUrl,
+  SITE_URL,
+  withBasePath,
+} from "@/lib/site";
 import "./globals.css";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const requestedHost =
-    requestHeaders.get("x-forwarded-host") ||
-    requestHeaders.get("host") ||
-    "localhost:3000";
-  const host = /^[a-z0-9.-]+(?::\d+)?$/i.test(requestedHost)
-    ? requestedHost
-    : "localhost:3000";
-  const forwardedProtocol = requestHeaders.get("x-forwarded-proto");
-  const protocol =
-    forwardedProtocol === "http" || forwardedProtocol === "https"
-      ? forwardedProtocol
-      : host.includes("localhost")
-        ? "http"
-        : "https";
-  const origin = `${protocol}://${host}`;
-  const title = "BadgeFlow | 명찰 인쇄 스튜디오";
-  const description =
-    "대표 명찰 규격을 선택하고 디자인과 명단을 연결해 실제 크기 PDF로 출력하는 웹 도구";
+const title = "BadgeFlow | 명찰 인쇄 스튜디오";
+const description =
+  "대표 명찰 규격을 선택하고 디자인과 명단을 연결해 실제 크기 PDF로 출력하는 웹 도구";
+const socialDescription =
+  "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF까지";
 
-  return {
-    metadataBase: new URL(origin),
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title,
+  description,
+  alternates: {
+    canonical: SITE_URL,
+  },
+  icons: {
+    icon: withBasePath("/icons/icon-192.png"),
+    shortcut: withBasePath("/favicon.png"),
+    apple: withBasePath("/icons/apple-touch-icon.png"),
+  },
+  openGraph: {
     title,
-    description,
-    alternates: {
-      canonical: "/",
-    },
-    icons: {
-      icon: "/icons/icon-192.png",
-      shortcut: "/favicon.png",
-      apple: "/icons/apple-touch-icon.png",
-    },
-    openGraph: {
-      title,
-      description: "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF까지",
-      type: "website",
-      images: [
-        {
-          url: `${origin}/og.png`,
-          width: 1536,
-          height: 1024,
-          alt: "BadgeFlow 명찰 인쇄 스튜디오",
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description: "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF까지",
-      images: [`${origin}/og.png`],
-    },
-  };
-}
+    description: socialDescription,
+    type: "website",
+    url: SITE_URL,
+    images: [
+      {
+        url: absoluteSiteUrl("/og.png"),
+        width: 1536,
+        height: 1024,
+        alt: "BadgeFlow 명찰 인쇄 스튜디오",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description: socialDescription,
+    images: [absoluteSiteUrl("/og.png")],
+  },
+};
 
 export const viewport: Viewport = {
   colorScheme: "light",

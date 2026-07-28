@@ -2,7 +2,7 @@
 
 브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
-[웹 앱 실행](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [English README](README.en.md)
+[웹 앱 실행](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages 미러](https://eunhyeokjung.github.io/badgeflow/) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [English README](README.en.md)
 
 ![BadgeFlow 미리보기](public/og.png)
 
@@ -57,6 +57,7 @@ npm run typecheck  # TypeScript 검사
 npm test           # 프로덕션 빌드 + 렌더링 통합 테스트
 npm run check      # lint + typecheck + test
 npm run build      # 프로덕션 빌드
+npm run build:pages # GitHub Pages용 정적 export
 npm run start      # 빌드 결과 로컬 실행
 ```
 
@@ -87,15 +88,16 @@ docs/                아키텍처 문서
 
 ## 배포
 
-현재 구성은 vinext를 사용해 Next.js App Router를 Cloudflare Worker 런타임으로 빌드합니다.
+기본 프로덕션은 vinext를 사용해 Next.js App Router를 Cloudflare Worker 런타임으로 빌드합니다. `main` 브랜치에 푸시하면 [GitHub Pages 미러](https://eunhyeokjung.github.io/badgeflow/)도 별도 Actions 워크플로로 정적 export되어 배포됩니다.
 
 ```bash
 npm ci
 npm run check
 npm run build
+npm run build:pages
 ```
 
-호스팅 환경에는 정적 에셋을 제공하는 `ASSETS` 바인딩이 필요합니다. 플랫폼별 배포 설정은 해당 플랫폼의 비밀 저장소에 두고 저장소에는 토큰이나 `.env` 파일을 커밋하지 마세요.
+기본 호스팅 환경에는 정적 에셋을 제공하는 `ASSETS` 바인딩이 필요합니다. GitHub Pages 빌드는 `/badgeflow/` base path를 적용해 PWA manifest, 아이콘, 서비스 워커까지 하위 경로에서 동작합니다. Worker가 추가하는 보안 응답 헤더는 기본 배포에만 적용됩니다. 플랫폼별 비밀 값은 저장소에 커밋하지 마세요.
 
 ## 기여
 
