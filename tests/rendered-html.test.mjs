@@ -45,6 +45,12 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /명찰 한 장을 디자인하면/);
   assert.match(html, /명단을 한 번에 연결/);
   assert.match(html, /인쇄까지 정확하게/);
+  assert.match(html, /드래그 앤 드롭과 중앙 자석 정렬/);
+  assert.match(html, /UTF-8 CSV 업로드와 최대 500명 처리/);
+  assert.match(html, /반접이 테이블 명패도 양면으로 자동 배치/);
+  assert.match(html, /feature-demo-editor/);
+  assert.match(html, /feature-demo-data/);
+  assert.match(html, /feature-demo-print/);
   assert.match(html, /대표 명찰 규격/);
   assert.match(html, /목걸이 명찰 · 대형 95 × 123 mm로 시작/);
   assert.match(html, /A7 행사 명찰/);
@@ -77,6 +83,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /async function rotateBadgeImage180/);
   assert.match(studio, /doc\.setLineDashPattern\(\[2, 2\], 0\)/);
   assert.match(studio, /function LandingPage/);
+  assert.match(studio, /className="feature-story"/);
+  assert.match(studio, /className="feature-story is-reversed"/);
+  assert.match(studio, /aria-label={t\("featureDesignVisualLabel"\)}/);
+  assert.match(studio, /aria-label={t\("featureDataVisualLabel"\)}/);
+  assert.match(studio, /aria-label={t\("featurePrintVisualLabel"\)}/);
   assert.match(studio, /aria-controls="landing-start-menu"/);
   assert.match(studio, /disabled={!hasSavedDraft}/);
   assert.match(studio, /document\.addEventListener\("keydown", closeOnEscape\)/);
@@ -100,6 +111,10 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.service-overview/);
+  assert.match(css, /\.feature-story/);
+  assert.match(css, /\.feature-editor-layout/);
+  assert.match(css, /\.feature-data-layout/);
+  assert.match(css, /\.feature-print-layout/);
   assert.match(css, /\.landing-start-menu/);
   assert.match(css, /\.preset-mini-sheet/);
   assert.match(css, /\.fold-guide/);

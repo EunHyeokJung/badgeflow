@@ -631,35 +631,195 @@ function LandingPage({
             <h2 id="service-overview-title">{t("serviceTitle")}</h2>
             <p>{t("serviceDescription")}</p>
           </div>
-          <div className="service-feature-grid">
-            <article>
-              <span className="service-feature-icon" aria-hidden="true">
-                <LayoutTemplate size={20} />
+
+          <article
+            className="feature-story"
+            aria-labelledby="feature-design-title"
+          >
+            <div className="feature-story-copy">
+              <span className="feature-story-icon" aria-hidden="true">
+                <LayoutTemplate size={22} />
               </span>
-              <div>
-                <strong>{t("featureDesignTitle")}</strong>
-                <p>{t("featureDesignDescription")}</p>
+              <h3 id="feature-design-title">{t("featureDesignTitle")}</h3>
+              <p>{t("featureDesignDescription")}</p>
+              <ul>
+                {[
+                  t("featureDesignPointOne"),
+                  t("featureDesignPointTwo"),
+                  t("featureDesignPointThree"),
+                ].map((point) => (
+                  <li key={point}>
+                    <Check size={16} aria-hidden="true" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              className="feature-demo feature-demo-editor"
+              role="img"
+              aria-label={t("featureDesignVisualLabel")}
+            >
+              <div className="feature-demo-bar">
+                <strong>BadgeFlow</strong>
+                <span>95 × 123 mm</span>
               </div>
-            </article>
-            <article>
-              <span className="service-feature-icon" aria-hidden="true">
-                <FileSpreadsheet size={20} />
+              <div className="feature-editor-layout">
+                <div className="feature-editor-tools" aria-hidden="true">
+                  <span>
+                    <ImagePlus size={13} />
+                    {t("backgroundImage")}
+                  </span>
+                  <span>
+                    <Type size={13} />
+                    {t("addText")}
+                  </span>
+                  <span>
+                    <ImageIcon size={13} />
+                    SVG
+                  </span>
+                </div>
+                <div className="feature-editor-stage" aria-hidden="true">
+                  <div className="feature-editor-badge">
+                    <span className="feature-badge-logo">BF</span>
+                    <span className="feature-guide is-vertical" />
+                    <span className="feature-guide is-horizontal" />
+                    <strong>{"{name}"}</strong>
+                    <small>{"{team}"}</small>
+                  </div>
+                </div>
+                <div className="feature-editor-properties" aria-hidden="true">
+                  <strong>{t("variables")}</strong>
+                  <span>{"{name}"}</span>
+                  <span>{"{team}"}</span>
+                  <strong>{t("badgeSize")}</strong>
+                  <span>W 95 mm</span>
+                  <span>H 123 mm</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article
+            className="feature-story is-reversed"
+            aria-labelledby="feature-data-title"
+          >
+            <div className="feature-story-copy">
+              <span className="feature-story-icon" aria-hidden="true">
+                <FileSpreadsheet size={22} />
               </span>
-              <div>
-                <strong>{t("featureDataTitle")}</strong>
-                <p>{t("featureDataDescription")}</p>
+              <h3 id="feature-data-title">{t("featureDataTitle")}</h3>
+              <p>{t("featureDataDescription")}</p>
+              <ul>
+                {[
+                  t("featureDataPointOne"),
+                  t("featureDataPointTwo"),
+                  t("featureDataPointThree"),
+                ].map((point) => (
+                  <li key={point}>
+                    <Check size={16} aria-hidden="true" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              className="feature-demo feature-demo-data"
+              role="img"
+              aria-label={t("featureDataVisualLabel")}
+            >
+              <div className="feature-demo-bar">
+                <strong>{t("badgeData")}</strong>
+                <span>{t("totalPeople", { count: 3 })}</span>
               </div>
-            </article>
-            <article>
-              <span className="service-feature-icon" aria-hidden="true">
-                <Printer size={20} />
+              <div className="feature-data-layout" aria-hidden="true">
+                <div className="feature-data-table">
+                  <div className="feature-data-row is-heading">
+                    <span>{"{name}"}</span>
+                    <span>{"{team}"}</span>
+                    <span>{"{role}"}</span>
+                  </div>
+                  {[
+                    ["김민지", "브랜드팀", "디자이너"],
+                    ["이준호", "개발팀", "엔지니어"],
+                    ["박서연", "운영팀", "매니저"],
+                  ].map((row) => (
+                    <div className="feature-data-row" key={row[0]}>
+                      {row.map((cell) => (
+                        <span key={cell}>{cell}</span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div className="feature-generated-badges">
+                  {["김민지", "이준호", "박서연"].map((name, index) => (
+                    <div className="feature-generated-badge" key={name}>
+                      <i>BF</i>
+                      <strong>{name}</strong>
+                      <small>{["브랜드팀", "개발팀", "운영팀"][index]}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article
+            className="feature-story"
+            aria-labelledby="feature-print-title"
+          >
+            <div className="feature-story-copy">
+              <span className="feature-story-icon" aria-hidden="true">
+                <Printer size={22} />
               </span>
-              <div>
-                <strong>{t("featurePrintTitle")}</strong>
-                <p>{t("featurePrintDescription")}</p>
+              <h3 id="feature-print-title">{t("featurePrintTitle")}</h3>
+              <p>{t("featurePrintDescription")}</p>
+              <ul>
+                {[
+                  t("featurePrintPointOne"),
+                  t("featurePrintPointTwo"),
+                  t("featurePrintPointThree"),
+                ].map((point) => (
+                  <li key={point}>
+                    <Check size={16} aria-hidden="true" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              className="feature-demo feature-demo-print"
+              role="img"
+              aria-label={t("featurePrintVisualLabel")}
+            >
+              <div className="feature-demo-bar">
+                <strong>{t("printPreview")}</strong>
+                <span>A4 · 100%</span>
               </div>
-            </article>
-          </div>
+              <div className="feature-print-layout" aria-hidden="true">
+                <div className="feature-print-sheet">
+                  {["김민지", "이준호", "박서연", "최도윤"].map((name) => (
+                    <span className="feature-print-badge" key={name}>
+                      <i />
+                      <strong>{name}</strong>
+                      <small>BadgeFlow</small>
+                    </span>
+                  ))}
+                </div>
+                <div className="feature-print-settings">
+                  <strong>{t("paper")}</strong>
+                  <span>A4 · 210 × 297 mm</span>
+                  <strong>{t("autoCenter")}</strong>
+                  <span>{t("gridLayout", { columns: 2, rows: 2 })}</span>
+                  <strong>{t("cropMarks")}</strong>
+                  <span>{t("actualSize")}</span>
+                </div>
+              </div>
+            </div>
+          </article>
         </section>
 
         <section

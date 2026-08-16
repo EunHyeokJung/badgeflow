@@ -35,13 +35,28 @@ const en = {
     "BadgeFlow is a browser-based tool for setting badge and paper sizes, arranging backgrounds, logos, and text, connecting names and teams from a CSV or table, and exporting a true-size PDF.",
   featureDesignTitle: "Design freely",
   featureDesignDescription:
-    "Place backgrounds, logos, SVGs, fixed text, and name or team variables directly on the canvas.",
+    "Build on a true-size canvas and place backgrounds, logos, SVGs, fixed text, and name or team variables exactly where they belong.",
+  featureDesignPointOne: "Drag, drop, and snap precisely to the center guides",
+  featureDesignPointTwo: "Manage images, SVGs, and text as separate layers",
+  featureDesignPointThree: "Set badge dimensions and safe areas in millimeters",
+  featureDesignVisualLabel:
+    "BadgeFlow editor preview with design tools, a badge canvas, center guides, and variable properties",
   featureDataTitle: "Connect the whole roster",
   featureDataDescription:
-    "Upload a CSV or add rows to the table to generate every person’s badge from one design.",
+    "Upload a CSV or add rows directly. Name, team, and role columns connect to variables in your design and generate every person’s badge.",
+  featureDataPointOne: "Import UTF-8 CSV files with up to 500 people",
+  featureDataPointTwo: "Add or edit the columns your roster needs",
+  featureDataPointThree: "Preview each person’s finished badge immediately",
+  featureDataVisualLabel:
+    "Roster table connected to three automatically generated badge previews",
   featurePrintTitle: "Print at the correct size",
   featurePrintDescription:
-    "Arrange badges on A3 or A4 sheets with spacing and crop marks, then export a 100% true-size PDF.",
+    "Choose the paper, orientation, spacing, and crop marks. BadgeFlow fits the layout and exports a PDF ready to print at 100% actual size.",
+  featurePrintPointOne: "Use A3, A4, Letter, or a custom paper size",
+  featurePrintPointTwo: "Center the layout and add crop marks automatically",
+  featurePrintPointThree: "Generate two-sided folded table tents too",
+  featurePrintVisualLabel:
+    "A4 print preview with four badges, crop marks, and actual-size output settings",
   workflow: "Workflow",
   chooseSize: "Choose size",
   designRoster: "Design & roster",
@@ -328,13 +343,28 @@ const ko: Dictionary = {
     "BadgeFlow는 명찰과 출력 용지 크기를 정하고 배경·로고·텍스트를 배치한 뒤, CSV나 표의 이름·팀 데이터를 연결해 실제 크기 PDF를 만드는 브라우저 기반 도구입니다.",
   featureDesignTitle: "자유롭게 디자인",
   featureDesignDescription:
-    "배경 이미지, 로고·SVG, 고정 텍스트와 이름·팀 변수를 캔버스에 직접 배치합니다.",
+    "실제 mm 규격의 캔버스에서 배경 이미지와 로고·SVG, 고정 문구, 이름·팀 변수를 원하는 위치에 배치합니다.",
+  featureDesignPointOne: "드래그 앤 드롭과 중앙 자석 정렬",
+  featureDesignPointTwo: "이미지·SVG·텍스트를 개별 레이어로 관리",
+  featureDesignPointThree: "명찰 규격과 안전 영역을 mm 단위로 설정",
+  featureDesignVisualLabel:
+    "디자인 도구, 중앙 정렬선, 변수 속성을 보여주는 BadgeFlow 편집기 예시",
   featureDataTitle: "명단을 한 번에 연결",
   featureDataDescription:
-    "CSV를 올리거나 표에 행을 추가하면 같은 디자인으로 모든 사람의 명찰을 자동 생성합니다.",
+    "CSV를 올리거나 표에 직접 행을 추가하면 이름, 팀, 직책 같은 열이 디자인의 변수와 연결되어 모든 사람의 명찰이 완성됩니다.",
+  featureDataPointOne: "UTF-8 CSV 업로드와 최대 500명 처리",
+  featureDataPointTwo: "필요한 열을 자유롭게 추가하고 수정",
+  featureDataPointThree: "사람별 완성 결과를 즉시 미리보기",
+  featureDataVisualLabel:
+    "명단 표의 세 행이 완성된 명찰 세 장으로 자동 변환되는 예시",
   featurePrintTitle: "인쇄까지 정확하게",
   featurePrintDescription:
-    "A3·A4 용지 배치와 간격, 재단선을 계산해 100% 실제 크기 PDF로 출력합니다.",
+    "용지 방향과 간격, 재단선을 정하면 명찰을 자동 배치하고 100% 실제 크기로 인쇄할 수 있는 PDF를 만듭니다.",
+  featurePrintPointOne: "A3·A4·Letter 및 사용자 지정 용지",
+  featurePrintPointTwo: "자동 가운데 정렬과 재단선",
+  featurePrintPointThree: "반접이 테이블 명패도 양면으로 자동 배치",
+  featurePrintVisualLabel:
+    "A4 용지에 명찰 네 장과 재단선, 실제 크기 설정이 표시된 인쇄 예시",
   workflow: "작업 순서",
   chooseSize: "크기 선택",
   designRoster: "디자인·명단",
@@ -613,13 +643,28 @@ const ja: Dictionary = {
     "名札と用紙のサイズを決め、背景・ロゴ・文字を配置し、CSVや表の氏名・所属をつないで実寸PDFを書き出せるブラウザツールです。",
   featureDesignTitle: "自由にデザイン",
   featureDesignDescription:
-    "背景、ロゴ、SVG、固定文字、氏名・所属の変数をキャンバスに直接配置できます。",
+    "実寸キャンバス上で背景、ロゴ、SVG、固定文字、氏名・所属の変数を正確に配置できます。",
+  featureDesignPointOne: "ドラッグ＆ドロップと中央スナップガイド",
+  featureDesignPointTwo: "画像・SVG・文字を個別レイヤーで管理",
+  featureDesignPointThree: "名札サイズとセーフエリアをmm単位で設定",
+  featureDesignVisualLabel:
+    "デザインツール、中央ガイド、変数設定を備えたBadgeFlow編集画面の例",
   featureDataTitle: "名簿をまとめて連携",
   featureDataDescription:
-    "CSVをアップロードするか表に行を追加すると、同じデザインから全員分を生成します。",
+    "CSVをアップロードするか表に直接行を追加すると、氏名・所属・役職の列がデザイン変数につながり、全員分を生成します。",
+  featureDataPointOne: "UTF-8 CSVで最大500名を読み込み",
+  featureDataPointTwo: "必要な列を自由に追加・編集",
+  featureDataPointThree: "一人ずつ完成イメージをすぐに確認",
+  featureDataVisualLabel:
+    "名簿の3行から3枚の名札が自動生成されるプレビュー",
   featurePrintTitle: "正しいサイズで印刷",
   featurePrintDescription:
-    "A3・A4への配置、間隔、トンボを計算し、100%実寸のPDFを書き出します。",
+    "用紙、向き、間隔、トンボを選ぶと、自動で配置して100%実寸印刷用PDFを書き出します。",
+  featurePrintPointOne: "A3・A4・Letter・カスタム用紙に対応",
+  featurePrintPointTwo: "中央配置とトンボを自動設定",
+  featurePrintPointThree: "両面の折りたたみ卓上名札にも対応",
+  featurePrintVisualLabel:
+    "A4用紙に4枚の名札、トンボ、実寸設定を表示した印刷プレビュー",
   workflow: "作業手順",
   chooseSize: "サイズ選択",
   designRoster: "デザイン・名簿",
@@ -835,13 +880,27 @@ const zhCN: Dictionary = {
     "BadgeFlow 可在浏览器中设置胸牌和纸张尺寸，排版背景、标志和文字，关联 CSV 或表格中的姓名与团队，并导出实际尺寸 PDF。",
   featureDesignTitle: "自由设计",
   featureDesignDescription:
-    "可在画布上直接放置背景、标志、SVG、固定文字以及姓名和团队变量。",
+    "在实际毫米尺寸画布上准确放置背景、标志、SVG、固定文字以及姓名和团队变量。",
+  featureDesignPointOne: "拖放并吸附到水平或垂直中心线",
+  featureDesignPointTwo: "将图片、SVG 和文字作为独立图层管理",
+  featureDesignPointThree: "以毫米设置胸牌尺寸和安全区域",
+  featureDesignVisualLabel:
+    "包含设计工具、中心参考线和变量属性的 BadgeFlow 编辑器示例",
   featureDataTitle: "一次关联整份名单",
   featureDataDescription:
-    "上传 CSV 或在表格中添加行，即可用同一设计生成所有人的胸牌。",
+    "上传 CSV 或直接添加表格行，姓名、团队和职位列会关联设计变量，自动生成所有人的胸牌。",
+  featureDataPointOne: "导入 UTF-8 CSV，最多处理 500 人",
+  featureDataPointTwo: "自由添加和编辑名单所需的列",
+  featureDataPointThree: "立即预览每个人的成品",
+  featureDataVisualLabel: "名单表格自动生成三张胸牌预览的示例",
   featurePrintTitle: "按准确尺寸打印",
   featurePrintDescription:
-    "自动计算 A3、A4 排版、间距和裁切标记，导出 100% 实际尺寸 PDF。",
+    "设置纸张、方向、间距和裁切标记，自动排版并导出可按 100% 实际尺寸打印的 PDF。",
+  featurePrintPointOne: "支持 A3、A4、Letter 和自定义纸张",
+  featurePrintPointTwo: "自动居中排版并添加裁切标记",
+  featurePrintPointThree: "也可生成双面的折叠桌牌",
+  featurePrintVisualLabel:
+    "A4 纸上显示四张胸牌、裁切标记和实际尺寸设置的打印预览",
   workflow: "工作流程",
   chooseSize: "选择尺寸",
   designRoster: "设计与名单",
@@ -1070,13 +1129,27 @@ const zhTW: Dictionary = {
     "BadgeFlow 可在瀏覽器中設定識別證與紙張尺寸，配置背景、標誌和文字，連結 CSV 或表格中的姓名與團隊，並匯出實際尺寸 PDF。",
   featureDesignTitle: "自由設計",
   featureDesignDescription:
-    "可在畫布上直接放置背景、標誌、SVG、固定文字以及姓名和團隊變數。",
+    "在實際毫米尺寸畫布上準確放置背景、標誌、SVG、固定文字以及姓名和團隊變數。",
+  featureDesignPointOne: "拖放並吸附到水平或垂直中心線",
+  featureDesignPointTwo: "將圖片、SVG 和文字作為獨立圖層管理",
+  featureDesignPointThree: "以毫米設定識別證尺寸和安全區域",
+  featureDesignVisualLabel:
+    "包含設計工具、中央參考線和變數屬性的 BadgeFlow 編輯器範例",
   featureDataTitle: "一次連結整份名單",
   featureDataDescription:
-    "上傳 CSV 或在表格中新增資料列，即可用同一設計產生所有人的識別證。",
+    "上傳 CSV 或直接新增表格資料列，姓名、團隊和職稱欄位會連結設計變數，自動產生所有人的識別證。",
+  featureDataPointOne: "匯入 UTF-8 CSV，最多處理 500 人",
+  featureDataPointTwo: "自由新增和編輯名單所需的欄位",
+  featureDataPointThree: "立即預覽每個人的成品",
+  featureDataVisualLabel: "名單表格自動產生三張識別證預覽的範例",
   featurePrintTitle: "依正確尺寸列印",
   featurePrintDescription:
-    "自動計算 A3、A4 版面、間距與裁切標記，匯出 100% 實際尺寸 PDF。",
+    "設定紙張、方向、間距和裁切標記，自動排版並匯出可按 100% 實際尺寸列印的 PDF。",
+  featurePrintPointOne: "支援 A3、A4、Letter 和自訂紙張",
+  featurePrintPointTwo: "自動置中排版並加入裁切標記",
+  featurePrintPointThree: "也可產生雙面的摺疊桌牌",
+  featurePrintVisualLabel:
+    "A4 紙上顯示四張識別證、裁切標記和實際尺寸設定的列印預覽",
   chooseSize: "選擇尺寸",
   designRoster: "設計與名單",
   presetTitle: "常用識別證尺寸",
@@ -1262,13 +1335,28 @@ const es: Dictionary = {
     "BadgeFlow permite definir tamaños, colocar fondos, logotipos y texto, conectar nombres y equipos desde CSV o una tabla y exportar un PDF a tamaño real.",
   featureDesignTitle: "Diseña libremente",
   featureDesignDescription:
-    "Coloca fondos, logotipos, SVG, texto fijo y variables de nombre o equipo directamente en el lienzo.",
+    "Trabaja en un lienzo a tamaño real y coloca con precisión fondos, logotipos, SVG, texto fijo y variables de nombre o equipo.",
+  featureDesignPointOne: "Arrastra y ajusta con guías magnéticas al centro",
+  featureDesignPointTwo: "Gestiona imágenes, SVG y texto en capas separadas",
+  featureDesignPointThree: "Define medidas y área segura en milímetros",
+  featureDesignVisualLabel:
+    "Ejemplo del editor BadgeFlow con herramientas, guías centrales y propiedades de variables",
   featureDataTitle: "Conecta toda la lista",
   featureDataDescription:
-    "Sube un CSV o añade filas para generar todas las credenciales con un solo diseño.",
+    "Sube un CSV o añade filas directamente. Las columnas de nombre, equipo y cargo se conectan al diseño para generar todas las credenciales.",
+  featureDataPointOne: "Importa CSV UTF-8 de hasta 500 personas",
+  featureDataPointTwo: "Añade y edita las columnas que necesites",
+  featureDataPointThree: "Previsualiza al instante cada credencial terminada",
+  featureDataVisualLabel:
+    "Tabla de lista conectada a tres vistas previas de credenciales generadas automáticamente",
   featurePrintTitle: "Imprime al tamaño correcto",
   featurePrintDescription:
-    "Organiza las credenciales en A3 o A4 con márgenes y marcas de corte, y exporta un PDF al 100%.",
+    "Elige papel, orientación, espaciado y marcas de corte. BadgeFlow compone y exporta un PDF listo para imprimir al 100%.",
+  featurePrintPointOne: "Usa A3, A4, Letter o un papel personalizado",
+  featurePrintPointTwo: "Centra la composición y añade marcas automáticamente",
+  featurePrintPointThree: "También crea identificadores de mesa plegados a dos caras",
+  featurePrintVisualLabel:
+    "Vista previa A4 con cuatro credenciales, marcas de corte y ajustes a tamaño real",
   workflow: "Flujo de trabajo",
   chooseSize: "Elegir tamaño",
   designRoster: "Diseño y lista",
@@ -1467,13 +1555,28 @@ const fr: Dictionary = {
     "BadgeFlow permet de définir les formats, placer fonds, logos et textes, relier les noms et équipes d’un CSV ou d’un tableau, puis exporter un PDF à taille réelle.",
   featureDesignTitle: "Concevez librement",
   featureDesignDescription:
-    "Placez directement sur la zone de travail fonds, logos, SVG, textes fixes et variables de nom ou d’équipe.",
+    "Travaillez sur une zone à taille réelle et placez précisément fonds, logos, SVG, textes fixes et variables de nom ou d’équipe.",
+  featureDesignPointOne: "Glissez-déposez avec guides magnétiques au centre",
+  featureDesignPointTwo: "Gérez images, SVG et textes dans des calques distincts",
+  featureDesignPointThree: "Réglez le format et la zone sûre en millimètres",
+  featureDesignVisualLabel:
+    "Exemple de l’éditeur BadgeFlow avec outils, guides centraux et propriétés de variables",
   featureDataTitle: "Reliez toute la liste",
   featureDataDescription:
-    "Importez un CSV ou ajoutez des lignes pour générer tous les badges à partir d’un seul design.",
+    "Importez un CSV ou ajoutez des lignes. Les colonnes de nom, d’équipe et de rôle se relient au design pour générer tous les badges.",
+  featureDataPointOne: "Importez un CSV UTF-8 de 500 personnes maximum",
+  featureDataPointTwo: "Ajoutez et modifiez librement les colonnes nécessaires",
+  featureDataPointThree: "Prévisualisez immédiatement le badge de chaque personne",
+  featureDataVisualLabel:
+    "Tableau de liste relié à trois aperçus de badges générés automatiquement",
   featurePrintTitle: "Imprimez au bon format",
   featurePrintDescription:
-    "Disposez les badges sur A3 ou A4 avec espacements et traits de coupe, puis exportez un PDF à 100%.",
+    "Choisissez le papier, l’orientation, les espacements et les traits de coupe. BadgeFlow compose et exporte un PDF prêt à imprimer à 100%.",
+  featurePrintPointOne: "Utilisez A3, A4, Letter ou un papier personnalisé",
+  featurePrintPointTwo: "Centrez la mise en page et ajoutez les traits automatiquement",
+  featurePrintPointThree: "Créez aussi des chevalets pliés lisibles des deux côtés",
+  featurePrintVisualLabel:
+    "Aperçu A4 avec quatre badges, traits de coupe et réglages à taille réelle",
   workflow: "Étapes",
   chooseSize: "Choisir la taille",
   designRoster: "Design et liste",
@@ -1672,13 +1775,28 @@ const de: Dictionary = {
     "Mit BadgeFlow legen Sie Formate fest, platzieren Hintergründe, Logos und Texte, verbinden Namen und Teams aus CSV oder Tabelle und exportieren ein PDF in Originalgröße.",
   featureDesignTitle: "Frei gestalten",
   featureDesignDescription:
-    "Hintergründe, Logos, SVGs, feste Texte sowie Namens- und Teamvariablen direkt auf der Arbeitsfläche platzieren.",
+    "Auf einer maßstabsgetreuen Fläche Hintergründe, Logos, SVGs, feste Texte sowie Namens- und Teamvariablen präzise platzieren.",
+  featureDesignPointOne: "Ziehen, ablegen und magnetisch an der Mitte ausrichten",
+  featureDesignPointTwo: "Bilder, SVGs und Texte in getrennten Ebenen verwalten",
+  featureDesignPointThree: "Format und Sicherheitsbereich in Millimetern festlegen",
+  featureDesignVisualLabel:
+    "Beispiel des BadgeFlow-Editors mit Werkzeugen, Mittellinien und Variableneigenschaften",
   featureDataTitle: "Die ganze Liste verbinden",
   featureDataDescription:
-    "CSV hochladen oder Zeilen ergänzen und alle Namensschilder aus einem einzigen Design erzeugen.",
+    "CSV hochladen oder Zeilen direkt ergänzen. Spalten für Name, Team und Rolle werden mit dem Design verknüpft und erzeugen alle Namensschilder.",
+  featureDataPointOne: "UTF-8-CSV mit bis zu 500 Personen importieren",
+  featureDataPointTwo: "Benötigte Spalten frei hinzufügen und bearbeiten",
+  featureDataPointThree: "Fertiges Namensschild jeder Person sofort prüfen",
+  featureDataVisualLabel:
+    "Listentabelle mit drei automatisch erzeugten Namensschild-Vorschauen",
   featurePrintTitle: "In korrekter Größe drucken",
   featurePrintDescription:
-    "Namensschilder auf A3 oder A4 mit Abständen und Schnittmarken anordnen und als 100%-PDF exportieren.",
+    "Papier, Ausrichtung, Abstände und Schnittmarken wählen. BadgeFlow ordnet alles an und exportiert ein PDF für den Druck in 100% Originalgröße.",
+  featurePrintPointOne: "A3, A4, Letter oder eigenes Papierformat verwenden",
+  featurePrintPointTwo: "Layout zentrieren und Schnittmarken automatisch setzen",
+  featurePrintPointThree: "Auch zweiseitige gefaltete Tischaufsteller erstellen",
+  featurePrintVisualLabel:
+    "A4-Druckvorschau mit vier Namensschildern, Schnittmarken und Originalgrößen-Einstellungen",
   workflow: "Ablauf",
   chooseSize: "Größe wählen",
   designRoster: "Design und Liste",
