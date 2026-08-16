@@ -48,6 +48,9 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /대표 명찰 규격/);
   assert.match(html, /목걸이 명찰 · 대형 95 × 123 mm로 시작/);
   assert.match(html, /A7 행사 명찰/);
+  assert.match(html, /A4 반접이 테이블 명패/);
+  assert.match(html, /앞뒤 양쪽에서 같은 이름/);
+  assert.match(html, /A4 1장당 1명/);
   assert.match(html, /B7 컨퍼런스 패스/);
   assert.match(html, /CR80 · ID-1/);
   assert.match(html, /원하는 규격을 직접 입력할게요/);
@@ -66,6 +69,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
 
   assert.match(studio, /type ImageElement = CommonElement/);
   assert.match(studio, /const BADGE_PRESETS: BadgePreset\[\]/);
+  assert.match(studio, /id: "a4-table-tent"/);
+  assert.match(studio, /outputMode: "table-tent"/);
+  assert.match(studio, /function createTableTentElements/);
+  assert.match(studio, /async function rotateBadgeImage180/);
+  assert.match(studio, /doc\.setLineDashPattern\(\[2, 2\], 0\)/);
   assert.match(studio, /function LandingPage/);
   assert.match(studio, /aria-controls="landing-start-menu"/);
   assert.match(studio, /disabled={!hasSavedDraft}/);
@@ -86,6 +94,9 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.service-overview/);
   assert.match(css, /\.landing-start-menu/);
+  assert.match(css, /\.preset-mini-sheet/);
+  assert.match(css, /\.fold-guide/);
+  assert.match(css, /\.table-tent-panel\.is-reversed/);
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
   assert.match(storage, /indexedDB\.open/);

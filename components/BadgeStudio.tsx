@@ -73,6 +73,7 @@ type Align = "left" | "center" | "right";
 type ElementKind = "variable" | "static";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
+type OutputMode = "standard" | "table-tent";
 
 type CommonElement = {
   id: string;
@@ -147,6 +148,7 @@ type BadgePreset = {
   tag: string;
   tagKey?: MessageKey;
   featured?: boolean;
+  outputMode?: OutputMode;
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -166,9 +168,10 @@ type BadgeProject = {
   rows: BadgeRow[];
   page: PageSettings;
   dpi: number;
+  outputMode: OutputMode;
 };
 
-const PROJECT_VERSION = 3;
+const PROJECT_VERSION = 4;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_PROJECT_BYTES = 30 * 1024 * 1024;
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
@@ -234,6 +237,17 @@ const BADGE_PRESETS: BadgePreset[] = [
     height: 54,
     a4Count: 10,
     tag: "CR80 · ID-1",
+  },
+  {
+    id: "a4-table-tent",
+    nameKey: "presetTableTent",
+    descriptionKey: "presetTableTentDescription",
+    width: 297,
+    height: 105,
+    a4Count: 1,
+    tag: "",
+    tagKey: "tableTent",
+    outputMode: "table-tent",
   },
   {
     id: "name-card",
@@ -318,6 +332,16 @@ const DEFAULT_PAGE: PageSettings = {
   showCropMarks: true,
 };
 
+const TABLE_TENT_PAGE: PageSettings = {
+  preset: "custom",
+  width: 297,
+  height: 210,
+  gapX: 0,
+  gapY: 0,
+  showOutline: false,
+  showCropMarks: false,
+};
+
 function createPresetElements(width: number, height: number): CanvasElement[] {
   const isLandscape = width > height;
   const inset = Math.max(4, Math.round(width * 0.08 * 10) / 10);
@@ -370,6 +394,62 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
       y: Math.round(height * 0.74 * 10) / 10,
       width: contentWidth,
       fontSize: isLandscape ? 8 : 11,
+      fontWeight: 500,
+      color: "#64748b",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+  ];
+}
+
+function createTableTentElements(): CanvasElement[] {
+  return [
+    {
+      id: "element-team",
+      type: "text",
+      kind: "variable",
+      field: "팀",
+      x: 20,
+      y: 30,
+      width: 257,
+      fontSize: 14,
+      fontWeight: 600,
+      color: "#64748b",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+    {
+      id: "element-name",
+      type: "text",
+      kind: "variable",
+      field: "이름",
+      x: 20,
+      y: 55,
+      width: 257,
+      fontSize: 32,
+      fontWeight: 800,
+      color: "#17201f",
+      align: "center",
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    },
+    {
+      id: "element-title",
+      type: "text",
+      kind: "variable",
+      field: "직책",
+      x: 20,
+      y: 80,
+      width: 257,
+      fontSize: 13,
       fontWeight: 500,
       color: "#64748b",
       align: "center",
@@ -629,18 +709,32 @@ function LandingPage({
                   </div>
                   <div className="preset-card-body">
                     <span className="preset-visual" aria-hidden="true">
-                      <span
-                        className={`preset-mini-badge ${isLandscape ? "is-landscape" : ""}`}
-                        style={
-                          {
-                            "--preset-ratio": `${preset.width} / ${preset.height}`,
-                          } as CSSProperties
-                        }
-                      >
-                        {!isLandscape && <i />}
-                        <b>김민지</b>
-                        <em>브랜드팀</em>
-                      </span>
+                      {preset.outputMode === "table-tent" ? (
+                        <span className="preset-mini-sheet">
+                          <span className="preset-mini-face is-reversed">
+                            <b>김민지</b>
+                            <em>브랜드팀</em>
+                          </span>
+                          <i />
+                          <span className="preset-mini-face">
+                            <b>김민지</b>
+                            <em>브랜드팀</em>
+                          </span>
+                        </span>
+                      ) : (
+                        <span
+                          className={`preset-mini-badge ${isLandscape ? "is-landscape" : ""}`}
+                          style={
+                            {
+                              "--preset-ratio": `${preset.width} / ${preset.height}`,
+                            } as CSSProperties
+                          }
+                        >
+                          {!isLandscape && <i />}
+                          <b>김민지</b>
+                          <em>브랜드팀</em>
+                        </span>
+                      )}
                     </span>
                     <span className="preset-copy">
                       <strong>{presetName}</strong>
@@ -652,7 +746,11 @@ function LandingPage({
                     </span>
                   </div>
                   <span className="preset-card-footer">
-                    <span>{t("perA4", { count: preset.a4Count })}</span>
+                    <span>
+                      {preset.outputMode === "table-tent"
+                        ? t("onePersonPerA4")
+                        : t("perA4", { count: preset.a4Count })}
+                    </span>
                     <span>{t("usePreset")}</span>
                   </span>
                 </button>
@@ -875,8 +973,16 @@ function normalizeProject(value: unknown): BadgeProject | null {
   ) {
     return null;
   }
-  const badgeWidth = boundedNumber(value.badgeWidth, 95, 20, 500);
-  const badgeHeight = boundedNumber(value.badgeHeight, 123, 20, 500);
+  const outputMode: OutputMode =
+    value.outputMode === "table-tent" ? "table-tent" : "standard";
+  const badgeWidth =
+    outputMode === "table-tent"
+      ? 297
+      : boundedNumber(value.badgeWidth, 95, 20, 500);
+  const badgeHeight =
+    outputMode === "table-tent"
+      ? 105
+      : boundedNumber(value.badgeHeight, 123, 20, 500);
   const fields = normalizeFields(value.fields);
   const rows = normalizeRows(value.rows, fields);
   const usedElementIds = new Set<string>();
@@ -949,10 +1055,14 @@ function normalizeProject(value: unknown): BadgeProject | null {
     elements,
     fields,
     rows,
-    page: normalizePage(value.page),
+    page:
+      outputMode === "table-tent"
+        ? { ...TABLE_TENT_PAGE }
+        : normalizePage(value.page),
     dpi: [150, 300, 600].includes(Number(value.dpi))
       ? Number(value.dpi)
       : 300,
+    outputMode,
   };
 }
 
@@ -1201,6 +1311,19 @@ async function renderBadgeImage({
   return canvas.toDataURL("image/jpeg", 0.96);
 }
 
+async function rotateBadgeImage180(dataUrl: string) {
+  const image = await loadImage(dataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not rotate the print image.");
+  context.translate(canvas.width, canvas.height);
+  context.rotate(Math.PI);
+  context.drawImage(image, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.96);
+}
+
 function BadgeContents({
   badgeWidth,
   badgeHeight,
@@ -1434,6 +1557,7 @@ export function BadgeStudio() {
   const [selectedRowId, setSelectedRowId] = useState("row-1");
   const [page, setPage] = useState<PageSettings>(DEFAULT_PAGE);
   const [dpi, setDpi] = useState(300);
+  const [outputMode, setOutputMode] = useState<OutputMode>("standard");
   const [newField, setNewField] = useState("");
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -1460,8 +1584,9 @@ export function BadgeStudio() {
     () => getPageLayout(page, badgeWidth, badgeHeight),
     [page, badgeWidth, badgeHeight],
   );
+  const recordsPerPage = outputMode === "table-tent" ? 1 : layout.capacity;
   const pageCount =
-    layout.capacity > 0 ? Math.max(1, Math.ceil(rows.length / layout.capacity)) : 0;
+    recordsPerPage > 0 ? Math.max(1, Math.ceil(rows.length / recordsPerPage)) : 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -1485,6 +1610,7 @@ export function BadgeStudio() {
         setSelectedRowId(project.rows[0]?.id || "");
         setPage(project.page);
         setDpi(project.dpi);
+        setOutputMode(project.outputMode);
         setSaveStatus("saved");
       })
       .catch(() => {
@@ -1519,6 +1645,7 @@ export function BadgeStudio() {
         rows,
         page,
         dpi,
+        outputMode,
       };
       void saveProjectDraft(project)
         .then(() => {
@@ -1546,6 +1673,7 @@ export function BadgeStudio() {
     page,
     backgroundFit,
     dpi,
+    outputMode,
   ]);
 
   useEffect(() => {
@@ -1645,10 +1773,14 @@ export function BadgeStudio() {
   }, [redoElements, undoElements]);
 
   function startWithPreset(preset: BadgePreset) {
-    const presetElements = createPresetElements(preset.width, preset.height);
+    const nextOutputMode = preset.outputMode ?? "standard";
+    const presetElements =
+      nextOutputMode === "table-tent"
+        ? createTableTentElements()
+        : createPresetElements(preset.width, preset.height);
     setBadgeWidth(preset.width);
     setBadgeHeight(preset.height);
-    setSafeArea(preset.width > preset.height ? 3 : 5);
+    setSafeArea(nextOutputMode === "table-tent" ? 8 : preset.width > preset.height ? 3 : 5);
     setBackgroundColor("#ffffff");
     setBackground(null);
     setBackgroundName("");
@@ -1661,8 +1793,13 @@ export function BadgeStudio() {
     setFields(DEFAULT_FIELDS);
     setRows(SAMPLE_ROWS.map((row) => ({ ...row })));
     setSelectedRowId("row-1");
-    setPage({ ...DEFAULT_PAGE });
+    setPage(
+      nextOutputMode === "table-tent"
+        ? { ...TABLE_TENT_PAGE }
+        : { ...DEFAULT_PAGE },
+    );
     setDpi(300);
+    setOutputMode(nextOutputMode);
     setMode("design");
     setView("studio");
     setHasSavedDraft(true);
@@ -2105,6 +2242,7 @@ export function BadgeStudio() {
       rows,
       page,
       dpi,
+      outputMode,
     };
     const blob = new Blob([JSON.stringify(project, null, 2)], {
       type: "application/json",
@@ -2155,6 +2293,7 @@ export function BadgeStudio() {
       setRows(project.rows);
       setPage(project.page);
       setDpi(project.dpi);
+      setOutputMode(project.outputMode);
       setHistoryPast([]);
       setHistoryFuture([]);
       setSelectedElementId(project.elements.at(-1)?.id || null);
@@ -2348,6 +2487,60 @@ export function BadgeStudio() {
             page.width > page.height ? "landscape" : "portrait",
           );
         }
+
+        if (outputMode === "table-tent") {
+          const row = rows[pageIndex];
+          if (!row) continue;
+          const rendered = await renderBadgeImage({
+            badgeWidth,
+            badgeHeight,
+            backgroundColor,
+            background,
+            backgroundFit,
+            elements,
+            row,
+            dpi,
+          });
+          const reversed = await rotateBadgeImage180(rendered);
+          const panelHeight = page.height / 2;
+          const x = (page.width - badgeWidth) / 2;
+          const topY = (panelHeight - badgeHeight) / 2;
+          const bottomY = panelHeight + topY;
+
+          doc.addImage(
+            reversed,
+            getImageType(reversed),
+            x,
+            topY,
+            badgeWidth,
+            badgeHeight,
+            undefined,
+            "FAST",
+          );
+          doc.addImage(
+            rendered,
+            getImageType(rendered),
+            x,
+            bottomY,
+            badgeWidth,
+            badgeHeight,
+            undefined,
+            "FAST",
+          );
+          doc.setDrawColor(100, 116, 139);
+          doc.setLineWidth(0.15);
+          doc.setLineDashPattern([2, 2], 0);
+          doc.line(0, panelHeight, page.width, panelHeight);
+          doc.setLineDashPattern([], 0);
+
+          processedRows += 1;
+          setExportProgress(Math.round((processedRows / rows.length) * 100));
+          await new Promise<void>((resolve) =>
+            window.requestAnimationFrame(() => resolve()),
+          );
+          continue;
+        }
+
         const pageRows = rows.slice(
           pageIndex * layout.capacity,
           (pageIndex + 1) * layout.capacity,
@@ -2593,9 +2786,10 @@ export function BadgeStudio() {
                       max="500"
                       step="0.5"
                       value={badgeWidth}
-                      onChange={(event) =>
-                        setBadgeWidth(Math.max(20, Number(event.target.value)))
-                      }
+                      onChange={(event) => {
+                        setBadgeWidth(Math.max(20, Number(event.target.value)));
+                        setOutputMode("standard");
+                      }}
                     />
                   </label>
                   <label>
@@ -2606,9 +2800,10 @@ export function BadgeStudio() {
                       max="500"
                       step="0.5"
                       value={badgeHeight}
-                      onChange={(event) =>
-                        setBadgeHeight(Math.max(20, Number(event.target.value)))
-                      }
+                      onChange={(event) => {
+                        setBadgeHeight(Math.max(20, Number(event.target.value)));
+                        setOutputMode("standard");
+                      }}
                     />
                   </label>
                 </div>
@@ -2618,6 +2813,8 @@ export function BadgeStudio() {
                   onClick={() => {
                     setBadgeWidth(95);
                     setBadgeHeight(123);
+                    setOutputMode("standard");
+                    setPage({ ...DEFAULT_PAGE });
                   }}
                 >
                   <span>{t("lanyardBadge")}</span>
@@ -3691,7 +3888,7 @@ export function BadgeStudio() {
                 </div>
                 <div className="print-stats">
                   <span>
-                    <strong>{layout.capacity}</strong>
+                    <strong>{recordsPerPage}</strong>
                     {t("perPage")}
                   </span>
                   <span>
@@ -3711,6 +3908,7 @@ export function BadgeStudio() {
                   }
                 >
                   {layout.fits &&
+                    outputMode === "standard" &&
                     rows.slice(0, layout.capacity).map((row, index) => {
                       const column = index % layout.columns;
                       const rowIndex = Math.floor(index / layout.columns);
@@ -3744,6 +3942,53 @@ export function BadgeStudio() {
                         </div>
                       );
                     })}
+                  {layout.fits && outputMode === "table-tent" && rows[0] && (
+                    <>
+                      <div
+                        className="page-badge table-tent-panel is-reversed"
+                        style={{
+                          left: "0%",
+                          top: "0%",
+                          width: "100%",
+                          height: "50%",
+                        }}
+                      >
+                        <BadgeContents
+                          badgeWidth={badgeWidth}
+                          badgeHeight={badgeHeight}
+                          backgroundColor={backgroundColor}
+                          background={background}
+                          backgroundFit={backgroundFit}
+                          elements={elements}
+                          row={rows[0]}
+                          t={t}
+                        />
+                      </div>
+                      <div
+                        className="page-badge table-tent-panel"
+                        style={{
+                          left: "0%",
+                          top: "50%",
+                          width: "100%",
+                          height: "50%",
+                        }}
+                      >
+                        <BadgeContents
+                          badgeWidth={badgeWidth}
+                          badgeHeight={badgeHeight}
+                          backgroundColor={backgroundColor}
+                          background={background}
+                          backgroundFit={backgroundFit}
+                          elements={elements}
+                          row={rows[0]}
+                          t={t}
+                        />
+                      </div>
+                      <span className="fold-guide" aria-hidden="true">
+                        <span>{t("foldLine")}</span>
+                      </span>
+                    </>
+                  )}
                   {!layout.fits && (
                     <div className="page-error">
                       <strong>{t("badgeTooLarge")}</strong>
@@ -3771,6 +4016,21 @@ export function BadgeStudio() {
                 <Printer size={19} />
               </div>
 
+              {outputMode === "table-tent" ? (
+                <section className="panel-section table-tent-output">
+                  <div className="section-title">
+                    <h2>{t("tableTentOutput")}</h2>
+                    <span>A4 · 297 × 210 mm</span>
+                  </div>
+                  <div className="table-tent-diagram" aria-hidden="true">
+                    <span>{t("oppositeSide")}</span>
+                    <i />
+                    <span>{t("frontSide")}</span>
+                  </div>
+                  <p>{t("tableTentOutputHelp")}</p>
+                </section>
+              ) : (
+                <>
               <section className="panel-section">
                 <div className="section-title">
                   <h2>{t("paper")}</h2>
@@ -3937,6 +4197,9 @@ export function BadgeStudio() {
                   />
                 </label>
               </section>
+
+                </>
+              )}
 
               <section className="panel-section">
                 <div className="section-title">

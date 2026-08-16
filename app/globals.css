@@ -561,7 +561,7 @@ select:focus-visible,
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -711,6 +711,57 @@ select:focus-visible,
 .preset-mini-badge em {
   color: #64748b;
   font-size: 6px;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.preset-mini-sheet {
+  position: relative;
+  display: grid;
+  width: 106px;
+  height: 75px;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background: white;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.1);
+}
+
+.preset-mini-sheet > i {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 0;
+  left: 0;
+  border-top: 1px dashed #60a5fa;
+}
+
+.preset-mini-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #0f172a;
+}
+
+.preset-mini-face.is-reversed {
+  transform: rotate(180deg);
+  border-bottom: 3px solid #dbeafe;
+}
+
+.preset-mini-face:not(.is-reversed) {
+  border-bottom: 3px solid #2563eb;
+}
+
+.preset-mini-face b {
+  font-size: 7px;
+  font-weight: 850;
+}
+
+.preset-mini-face em {
+  color: #64748b;
+  font-size: 5px;
   font-style: normal;
   font-weight: 650;
 }
@@ -2701,6 +2752,67 @@ select:focus {
 
 .page-badge .empty-background {
   display: none;
+}
+
+.table-tent-panel.is-reversed {
+  transform: rotate(180deg);
+}
+
+.fold-guide {
+  position: absolute;
+  z-index: 10;
+  top: 50%;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  border-top: 1px dashed #2563eb;
+  color: #1d4ed8;
+  pointer-events: none;
+}
+
+.fold-guide span {
+  transform: translateY(-50%);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: white;
+  padding: 2px 7px;
+  font-size: 7px;
+  font-weight: 850;
+}
+
+.table-tent-output p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.table-tent-diagram {
+  display: grid;
+  min-height: 150px;
+  grid-template-rows: 1fr 1px 1fr;
+  overflow: hidden;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.table-tent-diagram span {
+  display: grid;
+  place-items: center;
+  color: #1e3a8a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.table-tent-diagram span:first-child {
+  transform: rotate(180deg);
+}
+
+.table-tent-diagram i {
+  border-top: 1px dashed #2563eb;
 }
 
 .page-error {
