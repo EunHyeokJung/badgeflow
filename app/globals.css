@@ -1010,6 +1010,20 @@ select:focus-visible,
   background: #1e40af;
 }
 
+.preset-card.is-selected {
+  border-color: #2563eb;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.18),
+    0 14px 32px rgba(30, 64, 175, 0.12);
+}
+
+.preset-card.is-featured.is-selected {
+  border-color: #93c5fd;
+  box-shadow:
+    0 0 0 3px rgba(96, 165, 250, 0.34),
+    0 18px 42px rgba(30, 58, 138, 0.22);
+}
+
 .preset-card-top,
 .preset-card-footer {
   display: flex;
@@ -1018,17 +1032,26 @@ select:focus-visible,
   gap: 8px;
 }
 
-.preset-card-top > svg {
-  color: #94a3b8;
-  transition: transform 180ms ease;
+.preset-selection {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: white;
 }
 
-.preset-card:hover .preset-card-top > svg {
-  transform: translateX(3px);
+.preset-card.is-selected .preset-selection {
+  border-color: #2563eb;
+  background: #2563eb;
 }
 
-.preset-card.is-featured .preset-card-top > svg {
-  color: #bfdbfe;
+.preset-card.is-featured.is-selected .preset-selection {
+  border-color: rgba(255, 255, 255, 0.62);
+  background: white;
+  color: #1e40af;
 }
 
 .preset-tag {
@@ -1222,36 +1245,40 @@ select:focus-visible,
   font-weight: 700;
 }
 
-.preset-card-footer span:last-child {
-  color: #1d4ed8;
-}
-
 .preset-card.is-featured .preset-card-footer {
   border-color: rgba(255, 255, 255, 0.16);
   color: #bfdbfe;
 }
 
-.preset-card.is-featured .preset-card-footer span:last-child {
-  color: white;
+.preset-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.custom-size-button {
-  display: flex;
-  width: 100%;
+.custom-size-button,
+.create-selected-preset-button {
+  display: inline-flex;
   min-height: 50px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 12px;
-  border: 1px dashed #93c5fd;
+  border: 1px solid #cbd5e1;
   border-radius: 11px;
-  background: rgba(239, 246, 255, 0.64);
-  color: #1e40af;
+  padding: 0 20px;
   font-size: 11px;
   font-weight: 800;
   transition:
     border-color 180ms ease,
-    background 180ms ease;
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.custom-size-button {
+  background: white;
+  color: #1e40af;
 }
 
 .custom-size-button:hover {
@@ -1259,8 +1286,23 @@ select:focus-visible,
   background: #eff6ff;
 }
 
-.custom-size-button svg:last-child {
-  margin-left: 3px;
+.create-selected-preset-button {
+  min-width: 174px;
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+.create-selected-preset-button:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.create-selected-preset-button:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .landing-footer {
@@ -3852,6 +3894,18 @@ select:focus {
 
   .preset-grid {
     grid-template-columns: 1fr;
+  }
+
+  .preset-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .custom-size-button,
+  .create-selected-preset-button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 12px;
   }
 
   .preset-card {

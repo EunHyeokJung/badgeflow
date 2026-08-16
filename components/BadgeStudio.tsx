@@ -479,8 +479,14 @@ function LandingPage({
 }) {
   const [heroLineOne, heroLineTwo] = t("heroTitle").split("\n");
   const [showStartMenu, setShowStartMenu] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
+    BADGE_PRESETS[0]?.id ?? null,
+  );
   const startControlRef = useRef<HTMLDivElement>(null);
   const startTriggerRef = useRef<HTMLButtonElement>(null);
+  const selectedPreset = BADGE_PRESETS.find(
+    (preset) => preset.id === selectedPresetId,
+  );
 
   useEffect(() => {
     if (!showStartMenu) return;
@@ -837,14 +843,16 @@ function LandingPage({
           <div className="preset-grid">
             {BADGE_PRESETS.map((preset) => {
               const isLandscape = preset.width > preset.height;
+              const isSelected = preset.id === selectedPresetId;
               const presetName = t(preset.nameKey);
               const presetTag = preset.tagKey ? t(preset.tagKey) : preset.tag;
               return (
                 <button
                   key={preset.id}
                   type="button"
-                  className={`preset-card ${preset.featured ? "is-featured" : ""}`}
-                  onClick={() => onSelectPreset(preset)}
+                  className={`preset-card ${preset.featured ? "is-featured" : ""} ${isSelected ? "is-selected" : ""}`}
+                  onClick={() => setSelectedPresetId(preset.id)}
+                  aria-pressed={isSelected}
                   aria-label={t("startSize", {
                     name: presetName,
                     width: displayNumber(preset.width),
@@ -853,7 +861,9 @@ function LandingPage({
                 >
                   <div className="preset-card-top">
                     <span className="preset-tag">{presetTag}</span>
-                    <ArrowRight size={17} />
+                    <span className="preset-selection" aria-hidden="true">
+                      {isSelected && <Check size={15} />}
+                    </span>
                   </div>
                   <div className="preset-card-body">
                     <span className="preset-visual" aria-hidden="true">
@@ -899,22 +909,33 @@ function LandingPage({
                         ? t("onePersonPerA4")
                         : t("perA4", { count: preset.a4Count })}
                     </span>
-                    <span>{t("usePreset")}</span>
                   </span>
                 </button>
               );
             })}
           </div>
 
-          <button
-            type="button"
-            className="custom-size-button"
-            onClick={onCustom}
-          >
-            <CreditCard size={17} />
-            {t("customSize")}
-            <ArrowRight size={16} />
-          </button>
+          <div className="preset-actions">
+            <button
+              type="button"
+              className="custom-size-button"
+              onClick={onCustom}
+            >
+              <CreditCard size={17} />
+              {t("customSize")}
+            </button>
+            <button
+              type="button"
+              className="create-selected-preset-button"
+              disabled={!selectedPreset}
+              onClick={() => {
+                if (selectedPreset) onSelectPreset(selectedPreset);
+              }}
+            >
+              {t("usePreset")}
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+          </div>
         </section>
       </main>
 
