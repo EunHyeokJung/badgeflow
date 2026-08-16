@@ -1,10 +1,10 @@
 "use client";
 
 import {
+  AlertTriangle,
   AlignCenter,
   AlignLeft,
   AlignRight,
-  AlertTriangle,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -23,12 +23,12 @@ import {
   ImagePlus,
   Layers3,
   LayoutTemplate,
+  LoaderCircle,
   Lock,
   LockKeyhole,
-  LoaderCircle,
+  MousePointer2,
   MoveHorizontal,
   MoveVertical,
-  MousePointer2,
   Palette,
   Plus,
   Printer,
@@ -55,11 +55,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { AppControls } from "@/components/AppControls";
 import {
   loadProjectDraft,
   saveProjectDraft,
 } from "@/lib/badgeflow/storage";
-import { AppControls } from "@/components/AppControls";
 import {
   type Locale,
   type MessageKey,
@@ -399,6 +399,48 @@ function LandingPage({
   t: Translate;
 }) {
   const [heroLineOne, heroLineTwo] = t("heroTitle").split("\n");
+  const [showStartMenu, setShowStartMenu] = useState(false);
+  const startControlRef = useRef<HTMLDivElement>(null);
+  const startTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showStartMenu) return;
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !startControlRef.current?.contains(event.target)
+      ) {
+        setShowStartMenu(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowStartMenu(false);
+      startTriggerRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [showStartMenu]);
+
+  const startNewBadge = () => {
+    setShowStartMenu(false);
+    const presets = document.getElementById("landing-presets");
+    const presetTitle = document.getElementById("preset-title");
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    presets?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    });
+    window.requestAnimationFrame(() => presetTitle?.focus({ preventScroll: true }));
+  };
 
   return (
     <div className="landing-shell">
@@ -420,16 +462,58 @@ function LandingPage({
             t={t}
             compact
           />
-          {hasSavedDraft && (
+          <div className="landing-start-control" ref={startControlRef}>
             <button
+              ref={startTriggerRef}
               type="button"
-              className="landing-continue-button"
-              onClick={onContinue}
+              className="landing-start-button"
+              onClick={() => setShowStartMenu((current) => !current)}
+              aria-expanded={showStartMenu}
+              aria-controls="landing-start-menu"
+              aria-haspopup="true"
             >
-              {t("continueDraft")}
-              <ArrowRight size={16} />
+              <span>{t("startNow")}</span>
+              <ArrowDown size={15} aria-hidden="true" />
             </button>
-          )}
+            {showStartMenu && (
+              <div
+                id="landing-start-menu"
+                className="landing-start-menu"
+              >
+                <button type="button" onClick={startNewBadge}>
+                  <span className="start-menu-icon" aria-hidden="true">
+                    <Plus size={17} />
+                  </span>
+                  <span className="start-menu-copy">
+                    <strong>{t("newBadge")}</strong>
+                    <small>{t("newBadgeHelp")}</small>
+                  </span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasSavedDraft}
+                  onClick={() => {
+                    setShowStartMenu(false);
+                    onContinue();
+                  }}
+                >
+                  <span className="start-menu-icon" aria-hidden="true">
+                    <FolderOpen size={17} />
+                  </span>
+                  <span className="start-menu-copy">
+                    <strong>{t("continueDraft")}</strong>
+                    <small>
+                      {hasSavedDraft
+                        ? t("continueDraftHelp")
+                        : t("noSavedDraft")}
+                    </small>
+                  </span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -468,6 +552,46 @@ function LandingPage({
         </section>
 
         <section
+          className="service-overview"
+          aria-labelledby="service-overview-title"
+        >
+          <div className="service-overview-heading">
+            <span>{t("serviceEyebrow")}</span>
+            <h2 id="service-overview-title">{t("serviceTitle")}</h2>
+            <p>{t("serviceDescription")}</p>
+          </div>
+          <div className="service-feature-grid">
+            <article>
+              <span className="service-feature-icon" aria-hidden="true">
+                <LayoutTemplate size={20} />
+              </span>
+              <div>
+                <strong>{t("featureDesignTitle")}</strong>
+                <p>{t("featureDesignDescription")}</p>
+              </div>
+            </article>
+            <article>
+              <span className="service-feature-icon" aria-hidden="true">
+                <FileSpreadsheet size={20} />
+              </span>
+              <div>
+                <strong>{t("featureDataTitle")}</strong>
+                <p>{t("featureDataDescription")}</p>
+              </div>
+            </article>
+            <article>
+              <span className="service-feature-icon" aria-hidden="true">
+                <Printer size={20} />
+              </span>
+              <div>
+                <strong>{t("featurePrintTitle")}</strong>
+                <p>{t("featurePrintDescription")}</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
           id="landing-presets"
           className="preset-section"
           aria-labelledby="preset-title"
@@ -475,7 +599,9 @@ function LandingPage({
           <div className="preset-heading">
             <div>
               <span>{t("popularSizes")}</span>
-              <h2 id="preset-title">{t("presetTitle")}</h2>
+              <h2 id="preset-title" tabIndex={-1}>
+                {t("presetTitle")}
+              </h2>
             </div>
             <p>{t("presetHelper")}</p>
           </div>

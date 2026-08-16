@@ -22,11 +22,29 @@ const en = {
   installed: "Installed",
   installHelp: "Install BadgeFlow from your browser menu",
   continueDraft: "Continue saved project",
+  startNow: "Start now",
+  newBadge: "Create a new badge",
+  newBadgeHelp: "Choose a size and start from a fresh layout.",
+  continueDraftHelp: "Open the latest project saved in this browser.",
+  noSavedDraft: "No saved project in this browser yet.",
   skipPresets: "Skip to badge size selection",
   heroKicker: "From size to print in one flow",
   heroTitle: "What kind of badge\nare you making?",
   heroDescription:
     "Choose a popular size first. BadgeFlow creates a starter layout, then takes you through design, roster data, and print-ready PDF export.",
+  serviceEyebrow: "WHAT BADGEFLOW DOES",
+  serviceTitle: "Design once. Generate every badge in your roster.",
+  serviceDescription:
+    "BadgeFlow is a browser-based tool for setting badge and paper sizes, arranging backgrounds, logos, and text, connecting names and teams from a CSV or table, and exporting a true-size PDF.",
+  featureDesignTitle: "Design freely",
+  featureDesignDescription:
+    "Place backgrounds, logos, SVGs, fixed text, and name or team variables directly on the canvas.",
+  featureDataTitle: "Connect the whole roster",
+  featureDataDescription:
+    "Upload a CSV or add rows to the table to generate every person’s badge from one design.",
+  featurePrintTitle: "Print at the correct size",
+  featurePrintDescription:
+    "Arrange badges on A3 or A4 sheets with spacing and crop marks, then export a 100% true-size PDF.",
   workflow: "Workflow",
   chooseSize: "Choose size",
   designRoster: "Design & roster",
@@ -290,11 +308,29 @@ const ko: Dictionary = {
   installed: "설치됨",
   installHelp: "브라우저 메뉴에서 BadgeFlow를 설치하세요",
   continueDraft: "저장된 작업 이어하기",
+  startNow: "바로 시작하기",
+  newBadge: "새 명찰 만들기",
+  newBadgeHelp: "규격을 선택하고 새 디자인으로 시작합니다.",
+  continueDraftHelp: "이 브라우저에 마지막으로 저장한 작업을 엽니다.",
+  noSavedDraft: "아직 이 브라우저에 저장된 작업이 없습니다.",
   skipPresets: "명찰 규격 선택으로 건너뛰기",
   heroKicker: "크기부터 인쇄까지 한 번에",
   heroTitle: "어떤 명찰을\n만드시나요?",
   heroDescription:
     "많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을 만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.",
+  serviceEyebrow: "BADGEFLOW가 하는 일",
+  serviceTitle: "명찰 한 장을 디자인하면, 명단 전체가 자동으로 완성됩니다.",
+  serviceDescription:
+    "BadgeFlow는 명찰과 출력 용지 크기를 정하고 배경·로고·텍스트를 배치한 뒤, CSV나 표의 이름·팀 데이터를 연결해 실제 크기 PDF를 만드는 브라우저 기반 도구입니다.",
+  featureDesignTitle: "자유롭게 디자인",
+  featureDesignDescription:
+    "배경 이미지, 로고·SVG, 고정 텍스트와 이름·팀 변수를 캔버스에 직접 배치합니다.",
+  featureDataTitle: "명단을 한 번에 연결",
+  featureDataDescription:
+    "CSV를 올리거나 표에 행을 추가하면 같은 디자인으로 모든 사람의 명찰을 자동 생성합니다.",
+  featurePrintTitle: "인쇄까지 정확하게",
+  featurePrintDescription:
+    "A3·A4 용지 배치와 간격, 재단선을 계산해 100% 실제 크기 PDF로 출력합니다.",
   workflow: "작업 순서",
   chooseSize: "크기 선택",
   designRoster: "디자인·명단",
@@ -549,11 +585,29 @@ const ja: Dictionary = {
   installed: "インストール済み",
   installHelp: "ブラウザのメニューからBadgeFlowをインストールしてください",
   continueDraft: "保存した作業を続ける",
+  startNow: "今すぐ始める",
+  newBadge: "新しい名札を作成",
+  newBadgeHelp: "サイズを選び、新しいレイアウトから始めます。",
+  continueDraftHelp: "このブラウザに最後に保存した作業を開きます。",
+  noSavedDraft: "このブラウザには保存済みの作業がまだありません。",
   skipPresets: "名札サイズの選択へ移動",
   heroKicker: "サイズ選択から印刷まで一つの流れで",
   heroTitle: "どの名札を\n作りますか？",
   heroDescription:
     "よく使われるサイズを選ぶと、基本レイアウトからデザイン、名簿連携、実寸PDF出力まで進めます。",
+  serviceEyebrow: "BADGEFLOWでできること",
+  serviceTitle: "一度デザインすれば、名簿全員の名札を自動生成。",
+  serviceDescription:
+    "名札と用紙のサイズを決め、背景・ロゴ・文字を配置し、CSVや表の氏名・所属をつないで実寸PDFを書き出せるブラウザツールです。",
+  featureDesignTitle: "自由にデザイン",
+  featureDesignDescription:
+    "背景、ロゴ、SVG、固定文字、氏名・所属の変数をキャンバスに直接配置できます。",
+  featureDataTitle: "名簿をまとめて連携",
+  featureDataDescription:
+    "CSVをアップロードするか表に行を追加すると、同じデザインから全員分を生成します。",
+  featurePrintTitle: "正しいサイズで印刷",
+  featurePrintDescription:
+    "A3・A4への配置、間隔、トンボを計算し、100%実寸のPDFを書き出します。",
   workflow: "作業手順",
   chooseSize: "サイズ選択",
   designRoster: "デザイン・名簿",
@@ -746,11 +800,29 @@ const zhCN: Dictionary = {
   installed: "已安装",
   installHelp: "请从浏览器菜单安装 BadgeFlow",
   continueDraft: "继续已保存的项目",
+  startNow: "立即开始",
+  newBadge: "新建胸牌",
+  newBadgeHelp: "选择尺寸并从新布局开始。",
+  continueDraftHelp: "打开此浏览器中最近保存的项目。",
+  noSavedDraft: "此浏览器中还没有保存的项目。",
   skipPresets: "跳到胸牌尺寸选择",
   heroKicker: "从尺寸选择到打印一步完成",
   heroTitle: "您要制作哪种\n胸牌？",
   heroDescription:
     "先选择常用尺寸，BadgeFlow 会创建基础布局，并引导您完成设计、名单关联和实际尺寸 PDF 输出。",
+  serviceEyebrow: "BADGEFLOW 的用途",
+  serviceTitle: "只需设计一次，即可自动生成整份名单的胸牌。",
+  serviceDescription:
+    "BadgeFlow 可在浏览器中设置胸牌和纸张尺寸，排版背景、标志和文字，关联 CSV 或表格中的姓名与团队，并导出实际尺寸 PDF。",
+  featureDesignTitle: "自由设计",
+  featureDesignDescription:
+    "可在画布上直接放置背景、标志、SVG、固定文字以及姓名和团队变量。",
+  featureDataTitle: "一次关联整份名单",
+  featureDataDescription:
+    "上传 CSV 或在表格中添加行，即可用同一设计生成所有人的胸牌。",
+  featurePrintTitle: "按准确尺寸打印",
+  featurePrintDescription:
+    "自动计算 A3、A4 排版、间距和裁切标记，导出 100% 实际尺寸 PDF。",
   workflow: "工作流程",
   chooseSize: "选择尺寸",
   designRoster: "设计与名单",
@@ -957,9 +1029,27 @@ const zhTW: Dictionary = {
   installed: "已安裝",
   installHelp: "請從瀏覽器選單安裝 BadgeFlow",
   continueDraft: "繼續已儲存的專案",
+  startNow: "立即開始",
+  newBadge: "建立新識別證",
+  newBadgeHelp: "選擇尺寸並從全新版面開始。",
+  continueDraftHelp: "開啟此瀏覽器中最近儲存的專案。",
+  noSavedDraft: "此瀏覽器中還沒有已儲存的專案。",
   heroTitle: "您要製作哪種\n識別證？",
   heroDescription:
     "先選擇常用尺寸，BadgeFlow 會建立基本版面，並引導您完成設計、名單連結與實際尺寸 PDF 輸出。",
+  serviceEyebrow: "BADGEFLOW 的用途",
+  serviceTitle: "只要設計一次，就能自動產生整份名單的識別證。",
+  serviceDescription:
+    "BadgeFlow 可在瀏覽器中設定識別證與紙張尺寸，配置背景、標誌和文字，連結 CSV 或表格中的姓名與團隊，並匯出實際尺寸 PDF。",
+  featureDesignTitle: "自由設計",
+  featureDesignDescription:
+    "可在畫布上直接放置背景、標誌、SVG、固定文字以及姓名和團隊變數。",
+  featureDataTitle: "一次連結整份名單",
+  featureDataDescription:
+    "上傳 CSV 或在表格中新增資料列，即可用同一設計產生所有人的識別證。",
+  featurePrintTitle: "依正確尺寸列印",
+  featurePrintDescription:
+    "自動計算 A3、A4 版面、間距與裁切標記，匯出 100% 實際尺寸 PDF。",
   chooseSize: "選擇尺寸",
   designRoster: "設計與名單",
   presetTitle: "常用識別證尺寸",
@@ -1122,11 +1212,29 @@ const es: Dictionary = {
   installed: "Instalada",
   installHelp: "Instala BadgeFlow desde el menú del navegador",
   continueDraft: "Continuar proyecto guardado",
+  startNow: "Empezar ahora",
+  newBadge: "Crear una credencial nueva",
+  newBadgeHelp: "Elige un tamaño y empieza con un diseño nuevo.",
+  continueDraftHelp: "Abre el último proyecto guardado en este navegador.",
+  noSavedDraft: "Aún no hay ningún proyecto guardado en este navegador.",
   skipPresets: "Ir a la selección de tamaño",
   heroKicker: "Del tamaño a la impresión en un solo flujo",
   heroTitle: "¿Qué tipo de credencial\nvas a crear?",
   heroDescription:
     "Elige primero un tamaño popular. BadgeFlow crea un diseño inicial y te guía por el diseño, los datos y el PDF a tamaño real.",
+  serviceEyebrow: "QUÉ HACE BADGEFLOW",
+  serviceTitle: "Diseña una vez y genera las credenciales de toda la lista.",
+  serviceDescription:
+    "BadgeFlow permite definir tamaños, colocar fondos, logotipos y texto, conectar nombres y equipos desde CSV o una tabla y exportar un PDF a tamaño real.",
+  featureDesignTitle: "Diseña libremente",
+  featureDesignDescription:
+    "Coloca fondos, logotipos, SVG, texto fijo y variables de nombre o equipo directamente en el lienzo.",
+  featureDataTitle: "Conecta toda la lista",
+  featureDataDescription:
+    "Sube un CSV o añade filas para generar todas las credenciales con un solo diseño.",
+  featurePrintTitle: "Imprime al tamaño correcto",
+  featurePrintDescription:
+    "Organiza las credenciales en A3 o A4 con márgenes y marcas de corte, y exporta un PDF al 100%.",
   workflow: "Flujo de trabajo",
   chooseSize: "Elegir tamaño",
   designRoster: "Diseño y lista",
@@ -1303,10 +1411,28 @@ const fr: Dictionary = {
   installed: "Installée",
   installHelp: "Installez BadgeFlow depuis le menu du navigateur",
   continueDraft: "Continuer le projet enregistré",
+  startNow: "Commencer",
+  newBadge: "Créer un nouveau badge",
+  newBadgeHelp: "Choisissez un format et partez d’une nouvelle mise en page.",
+  continueDraftHelp: "Ouvrez le dernier projet enregistré dans ce navigateur.",
+  noSavedDraft: "Aucun projet n’est encore enregistré dans ce navigateur.",
   heroKicker: "De la taille à l’impression en un seul flux",
   heroTitle: "Quel badge\ncréez-vous ?",
   heroDescription:
     "Choisissez d’abord un format courant. BadgeFlow prépare la mise en page puis vous guide jusqu’au PDF à taille réelle.",
+  serviceEyebrow: "CE QUE FAIT BADGEFLOW",
+  serviceTitle: "Créez un design, puis générez les badges de toute la liste.",
+  serviceDescription:
+    "BadgeFlow permet de définir les formats, placer fonds, logos et textes, relier les noms et équipes d’un CSV ou d’un tableau, puis exporter un PDF à taille réelle.",
+  featureDesignTitle: "Concevez librement",
+  featureDesignDescription:
+    "Placez directement sur la zone de travail fonds, logos, SVG, textes fixes et variables de nom ou d’équipe.",
+  featureDataTitle: "Reliez toute la liste",
+  featureDataDescription:
+    "Importez un CSV ou ajoutez des lignes pour générer tous les badges à partir d’un seul design.",
+  featurePrintTitle: "Imprimez au bon format",
+  featurePrintDescription:
+    "Disposez les badges sur A3 ou A4 avec espacements et traits de coupe, puis exportez un PDF à 100%.",
   workflow: "Étapes",
   chooseSize: "Choisir la taille",
   designRoster: "Design et liste",
@@ -1483,10 +1609,28 @@ const de: Dictionary = {
   installed: "Installiert",
   installHelp: "BadgeFlow über das Browsermenü installieren",
   continueDraft: "Gespeichertes Projekt fortsetzen",
+  startNow: "Jetzt starten",
+  newBadge: "Neues Namensschild erstellen",
+  newBadgeHelp: "Format wählen und mit einem neuen Layout beginnen.",
+  continueDraftHelp: "Das zuletzt in diesem Browser gespeicherte Projekt öffnen.",
+  noSavedDraft: "In diesem Browser ist noch kein Projekt gespeichert.",
   heroKicker: "Von der Größe bis zum Druck in einem Ablauf",
   heroTitle: "Welches Namensschild\nmöchten Sie erstellen?",
   heroDescription:
     "Wählen Sie zuerst ein gängiges Format. BadgeFlow führt Sie vom Startlayout über Daten bis zum PDF in Originalgröße.",
+  serviceEyebrow: "WAS BADGEFLOW LEISTET",
+  serviceTitle: "Einmal gestalten und Namensschilder für die ganze Liste erzeugen.",
+  serviceDescription:
+    "Mit BadgeFlow legen Sie Formate fest, platzieren Hintergründe, Logos und Texte, verbinden Namen und Teams aus CSV oder Tabelle und exportieren ein PDF in Originalgröße.",
+  featureDesignTitle: "Frei gestalten",
+  featureDesignDescription:
+    "Hintergründe, Logos, SVGs, feste Texte sowie Namens- und Teamvariablen direkt auf der Arbeitsfläche platzieren.",
+  featureDataTitle: "Die ganze Liste verbinden",
+  featureDataDescription:
+    "CSV hochladen oder Zeilen ergänzen und alle Namensschilder aus einem einzigen Design erzeugen.",
+  featurePrintTitle: "In korrekter Größe drucken",
+  featurePrintDescription:
+    "Namensschilder auf A3 oder A4 mit Abständen und Schnittmarken anordnen und als 100%-PDF exportieren.",
   workflow: "Ablauf",
   chooseSize: "Größe wählen",
   designRoster: "Design und Liste",
