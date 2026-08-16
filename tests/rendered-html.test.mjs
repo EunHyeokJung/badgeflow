@@ -134,6 +134,10 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.saved-project-overlay/);
   assert.match(css, /\.saved-project-list/);
   assert.match(css, /\.saved-project-delete/);
+  assert.match(css, /\.landing-shell:lang\(ko\)\s*{[^}]*word-break: keep-all/s);
+  assert.match(css, /\.service-overview-heading\s*{[^}]*max-width: 900px/s);
+  assert.match(css, /\.service-overview-heading h2[^{]*{[^}]*text-wrap: balance/s);
+  assert.match(css, /\.service-overview-heading p[^{]*{[^}]*text-wrap: pretty/s);
   assert.match(css, /\.preset-mini-sheet/);
   assert.match(css, /\.fold-guide/);
   assert.match(css, /\.table-tent-panel\.is-reversed/);
