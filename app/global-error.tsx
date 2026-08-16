@@ -15,7 +15,6 @@ export default function GlobalError({
       <body>
         <main className="error-page">
           <section>
-            <span className="error-code">BADGEFLOW</span>
             <h1>{t("globalErrorTitle")}</h1>
             <p>{t("globalErrorHelp")}</p>
             <button type="button" onClick={reset}>

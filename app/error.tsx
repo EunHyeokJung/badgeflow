@@ -13,7 +13,6 @@ export default function ErrorPage({
   return (
     <main className="error-page">
       <section>
-        <span className="error-code">RECOVERY</span>
         <h1>{t("editorErrorTitle")}</h1>
         <p>{t("editorErrorHelp")}</p>
         <button type="button" onClick={reset}>

@@ -9,7 +9,6 @@ export default function NotFound() {
   return (
     <main className="error-page">
       <section>
-        <span className="error-code">404</span>
         <h1>{t("notFoundTitle")}</h1>
         <p>{t("notFoundHelp")}</p>
         <Link href="/">{t("goHome")}</Link>

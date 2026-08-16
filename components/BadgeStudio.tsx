@@ -8,7 +8,6 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
-  BadgeCheck,
   Check,
   Copy,
   CreditCard,
@@ -530,10 +529,7 @@ function LandingPage({
       <header className="landing-header">
         <span className="landing-brand">
           <span className="brand-mark">B</span>
-          <span>
-            <strong>BadgeFlow</strong>
-            <small>{t("studio")}</small>
-          </span>
+          <strong>BadgeFlow</strong>
         </span>
         <div className="landing-header-actions">
           <AppControls
@@ -599,10 +595,6 @@ function LandingPage({
 
       <main className="landing-main">
         <section className="landing-hero" aria-labelledby="landing-title">
-          <div className="landing-kicker">
-            <BadgeCheck size={16} />
-            {t("heroKicker")}
-          </div>
           <h1 id="landing-title">
             {heroLineOne}
             <br />
@@ -636,7 +628,6 @@ function LandingPage({
           aria-labelledby="service-overview-title"
         >
           <div className="service-overview-heading">
-            <span>{t("serviceEyebrow")}</span>
             <h2 id="service-overview-title">{t("serviceTitle")}</h2>
             <p>{t("serviceDescription")}</p>
           </div>
@@ -677,12 +668,9 @@ function LandingPage({
           aria-labelledby="preset-title"
         >
           <div className="preset-heading">
-            <div>
-              <span>{t("popularSizes")}</span>
-              <h2 id="preset-title" tabIndex={-1}>
-                {t("presetTitle")}
-              </h2>
-            </div>
+            <h2 id="preset-title" tabIndex={-1}>
+              {t("presetTitle")}
+            </h2>
             <p>{t("presetHelper")}</p>
           </div>
 
@@ -2689,10 +2677,7 @@ export function BadgeStudio() {
           aria-label={t("startScreen")}
         >
           <span className="brand-mark">B</span>
-          <span>
-            <strong>BadgeFlow</strong>
-            <small>{t("studio")}</small>
-          </span>
+          <strong>BadgeFlow</strong>
         </button>
 
         <nav className="mode-nav" aria-label={t("steps")}>
@@ -2764,7 +2749,6 @@ export function BadgeStudio() {
             <aside className="panel left-panel" aria-label={t("designTools")}>
               <div className="panel-heading">
                 <div>
-                  <span className="eyebrow">SETUP</span>
                   <h1>{t("badgeDesign")}</h1>
                 </div>
                 <span className="dimension-badge">
@@ -3106,7 +3090,6 @@ export function BadgeStudio() {
             <aside className="panel right-panel" aria-label={t("elementProperties")}>
               <div className="panel-heading compact">
                 <div>
-                  <span className="eyebrow">INSPECTOR</span>
                   <h2>{t("elementProperties")}</h2>
                 </div>
                 <Settings2 size={19} />
@@ -3651,7 +3634,6 @@ export function BadgeStudio() {
               </section>
 
               <div className="reference-note">
-                <span className="reference-kicker">REFERENCE READY</span>
                 <strong>A4 · 95 × 123 mm · 4-UP</strong>
                 <p>{t("referenceReady")}</p>
               </div>
@@ -3664,7 +3646,6 @@ export function BadgeStudio() {
             <section className="data-main">
               <div className="workspace-heading">
                 <div>
-                  <span className="eyebrow">DATA SOURCE</span>
                   <h1>{t("badgeData")}</h1>
                   <p>{t("dataHelp")}</p>
                 </div>
@@ -3784,7 +3765,6 @@ export function BadgeStudio() {
             <aside className="data-side panel">
               <div className="panel-heading compact">
                 <div>
-                  <span className="eyebrow">SCHEMA</span>
                   <h2>{t("variables")}</h2>
                 </div>
                 <span className="count-badge">{fields.length}</span>
@@ -3882,7 +3862,6 @@ export function BadgeStudio() {
             <section className="print-preview-section">
               <div className="workspace-heading print-heading">
                 <div>
-                  <span className="eyebrow">PRINT PREVIEW</span>
                   <h1>{t("printPreview")}</h1>
                   <p>{t("printHelp")}</p>
                 </div>
@@ -4010,7 +3989,6 @@ export function BadgeStudio() {
             <aside className="panel print-settings">
               <div className="panel-heading compact">
                 <div>
-                  <span className="eyebrow">OUTPUT</span>
                   <h2>{t("outputSettings")}</h2>
                 </div>
                 <Printer size={19} />

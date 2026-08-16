@@ -17,7 +17,6 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number]["code"];
 
 const en = {
   language: "Language",
-  studio: "Badge print studio",
   installApp: "Install app",
   installed: "Installed",
   installHelp: "Install BadgeFlow from your browser menu",
@@ -28,11 +27,9 @@ const en = {
   continueDraftHelp: "Open the latest project saved in this browser.",
   noSavedDraft: "No saved project in this browser yet.",
   skipPresets: "Skip to badge size selection",
-  heroKicker: "From size to print in one flow",
   heroTitle: "What kind of badge\nare you making?",
   heroDescription:
     "Choose a popular size first. BadgeFlow creates a starter layout, then takes you through design, roster data, and print-ready PDF export.",
-  serviceEyebrow: "WHAT BADGEFLOW DOES",
   serviceTitle: "Design once. Generate every badge in your roster.",
   serviceDescription:
     "BadgeFlow is a browser-based tool for setting badge and paper sizes, arranging backgrounds, logos, and text, connecting names and teams from a CSV or table, and exporting a true-size PDF.",
@@ -49,7 +46,6 @@ const en = {
   chooseSize: "Choose size",
   designRoster: "Design & roster",
   actualPdf: "True-size PDF",
-  popularSizes: "POPULAR SIZES",
   presetTitle: "Popular badge sizes",
   presetHelper: "You can still edit width and height after opening the studio.",
   startSize: "Start with {name} {width} × {height} mm",
@@ -314,7 +310,6 @@ type Dictionary = Partial<Record<MessageKey, string>>;
 
 const ko: Dictionary = {
   language: "언어",
-  studio: "명찰 인쇄 스튜디오",
   installApp: "앱 설치",
   installed: "설치됨",
   installHelp: "브라우저 메뉴에서 BadgeFlow를 설치하세요",
@@ -325,11 +320,9 @@ const ko: Dictionary = {
   continueDraftHelp: "이 브라우저에 마지막으로 저장한 작업을 엽니다.",
   noSavedDraft: "아직 이 브라우저에 저장된 작업이 없습니다.",
   skipPresets: "명찰 규격 선택으로 건너뛰기",
-  heroKicker: "크기부터 인쇄까지 한 번에",
   heroTitle: "어떤 명찰을\n만드시나요?",
   heroDescription:
     "많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을 만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.",
-  serviceEyebrow: "BADGEFLOW가 하는 일",
   serviceTitle: "명찰 한 장을 디자인하면, 명단 전체가 자동으로 완성됩니다.",
   serviceDescription:
     "BadgeFlow는 명찰과 출력 용지 크기를 정하고 배경·로고·텍스트를 배치한 뒤, CSV나 표의 이름·팀 데이터를 연결해 실제 크기 PDF를 만드는 브라우저 기반 도구입니다.",
@@ -602,7 +595,6 @@ const ko: Dictionary = {
 
 const ja: Dictionary = {
   language: "言語",
-  studio: "名札印刷スタジオ",
   installApp: "アプリをインストール",
   installed: "インストール済み",
   installHelp: "ブラウザのメニューからBadgeFlowをインストールしてください",
@@ -613,11 +605,9 @@ const ja: Dictionary = {
   continueDraftHelp: "このブラウザに最後に保存した作業を開きます。",
   noSavedDraft: "このブラウザには保存済みの作業がまだありません。",
   skipPresets: "名札サイズの選択へ移動",
-  heroKicker: "サイズ選択から印刷まで一つの流れで",
   heroTitle: "どの名札を\n作りますか？",
   heroDescription:
     "よく使われるサイズを選ぶと、基本レイアウトからデザイン、名簿連携、実寸PDF出力まで進めます。",
-  serviceEyebrow: "BADGEFLOWでできること",
   serviceTitle: "一度デザインすれば、名簿全員の名札を自動生成。",
   serviceDescription:
     "名札と用紙のサイズを決め、背景・ロゴ・文字を配置し、CSVや表の氏名・所属をつないで実寸PDFを書き出せるブラウザツールです。",
@@ -736,7 +726,6 @@ const ja: Dictionary = {
   printRecommended: "印刷推奨",
   highQuality: "高品質",
   downloadPdf: "印刷用PDFをダウンロード",
-  popularSizes: "人気サイズ",
   startSize: "{name} {width} × {height} mmで開始",
   presetLanyard: "大型ネックストラップ名札",
   presetLanyardDescription: "イベントやカンファレンス向けのゆったりした縦型",
@@ -828,7 +817,6 @@ const ja: Dictionary = {
 
 const zhCN: Dictionary = {
   language: "语言",
-  studio: "胸牌打印工作室",
   installApp: "安装应用",
   installed: "已安装",
   installHelp: "请从浏览器菜单安装 BadgeFlow",
@@ -839,11 +827,9 @@ const zhCN: Dictionary = {
   continueDraftHelp: "打开此浏览器中最近保存的项目。",
   noSavedDraft: "此浏览器中还没有保存的项目。",
   skipPresets: "跳到胸牌尺寸选择",
-  heroKicker: "从尺寸选择到打印一步完成",
   heroTitle: "您要制作哪种\n胸牌？",
   heroDescription:
     "先选择常用尺寸，BadgeFlow 会创建基础布局，并引导您完成设计、名单关联和实际尺寸 PDF 输出。",
-  serviceEyebrow: "BADGEFLOW 的用途",
   serviceTitle: "只需设计一次，即可自动生成整份名单的胸牌。",
   serviceDescription:
     "BadgeFlow 可在浏览器中设置胸牌和纸张尺寸，排版背景、标志和文字，关联 CSV 或表格中的姓名与团队，并导出实际尺寸 PDF。",
@@ -962,7 +948,6 @@ const zhCN: Dictionary = {
   printRecommended: "推荐打印",
   highQuality: "高质量",
   downloadPdf: "下载打印用 PDF",
-  popularSizes: "常用尺寸",
   startSize: "使用 {name} {width} × {height} mm 开始",
   presetLanyard: "大型挂绳胸牌",
   presetLanyardDescription: "适合活动和会议证件套的宽裕竖版内页",
@@ -1068,7 +1053,6 @@ const zhCN: Dictionary = {
 const zhTW: Dictionary = {
   ...zhCN,
   language: "語言",
-  studio: "識別證列印工作室",
   installApp: "安裝應用程式",
   installed: "已安裝",
   installHelp: "請從瀏覽器選單安裝 BadgeFlow",
@@ -1081,7 +1065,6 @@ const zhTW: Dictionary = {
   heroTitle: "您要製作哪種\n識別證？",
   heroDescription:
     "先選擇常用尺寸，BadgeFlow 會建立基本版面，並引導您完成設計、名單連結與實際尺寸 PDF 輸出。",
-  serviceEyebrow: "BADGEFLOW 的用途",
   serviceTitle: "只要設計一次，就能自動產生整份名單的識別證。",
   serviceDescription:
     "BadgeFlow 可在瀏覽器中設定識別證與紙張尺寸，配置背景、標誌和文字，連結 CSV 或表格中的姓名與團隊，並匯出實際尺寸 PDF。",
@@ -1161,7 +1144,6 @@ const zhTW: Dictionary = {
   cropMarks: "裁切線",
   printRecommended: "建議列印",
   downloadPdf: "下載列印用 PDF",
-  popularSizes: "常用尺寸",
   startSize: "使用 {name} {width} × {height} mm 開始",
   presetLanyard: "大型掛繩識別證",
   presetLanyardDescription: "適合活動與研討會證件套的寬裕直式內頁",
@@ -1262,7 +1244,6 @@ const zhTW: Dictionary = {
 
 const es: Dictionary = {
   language: "Idioma",
-  studio: "Estudio de impresión de credenciales",
   installApp: "Instalar aplicación",
   installed: "Instalada",
   installHelp: "Instala BadgeFlow desde el menú del navegador",
@@ -1273,11 +1254,9 @@ const es: Dictionary = {
   continueDraftHelp: "Abre el último proyecto guardado en este navegador.",
   noSavedDraft: "Aún no hay ningún proyecto guardado en este navegador.",
   skipPresets: "Ir a la selección de tamaño",
-  heroKicker: "Del tamaño a la impresión en un solo flujo",
   heroTitle: "¿Qué tipo de credencial\nvas a crear?",
   heroDescription:
     "Elige primero un tamaño popular. BadgeFlow crea un diseño inicial y te guía por el diseño, los datos y el PDF a tamaño real.",
-  serviceEyebrow: "QUÉ HACE BADGEFLOW",
   serviceTitle: "Diseña una vez y genera las credenciales de toda la lista.",
   serviceDescription:
     "BadgeFlow permite definir tamaños, colocar fondos, logotipos y texto, conectar nombres y equipos desde CSV o una tabla y exportar un PDF a tamaño real.",
@@ -1396,7 +1375,6 @@ const es: Dictionary = {
   printRecommended: "Recomendado para imprimir",
   highQuality: "Alta calidad",
   downloadPdf: "Descargar PDF para imprimir",
-  popularSizes: "TAMAÑOS POPULARES",
   startSize: "Empezar con {name} {width} × {height} mm",
   presetLanyard: "Credencial grande con cordón",
   presetLanyardDescription: "Formato vertical amplio para eventos y congresos",
@@ -1472,7 +1450,6 @@ const es: Dictionary = {
 
 const fr: Dictionary = {
   language: "Langue",
-  studio: "Studio d’impression de badges",
   installApp: "Installer l’application",
   installed: "Installée",
   installHelp: "Installez BadgeFlow depuis le menu du navigateur",
@@ -1482,11 +1459,9 @@ const fr: Dictionary = {
   newBadgeHelp: "Choisissez un format et partez d’une nouvelle mise en page.",
   continueDraftHelp: "Ouvrez le dernier projet enregistré dans ce navigateur.",
   noSavedDraft: "Aucun projet n’est encore enregistré dans ce navigateur.",
-  heroKicker: "De la taille à l’impression en un seul flux",
   heroTitle: "Quel badge\ncréez-vous ?",
   heroDescription:
     "Choisissez d’abord un format courant. BadgeFlow prépare la mise en page puis vous guide jusqu’au PDF à taille réelle.",
-  serviceEyebrow: "CE QUE FAIT BADGEFLOW",
   serviceTitle: "Créez un design, puis générez les badges de toute la liste.",
   serviceDescription:
     "BadgeFlow permet de définir les formats, placer fonds, logos et textes, relier les noms et équipes d’un CSV ou d’un tableau, puis exporter un PDF à taille réelle.",
@@ -1605,7 +1580,6 @@ const fr: Dictionary = {
   printRecommended: "Recommandé pour l’impression",
   highQuality: "Haute qualité",
   downloadPdf: "Télécharger le PDF d’impression",
-  popularSizes: "FORMATS POPULAIRES",
   startSize: "Commencer avec {name} {width} × {height} mm",
   presetLanyard: "Grand badge tour de cou",
   presetLanyardDescription: "Format portrait spacieux pour événements et conférences",
@@ -1681,7 +1655,6 @@ const fr: Dictionary = {
 
 const de: Dictionary = {
   language: "Sprache",
-  studio: "Namensschild-Druckstudio",
   installApp: "App installieren",
   installed: "Installiert",
   installHelp: "BadgeFlow über das Browsermenü installieren",
@@ -1691,11 +1664,9 @@ const de: Dictionary = {
   newBadgeHelp: "Format wählen und mit einem neuen Layout beginnen.",
   continueDraftHelp: "Das zuletzt in diesem Browser gespeicherte Projekt öffnen.",
   noSavedDraft: "In diesem Browser ist noch kein Projekt gespeichert.",
-  heroKicker: "Von der Größe bis zum Druck in einem Ablauf",
   heroTitle: "Welches Namensschild\nmöchten Sie erstellen?",
   heroDescription:
     "Wählen Sie zuerst ein gängiges Format. BadgeFlow führt Sie vom Startlayout über Daten bis zum PDF in Originalgröße.",
-  serviceEyebrow: "WAS BADGEFLOW LEISTET",
   serviceTitle: "Einmal gestalten und Namensschilder für die ganze Liste erzeugen.",
   serviceDescription:
     "Mit BadgeFlow legen Sie Formate fest, platzieren Hintergründe, Logos und Texte, verbinden Namen und Teams aus CSV oder Tabelle und exportieren ein PDF in Originalgröße.",
@@ -1814,7 +1785,6 @@ const de: Dictionary = {
   printRecommended: "Für Druck empfohlen",
   highQuality: "Hohe Qualität",
   downloadPdf: "Druck-PDF herunterladen",
-  popularSizes: "BELIEBTE GRÖSSEN",
   startSize: "Mit {name} {width} × {height} mm starten",
   presetLanyard: "Großes Umhänge-Namensschild",
   presetLanyardDescription: "Geräumiges Hochformat für Events und Konferenzen",

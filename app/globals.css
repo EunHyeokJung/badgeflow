@@ -228,8 +228,7 @@ select:focus-visible,
   background: #1e3a8a;
 }
 
-.landing-brand strong,
-.landing-brand small {
+.landing-brand strong {
   display: block;
 }
 
@@ -237,13 +236,6 @@ select:focus-visible,
   font-size: 16px;
   font-weight: 850;
   letter-spacing: -0.025em;
-}
-
-.landing-brand small {
-  margin-top: -2px;
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 650;
 }
 
 .landing-start-control {
@@ -377,23 +369,8 @@ select:focus-visible,
   justify-items: start;
 }
 
-.landing-kicker {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid #bfdbfe;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
-  padding: 0 11px;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.01em;
-}
-
 .landing-hero h1 {
-  margin: 22px 0 0;
+  margin: 0;
   color: #0f172a;
   font-size: clamp(44px, 6vw, 72px);
   font-weight: 880;
@@ -459,16 +436,9 @@ select:focus-visible,
   padding: 38px 0;
 }
 
-.service-overview-heading > span {
-  color: #2563eb;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-}
-
 .service-overview-heading h2 {
   max-width: 410px;
-  margin: 7px 0 0;
+  margin: 0;
   color: #0f172a;
   font-size: clamp(25px, 3vw, 36px);
   font-weight: 870;
@@ -539,15 +509,8 @@ select:focus-visible,
   margin-bottom: 18px;
 }
 
-.preset-heading > div > span {
-  color: #2563eb;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-}
-
 .preset-heading h2 {
-  margin: 3px 0 0;
+  margin: 0;
   font-size: 24px;
   font-weight: 850;
   letter-spacing: -0.04em;
@@ -918,8 +881,7 @@ select:focus-visible,
   letter-spacing: -0.04em;
 }
 
-.brand strong,
-.brand small {
+.brand strong {
   display: block;
 }
 
@@ -927,14 +889,6 @@ select:focus-visible,
   font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.02em;
-}
-
-.brand small {
-  margin-top: -1px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .mode-nav {
@@ -1109,7 +1063,7 @@ select:focus-visible,
 .panel-heading h1,
 .panel-heading h2,
 .workspace-heading h1 {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.035em;
@@ -1117,14 +1071,6 @@ select:focus-visible,
 
 .panel-heading h2 {
   font-size: 16px;
-}
-
-.eyebrow {
-  display: block;
-  color: var(--teal-dark);
-  font-size: 9px;
-  font-weight: 850;
-  letter-spacing: 0.16em;
 }
 
 .dimension-badge,
@@ -2278,17 +2224,9 @@ select:focus {
   padding: 12px;
 }
 
-.reference-kicker {
-  display: block;
-  color: var(--orange);
-  font-size: 8px;
-  font-weight: 850;
-  letter-spacing: 0.13em;
-}
-
 .reference-note strong {
   display: block;
-  margin-top: 3px;
+  margin-top: 0;
   font-size: 11px;
 }
 
@@ -2325,7 +2263,7 @@ select:focus {
 }
 
 .workspace-heading h1 {
-  margin-top: 4px;
+  margin-top: 0;
   font-size: 25px;
 }
 
@@ -3004,19 +2942,8 @@ select:focus {
   text-align: center;
 }
 
-.error-code {
-  display: inline-flex;
-  border-radius: 999px;
-  background: var(--teal-pale);
-  color: var(--teal-dark);
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.12em;
-}
-
 .error-page h1 {
-  margin: 18px 0 8px;
+  margin: 0 0 8px;
   color: var(--ink);
   font-size: clamp(24px, 5vw, 34px);
   line-height: 1.2;
@@ -3278,7 +3205,7 @@ select:focus {
   }
 
   .landing-hero h1 {
-    margin-top: 18px;
+    margin-top: 0;
     font-size: clamp(40px, 13vw, 56px);
   }
 
@@ -3381,7 +3308,6 @@ select:focus {
     padding-right: 16px;
   }
 
-  .brand small,
   .top-export span {
     display: none;
   }

@@ -54,6 +54,8 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /B7 컨퍼런스 패스/);
   assert.match(html, /CR80 · ID-1/);
   assert.match(html, /원하는 규격을 직접 입력할게요/);
+  assert.doesNotMatch(html, /POPULAR SIZES|BADGEFLOW가 하는 일/);
+  assert.doesNotMatch(html, /크기부터 인쇄까지 한 번에/);
   assert.doesNotMatch(html, /Your site is taking shape/);
 });
 
@@ -90,6 +92,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /const undoElements = useCallback/);
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
+  assert.doesNotMatch(
+    studio,
+    /SETUP|INSPECTOR|DATA SOURCE|SCHEMA|PRINT PREVIEW|REFERENCE READY/,
+  );
+  assert.doesNotMatch(studio, /className="eyebrow"/);
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.service-overview/);
@@ -97,6 +104,7 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.preset-mini-sheet/);
   assert.match(css, /\.fold-guide/);
   assert.match(css, /\.table-tent-panel\.is-reversed/);
+  assert.doesNotMatch(css, /\.eyebrow|\.landing-kicker|\.reference-kicker/);
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
   assert.match(storage, /indexedDB\.open/);
