@@ -1,15 +1,47 @@
 const DATABASE_NAME = "badgeflow";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "projects";
-const ACTIVE_PROJECT_KEY = "active-project";
+const LEGACY_ACTIVE_PROJECT_KEY = "active-project";
+const ACTIVE_PROJECT_ID_KEY = "active-project-id";
+const PROJECT_KEY_PREFIX = "project:";
 const LEGACY_LOCAL_STORAGE_KEY = "badgeflow-project-v1";
+const LOCAL_PROJECTS_KEY = "badgeflow-projects-v2";
 
 export type StorageMode = "indexeddb" | "localstorage";
 
-type StoredDraft<T> = {
-  key: typeof ACTIVE_PROJECT_KEY;
+export type StoredProjectSummary = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  badgeWidth: number;
+  badgeHeight: number;
+  rowCount: number;
+  outputMode: string;
+};
+
+export type StoredProject<T> = StoredProjectSummary & {
+  value: T;
+};
+
+type IndexedProject<T> = StoredProject<T> & {
+  key: string;
+};
+
+type LegacyStoredDraft<T> = {
+  key: typeof LEGACY_ACTIVE_PROJECT_KEY;
   updatedAt: string;
   value: T;
+};
+
+type ActiveProjectPointer = {
+  key: typeof ACTIVE_PROJECT_ID_KEY;
+  projectId: string;
+};
+
+type LocalProjectCollection<T> = {
+  activeProjectId: string | null;
+  projects: StoredProject<T>[];
 };
 
 function openDatabase() {
@@ -57,104 +89,277 @@ function transactionComplete(transaction: IDBTransaction) {
   });
 }
 
-async function readIndexedDbDraft<T>() {
+function makeProjectId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function makeLegacyProject<T>(draft: LegacyStoredDraft<T>): StoredProject<T> {
+  const value: Record<string, unknown> = isRecord(draft.value)
+    ? draft.value
+    : {};
+  const badgeWidth = finiteNumber(value.badgeWidth, 95);
+  const badgeHeight = finiteNumber(value.badgeHeight, 123);
+  const updatedAt =
+    typeof value.updatedAt === "string" ? value.updatedAt : draft.updatedAt;
+  return {
+    id: makeProjectId(),
+    name: `${badgeWidth} × ${badgeHeight} mm`,
+    createdAt: updatedAt,
+    updatedAt,
+    badgeWidth,
+    badgeHeight,
+    rowCount: Array.isArray(value.rows) ? value.rows.length : 0,
+    outputMode:
+      typeof value.outputMode === "string" ? value.outputMode : "standard",
+    value: draft.value,
+  };
+}
+
+function toIndexedProject<T>(project: StoredProject<T>): IndexedProject<T> {
+  return {
+    ...project,
+    key: `${PROJECT_KEY_PREFIX}${project.id}`,
+  };
+}
+
+function toSummary<T>(project: StoredProject<T>): StoredProjectSummary {
+  const { value: _value, ...summary } = project;
+  return summary;
+}
+
+function sortProjects<T>(projects: StoredProject<T>[]) {
+  return [...projects].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+async function readIndexedDbProjects<T>() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, "readonly");
+    const store = transaction.objectStore(STORE_NAME);
+    const records = await requestResult(
+      store.getAll() as IDBRequest<
+        Array<IndexedProject<T> | LegacyStoredDraft<T> | ActiveProjectPointer>
+      >,
+    );
+    let projects = records.filter(
+      (record): record is IndexedProject<T> =>
+        typeof record.key === "string" &&
+        record.key.startsWith(PROJECT_KEY_PREFIX) &&
+        "value" in record,
+    );
+
+    if (!projects.length) {
+      const legacy = records.find(
+        (record): record is LegacyStoredDraft<T> =>
+          record.key === LEGACY_ACTIVE_PROJECT_KEY && "value" in record,
+      );
+      if (legacy) {
+        const migrated = makeLegacyProject(legacy);
+        const indexed = toIndexedProject(migrated);
+        const migration = database.transaction(STORE_NAME, "readwrite");
+        const migrationCompleted = transactionComplete(migration);
+        const migrationStore = migration.objectStore(STORE_NAME);
+        migrationStore.put(indexed);
+        migrationStore.put({
+          key: ACTIVE_PROJECT_ID_KEY,
+          projectId: migrated.id,
+        } satisfies ActiveProjectPointer);
+        migrationStore.delete(LEGACY_ACTIVE_PROJECT_KEY);
+        await migrationCompleted;
+        projects = [indexed];
+      }
+    }
+
+    return sortProjects(projects.map(({ key: _key, ...project }) => project));
+  } finally {
+    database.close();
+  }
+}
+
+async function readIndexedDbProject<T>(projectId: string) {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, "readonly");
     const stored = await requestResult(
       transaction
         .objectStore(STORE_NAME)
-        .get(ACTIVE_PROJECT_KEY) as IDBRequest<StoredDraft<T> | undefined>,
+        .get(`${PROJECT_KEY_PREFIX}${projectId}`) as IDBRequest<
+        IndexedProject<T> | undefined
+      >,
     );
-    return stored?.value ?? null;
+    if (!stored) return null;
+    const { key: _key, ...project } = stored;
+    return project;
   } finally {
     database.close();
   }
 }
 
-async function writeIndexedDbDraft<T>(value: T) {
+async function writeIndexedDbProject<T>(project: StoredProject<T>) {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, "readwrite");
     const completed = transactionComplete(transaction);
-    await Promise.all([
-      requestResult(
-        transaction.objectStore(STORE_NAME).put({
-          key: ACTIVE_PROJECT_KEY,
-          updatedAt: new Date().toISOString(),
-          value,
-        } satisfies StoredDraft<T>),
-      ),
-      completed,
-    ]);
+    const store = transaction.objectStore(STORE_NAME);
+    store.put(toIndexedProject(project));
+    store.put({
+      key: ACTIVE_PROJECT_ID_KEY,
+      projectId: project.id,
+    } satisfies ActiveProjectPointer);
+    await completed;
   } finally {
     database.close();
   }
 }
 
-export async function loadProjectDraft<T>() {
+async function deleteIndexedDbProject(projectId: string) {
+  const database = await openDatabase();
   try {
-    const indexedDbDraft = await readIndexedDbDraft<T>();
-    if (indexedDbDraft) return indexedDbDraft;
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const completed = transactionComplete(transaction);
+    const store = transaction.objectStore(STORE_NAME);
+    store.delete(`${PROJECT_KEY_PREFIX}${projectId}`);
+    store.delete(ACTIVE_PROJECT_ID_KEY);
+    await completed;
+  } finally {
+    database.close();
+  }
+}
+
+function readLocalProjects<T>(): LocalProjectCollection<T> {
+  if (typeof localStorage === "undefined") {
+    return { activeProjectId: null, projects: [] };
+  }
+
+  try {
+    const stored = localStorage.getItem(LOCAL_PROJECTS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as LocalProjectCollection<T>;
+      if (Array.isArray(parsed.projects)) return parsed;
+    }
+
+    const legacy = localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
+    if (!legacy) return { activeProjectId: null, projects: [] };
+    const value = JSON.parse(legacy) as T;
+    const updatedAt =
+      isRecord(value) && typeof value.updatedAt === "string"
+        ? value.updatedAt
+        : new Date().toISOString();
+    const migrated = makeLegacyProject({
+      key: LEGACY_ACTIVE_PROJECT_KEY,
+      updatedAt,
+      value,
+    });
+    const collection = {
+      activeProjectId: migrated.id,
+      projects: [migrated],
+    };
+    localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(collection));
+    localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+    return collection;
+  } catch {
+    return { activeProjectId: null, projects: [] };
+  }
+}
+
+function writeLocalProjects<T>(collection: LocalProjectCollection<T>) {
+  if (typeof localStorage === "undefined") {
+    throw new Error("Browser storage is unavailable.");
+  }
+  localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(collection));
+  localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+}
+
+export async function listProjectDrafts<T>() {
+  try {
+    const indexedProjects = await readIndexedDbProjects<T>();
+    const localProjects = sortProjects(readLocalProjects<T>().projects);
+    if (localProjects.length) {
+      const merged = new Map(
+        indexedProjects.map((project) => [project.id, project] as const),
+      );
+      for (const project of [...localProjects].reverse()) {
+        const indexed = merged.get(project.id);
+        if (!indexed || project.updatedAt > indexed.updatedAt) {
+          await writeIndexedDbProject(project);
+          merged.set(project.id, project);
+        }
+      }
+      localStorage.removeItem(LOCAL_PROJECTS_KEY);
+      return sortProjects([...merged.values()]).map(toSummary);
+    }
+    return indexedProjects.map(toSummary);
+  } catch {
+    return sortProjects(readLocalProjects<T>().projects).map(toSummary);
+  }
+}
+
+export async function loadProjectDraft<T>(projectId: string) {
+  try {
+    const indexedProject = await readIndexedDbProject<T>(projectId);
+    if (indexedProject) return indexedProject;
   } catch {
     // Private browsing and embedded browsers may disable IndexedDB.
   }
 
-  if (typeof localStorage === "undefined") return null;
+  return (
+    readLocalProjects<T>().projects.find((project) => project.id === projectId) ??
+    null
+  );
+}
+
+export async function saveProjectDraft<T>(
+  project: StoredProject<T>,
+): Promise<{ mode: StorageMode; summary: StoredProjectSummary }> {
   try {
-    const legacyDraft = localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
-    if (!legacyDraft) return null;
-    return JSON.parse(legacyDraft) as T;
-  } catch {
-    try {
+    await writeIndexedDbProject(project);
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(LOCAL_PROJECTS_KEY);
       localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
-    } catch {
-      // Storage access can be denied by browser privacy settings.
     }
-    return null;
+    return { mode: "indexeddb", summary: toSummary(project) };
+  } catch {
+    const collection = readLocalProjects<T>();
+    const projects = [
+      project,
+      ...collection.projects.filter((item) => item.id !== project.id),
+    ];
+    writeLocalProjects({ activeProjectId: project.id, projects });
+    return { mode: "localstorage", summary: toSummary(project) };
   }
 }
 
-export async function saveProjectDraft<T>(value: T): Promise<StorageMode> {
+export async function deleteProjectDraft(projectId: string) {
   try {
-    await writeIndexedDbDraft(value);
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
-    }
-    return "indexeddb";
+    await deleteIndexedDbProject(projectId);
   } catch {
-    if (typeof localStorage === "undefined") {
-      throw new Error("Browser storage is unavailable.");
-    }
-    localStorage.setItem(LEGACY_LOCAL_STORAGE_KEY, JSON.stringify(value));
-    return "localstorage";
+    // Continue clearing the local fallback when IndexedDB is unavailable.
+  }
+
+  if (typeof localStorage !== "undefined") {
+    const collection = readLocalProjects<unknown>();
+    writeLocalProjects({
+      activeProjectId:
+        collection.activeProjectId === projectId
+          ? null
+          : collection.activeProjectId,
+      projects: collection.projects.filter((project) => project.id !== projectId),
+    });
   }
 }
 
 export async function clearProjectDraft() {
-  if (typeof localStorage !== "undefined") {
-    try {
-      localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
-    } catch {
-      // Continue clearing IndexedDB when localStorage access is denied.
-    }
-  }
-
-  try {
-    const database = await openDatabase();
-    try {
-      const transaction = database.transaction(STORE_NAME, "readwrite");
-      const completed = transactionComplete(transaction);
-      await Promise.all([
-        requestResult(
-          transaction.objectStore(STORE_NAME).delete(ACTIVE_PROJECT_KEY),
-        ),
-        completed,
-      ]);
-    } finally {
-      database.close();
-    }
-  } catch {
-    // Clearing the legacy fallback is sufficient when IndexedDB is unavailable.
-  }
+  const projects = await listProjectDrafts<unknown>();
+  await Promise.all(projects.map((project) => deleteProjectDraft(project.id)));
 }

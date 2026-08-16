@@ -56,8 +56,11 @@ import {
 } from "react";
 import { AppControls } from "@/components/AppControls";
 import {
+  deleteProjectDraft,
+  listProjectDrafts,
   loadProjectDraft,
   saveProjectDraft,
+  type StoredProjectSummary,
 } from "@/lib/badgeflow/storage";
 import {
   type Locale,
@@ -151,6 +154,11 @@ type BadgePreset = {
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+type ActiveProject = Pick<
+  StoredProjectSummary,
+  "id" | "name" | "createdAt"
+>;
 
 type BadgeProject = {
   version: number;
@@ -461,16 +469,18 @@ function createTableTentElements(): CanvasElement[] {
 }
 
 function LandingPage({
-  hasSavedDraft,
-  onContinue,
+  savedProjects,
+  onOpenProject,
+  onDeleteProject,
   onSelectPreset,
   onCustom,
   locale,
   setLocale,
   t,
 }: {
-  hasSavedDraft: boolean;
-  onContinue: () => void;
+  savedProjects: StoredProjectSummary[];
+  onOpenProject: (projectId: string) => Promise<boolean>;
+  onDeleteProject: (projectId: string) => Promise<void>;
   onSelectPreset: (preset: BadgePreset) => void;
   onCustom: () => void;
   locale: Locale;
@@ -479,14 +489,31 @@ function LandingPage({
 }) {
   const [heroLineOne, heroLineTwo] = t("heroTitle").split("\n");
   const [showStartMenu, setShowStartMenu] = useState(false);
+  const [showSavedProjects, setShowSavedProjects] = useState(false);
+  const [openingProjectId, setOpeningProjectId] = useState<string | null>(null);
+  const [projectListError, setProjectListError] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
     BADGE_PRESETS[0]?.id ?? null,
   );
   const startControlRef = useRef<HTMLDivElement>(null);
   const startTriggerRef = useRef<HTMLButtonElement>(null);
+  const savedDialogRef = useRef<HTMLElement>(null);
+  const savedDialogCloseRef = useRef<HTMLButtonElement>(null);
   const selectedPreset = BADGE_PRESETS.find(
     (preset) => preset.id === selectedPresetId,
   );
+  const savedDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    [locale],
+  );
+  const formatSavedProjectDate = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : savedDateFormatter.format(date);
+  };
 
   useEffect(() => {
     if (!showStartMenu) return;
@@ -512,6 +539,63 @@ function LandingPage({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [showStartMenu]);
+
+  useEffect(() => {
+    if (!showSavedProjects) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.requestAnimationFrame(() => savedDialogCloseRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowSavedProjects(false);
+        window.requestAnimationFrame(() => startTriggerRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        savedDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [showSavedProjects]);
+
+  const openSavedProject = async (projectId: string) => {
+    setOpeningProjectId(projectId);
+    setProjectListError("");
+    const opened = await onOpenProject(projectId);
+    if (!opened) {
+      setOpeningProjectId(null);
+      setProjectListError(t("savedProjectOpenError"));
+    }
+  };
+
+  const deleteSavedProject = async (project: StoredProjectSummary) => {
+    if (!window.confirm(t("deleteSavedProjectConfirm", { name: project.name }))) {
+      return;
+    }
+    setProjectListError("");
+    try {
+      await onDeleteProject(project.id);
+    } catch {
+      setProjectListError(t("savedProjectDeleteError"));
+    }
+  };
 
   const startNewBadge = () => {
     setShowStartMenu(false);
@@ -574,10 +658,10 @@ function LandingPage({
                 </button>
                 <button
                   type="button"
-                  disabled={!hasSavedDraft}
+                  disabled={!savedProjects.length}
                   onClick={() => {
                     setShowStartMenu(false);
-                    onContinue();
+                    setShowSavedProjects(true);
                   }}
                 >
                   <span className="start-menu-icon" aria-hidden="true">
@@ -586,7 +670,7 @@ function LandingPage({
                   <span className="start-menu-copy">
                     <strong>{t("continueDraft")}</strong>
                     <small>
-                      {hasSavedDraft
+                      {savedProjects.length
                         ? t("continueDraftHelp")
                         : t("noSavedDraft")}
                     </small>
@@ -938,6 +1022,111 @@ function LandingPage({
           </div>
         </section>
       </main>
+
+      {showSavedProjects && (
+        <div
+          className="saved-project-overlay"
+          onPointerDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setShowSavedProjects(false);
+            window.requestAnimationFrame(() => startTriggerRef.current?.focus());
+          }}
+        >
+          <section
+            ref={savedDialogRef}
+            className="saved-project-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="saved-project-dialog-title"
+            aria-describedby="saved-project-dialog-help"
+          >
+            <div className="saved-project-dialog-heading">
+              <div>
+                <h2 id="saved-project-dialog-title">
+                  {t("savedProjectsTitle")}
+                </h2>
+                <p id="saved-project-dialog-help">{t("savedProjectsHelp")}</p>
+              </div>
+              <button
+                ref={savedDialogCloseRef}
+                type="button"
+                className="saved-project-close"
+                onClick={() => {
+                  setShowSavedProjects(false);
+                  window.requestAnimationFrame(() =>
+                    startTriggerRef.current?.focus(),
+                  );
+                }}
+                aria-label={t("closeSavedProjects")}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="saved-project-list">
+              {!savedProjects.length && (
+                <div className="saved-project-empty">
+                  <FolderOpen size={24} aria-hidden="true" />
+                  <p>{t("noSavedDraft")}</p>
+                </div>
+              )}
+              {savedProjects.map((project) => (
+                <article className="saved-project-item" key={project.id}>
+                  <button
+                    type="button"
+                    className="saved-project-open"
+                    disabled={openingProjectId !== null}
+                    onClick={() => void openSavedProject(project.id)}
+                  >
+                    <span className="saved-project-thumbnail" aria-hidden="true">
+                      <span
+                        style={
+                          {
+                            "--saved-project-ratio": `${project.badgeWidth} / ${project.badgeHeight}`,
+                          } as CSSProperties
+                        }
+                      >
+                        <i />
+                        <b>BadgeFlow</b>
+                      </span>
+                    </span>
+                    <span className="saved-project-copy">
+                      <strong>{project.name}</strong>
+                      <span>
+                        {displayNumber(project.badgeWidth)} ×{" "}
+                        {displayNumber(project.badgeHeight)} mm ·{" "}
+                        {t("totalPeople", { count: project.rowCount })}
+                      </span>
+                      <small>
+                        {t("savedProjectUpdated", {
+                          date: formatSavedProjectDate(project.updatedAt),
+                        })}
+                      </small>
+                    </span>
+                    <ArrowRight size={17} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="saved-project-delete"
+                    disabled={openingProjectId !== null}
+                    onClick={() => void deleteSavedProject(project)}
+                    aria-label={t("deleteSavedProject", { name: project.name })}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                </article>
+              ))}
+            </div>
+
+            {projectListError && (
+              <p className="saved-project-error" role="alert">
+                <AlertTriangle size={15} aria-hidden="true" />
+                {projectListError}
+              </p>
+            )}
+          </section>
+        </div>
+      )}
 
       <footer className="landing-footer">
         <span>BadgeFlow</span>
@@ -1738,12 +1927,17 @@ export function BadgeStudio() {
   const [exportProgress, setExportProgress] = useState(0);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<StoredProjectSummary[]>([]);
+  const [activeProject, setActiveProject] = useState<ActiveProject | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const stageRef = useRef<HTMLDivElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
   const saveRevisionRef = useRef(0);
+  const skipNextAutosaveRef = useRef(false);
+  const projectSavePromisesRef = useRef<Map<string, Promise<unknown>>>(
+    new Map(),
+  );
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
@@ -1759,28 +1953,9 @@ export function BadgeStudio() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadProjectDraft<unknown>()
-      .then((saved) => {
-        if (cancelled || !saved) return;
-        const project = normalizeProject(saved);
-        if (!project) return;
-        setHasSavedDraft(true);
-        setBadgeWidth(project.badgeWidth);
-        setBadgeHeight(project.badgeHeight);
-        setSafeArea(project.safeArea);
-        setBackgroundColor(project.backgroundColor);
-        setBackground(project.background);
-        setBackgroundName(project.backgroundName);
-        setBackgroundFit(project.backgroundFit);
-        setElements(project.elements);
-        elementsRef.current = project.elements;
-        setFields(project.fields);
-        setRows(project.rows);
-        setSelectedRowId(project.rows[0]?.id || "");
-        setPage(project.page);
-        setDpi(project.dpi);
-        setOutputMode(project.outputMode);
-        setSaveStatus("saved");
+    void listProjectDrafts<BadgeProject>()
+      .then((projects) => {
+        if (!cancelled) setSavedProjects(projects);
       })
       .catch(() => {
         // A blocked browser storage API should not prevent editing.
@@ -1794,14 +1969,19 @@ export function BadgeStudio() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !activeProject) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
     const revision = saveRevisionRef.current + 1;
     saveRevisionRef.current = revision;
     setSaveStatus("saving");
     const timer = window.setTimeout(() => {
+      const updatedAt = new Date().toISOString();
       const project: BadgeProject = {
         version: PROJECT_VERSION,
-        updatedAt: new Date().toISOString(),
+        updatedAt,
         badgeWidth,
         badgeHeight,
         safeArea,
@@ -1816,15 +1996,34 @@ export function BadgeStudio() {
         dpi,
         outputMode,
       };
-      void saveProjectDraft(project)
-        .then(() => {
+      const savePromise = saveProjectDraft({
+        ...activeProject,
+        updatedAt,
+        badgeWidth,
+        badgeHeight,
+        rowCount: rows.length,
+        outputMode,
+        value: project,
+      });
+      projectSavePromisesRef.current.set(activeProject.id, savePromise);
+      void savePromise
+        .then(({ summary }) => {
           if (saveRevisionRef.current !== revision) return;
-          setHasSavedDraft(true);
+          setSavedProjects((current) =>
+            [summary, ...current.filter((item) => item.id !== summary.id)].sort(
+              (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+            ),
+          );
           setSaveStatus("saved");
         })
         .catch(() => {
           if (saveRevisionRef.current !== revision) return;
           setSaveStatus("error");
+        })
+        .finally(() => {
+          if (projectSavePromisesRef.current.get(activeProject.id) === savePromise) {
+            projectSavePromisesRef.current.delete(activeProject.id);
+          }
         });
     }, 400);
     return () => window.clearTimeout(timer);
@@ -1843,6 +2042,7 @@ export function BadgeStudio() {
     backgroundFit,
     dpi,
     outputMode,
+    activeProject,
   ]);
 
   useEffect(() => {
@@ -1941,7 +2141,67 @@ export function BadgeStudio() {
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [redoElements, undoElements]);
 
-  function startWithPreset(preset: BadgePreset) {
+  function applyProject(project: BadgeProject) {
+    setBadgeWidth(project.badgeWidth);
+    setBadgeHeight(project.badgeHeight);
+    setSafeArea(project.safeArea);
+    setBackgroundColor(project.backgroundColor);
+    setBackground(project.background);
+    setBackgroundName(project.backgroundName);
+    setBackgroundFit(project.backgroundFit);
+    setElements(project.elements);
+    elementsRef.current = project.elements;
+    setHistoryPast([]);
+    setHistoryFuture([]);
+    setSelectedElementId(project.elements[0]?.id ?? null);
+    setFields(project.fields);
+    setRows(project.rows);
+    setSelectedRowId(project.rows[0]?.id || "");
+    setPage(project.page);
+    setDpi(project.dpi);
+    setOutputMode(project.outputMode);
+  }
+
+  async function openSavedProject(projectId: string) {
+    try {
+      const stored = await loadProjectDraft<unknown>(projectId);
+      if (!stored) return false;
+      const project = normalizeProject(stored.value);
+      if (!project) return false;
+      skipNextAutosaveRef.current = true;
+      setActiveProject({
+        id: stored.id,
+        name: stored.name,
+        createdAt: stored.createdAt,
+      });
+      applyProject(project);
+      setMode("design");
+      setView("studio");
+      setSaveStatus("saved");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function removeSavedProject(projectId: string) {
+    if (activeProject?.id === projectId) {
+      saveRevisionRef.current += 1;
+      setActiveProject(null);
+      setSaveStatus("idle");
+    }
+    await projectSavePromisesRef.current.get(projectId)?.catch(() => undefined);
+    await deleteProjectDraft(projectId);
+    setSavedProjects((current) =>
+      current.filter((project) => project.id !== projectId),
+    );
+  }
+
+  function startWithPreset(
+    preset: BadgePreset,
+    projectName = t(preset.nameKey),
+  ) {
+    const createdAt = new Date().toISOString();
     const nextOutputMode = preset.outputMode ?? "standard";
     const presetElements =
       nextOutputMode === "table-tent"
@@ -1970,8 +2230,12 @@ export function BadgeStudio() {
     setDpi(300);
     setOutputMode(nextOutputMode);
     setMode("design");
+    setActiveProject({
+      id: makeId("project"),
+      name: projectName,
+      createdAt,
+    });
     setView("studio");
-    setHasSavedDraft(true);
     setToast(
       t("toastPreset", {
         name: t(preset.nameKey),
@@ -1982,7 +2246,7 @@ export function BadgeStudio() {
   }
 
   function startCustomSize() {
-    startWithPreset(BADGE_PRESETS[0]);
+    startWithPreset(BADGE_PRESETS[0], t("customProjectName"));
     setToast(t("toastCustom"));
   }
 
@@ -2831,8 +3095,9 @@ export function BadgeStudio() {
   if (view === "landing") {
     return (
       <LandingPage
-        hasSavedDraft={hasSavedDraft}
-        onContinue={() => setView("studio")}
+        savedProjects={savedProjects}
+        onOpenProject={openSavedProject}
+        onDeleteProject={removeSavedProject}
         onSelectPreset={startWithPreset}
         onCustom={startCustomSize}
         locale={locale}

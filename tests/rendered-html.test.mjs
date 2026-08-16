@@ -95,7 +95,13 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /aria-label={t\("featureDataVisualLabel"\)}/);
   assert.match(studio, /aria-label={t\("featurePrintVisualLabel"\)}/);
   assert.match(studio, /aria-controls="landing-start-menu"/);
-  assert.match(studio, /disabled={!hasSavedDraft}/);
+  assert.match(studio, /disabled={!savedProjects\.length}/);
+  assert.match(studio, /className="saved-project-dialog"/);
+  assert.match(studio, /savedProjects\.map\(\(project\) =>/);
+  assert.match(studio, /onOpenProject={openSavedProject}/);
+  assert.match(studio, /onDeleteProject={removeSavedProject}/);
+  assert.match(studio, /role="dialog"/);
+  assert.match(studio, /aria-modal="true"/);
   assert.match(studio, /document\.addEventListener\("keydown", closeOnEscape\)/);
   assert.match(studio, /function startWithPreset/);
   assert.match(studio, /async function readImageAsset/);
@@ -125,6 +131,9 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.feature-data-layout/);
   assert.match(css, /\.feature-print-layout/);
   assert.match(css, /\.landing-start-menu/);
+  assert.match(css, /\.saved-project-overlay/);
+  assert.match(css, /\.saved-project-list/);
+  assert.match(css, /\.saved-project-delete/);
   assert.match(css, /\.preset-mini-sheet/);
   assert.match(css, /\.fold-guide/);
   assert.match(css, /\.table-tent-panel\.is-reversed/);
@@ -133,6 +142,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.alignment-guide/);
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /LEGACY_LOCAL_STORAGE_KEY/);
+  assert.match(storage, /LOCAL_PROJECTS_KEY/);
+  assert.match(storage, /PROJECT_KEY_PREFIX/);
+  assert.match(storage, /export async function listProjectDrafts/);
+  assert.match(storage, /export async function deleteProjectDraft/);
+  assert.match(storage, /makeLegacyProject/);
 });
 
 test("ships an installable multilingual PWA contract", async () => {
