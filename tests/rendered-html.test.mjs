@@ -42,7 +42,7 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /<title>BadgeFlow \| 명찰 인쇄 스튜디오<\/title>/i);
   assert.match(html, /어떤 명찰을/);
   assert.match(html, /바로 시작하기/);
-  assert.match(html, /명찰 한 장을 디자인하면/);
+  assert.match(html, /디자인, 명단 연결, 인쇄물 생성까지 한번에/);
   assert.match(html, /명단을 한 번에 연결/);
   assert.match(html, /인쇄까지 정확하게/);
   assert.match(html, /드래그 앤 드롭과 중앙 자석 정렬/);

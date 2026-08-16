@@ -338,7 +338,7 @@ const ko: Dictionary = {
   heroTitle: "어떤 명찰을\n만드시나요?",
   heroDescription:
     "많이 쓰는 규격을 먼저 골라 주세요. 크기에 맞춘 기본 레이아웃을 만든 뒤 디자인, 명단 연결, 실제 크기 PDF 출력까지 이어집니다.",
-  serviceTitle: "명찰 한 장을 디자인하면, 명단 전체가 자동으로 완성됩니다.",
+  serviceTitle: "디자인, 명단 연결, 인쇄물 생성까지 한번에",
   serviceDescription:
     "BadgeFlow는 명찰과 출력 용지 크기를 정하고 배경·로고·텍스트를 배치한 뒤, CSV나 표의 이름·팀 데이터를 연결해 실제 크기 PDF를 만드는 브라우저 기반 도구입니다.",
   featureDesignTitle: "자유롭게 디자인",
