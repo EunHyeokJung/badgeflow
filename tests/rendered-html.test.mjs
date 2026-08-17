@@ -144,6 +144,11 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /className="panel-section variable-connections"/);
   assert.match(studio, /connectedElementCount/);
   assert.match(studio, /noLinkedElements/);
+  assert.match(studio, /type InspectorSheetState =/);
+  assert.match(studio, /handleInspectorSheetPointerDown/);
+  assert.match(studio, /className={`panel right-panel inspector-sheet/);
+  assert.match(studio, /className={`inspector-sheet-scrim/);
+  assert.match(studio, /inspectorSheetState === "expanded"/);
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
   assert.doesNotMatch(
@@ -178,6 +183,12 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.saved-project-list/);
   assert.match(css, /\.saved-project-delete/);
   assert.match(css, /\.saved-project-rename-form/);
+  assert.match(
+    css,
+    /@media \(min-width: 681px\) and \(max-width: 980px\)/,
+  );
+  assert.match(css, /\.right-panel\.inspector-sheet\s*{[^}]*position: fixed/s);
+  assert.match(css, /touch-action: none/);
   assert.match(css, /\.editor-project-name/);
   assert.match(css, /\.landing-shell:lang\(ko\)\s*{[^}]*word-break: keep-all/s);
   assert.match(css, /\.service-overview-heading\s*{[^}]*max-width: 900px/s);

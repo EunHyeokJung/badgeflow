@@ -2,6 +2,11 @@
 
 All notable changes to LanyardStudio are documented here.
 
+## 1.2.1 — 2026-08-17
+
+- Replaced the tablet inspector below the canvas with a draggable three-stage bottom sheet overlay.
+- Added touch, pointer, keyboard-button, focus, safe-area, and reduced-motion behavior for the tablet inspector.
+
 ## 1.2.0 — 2026-08-17
 
 - Renamed the product to LanyardStudio with a new vector mark, PWA icons, favicon, and social preview.

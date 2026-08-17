@@ -78,6 +78,7 @@ type ElementKind = "variable" | "static";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
 type OutputMode = "standard" | "table-tent";
+type InspectorSheetState = "collapsed" | "half" | "expanded";
 
 type CommonElement = {
   id: string;
@@ -168,6 +169,19 @@ type SnapGuides = {
   vertical: boolean;
   horizontal: boolean;
 };
+
+type InspectorSheetDrag = {
+  pointerId: number;
+  startY: number;
+  lastY: number;
+  moved: boolean;
+};
+
+const inspectorSheetStates: InspectorSheetState[] = [
+  "collapsed",
+  "half",
+  "expanded",
+];
 
 type BadgePreset = {
   id: string;
@@ -2257,6 +2271,11 @@ export function BadgeStudio() {
   const [savedProjects, setSavedProjects] = useState<StoredProjectSummary[]>([]);
   const [activeProject, setActiveProject] = useState<ActiveProject | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [inspectorSheetState, setInspectorSheetState] =
+    useState<InspectorSheetState>("collapsed");
+  const [inspectorSheetDragOffset, setInspectorSheetDragOffset] = useState(0);
+  const [isInspectorSheetDragging, setIsInspectorSheetDragging] =
+    useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const newFieldInputRef = useRef<HTMLInputElement>(null);
   const guideTimerRef = useRef<number | null>(null);
@@ -2272,6 +2291,8 @@ export function BadgeStudio() {
   const projectSavePromisesRef = useRef<Map<string, Promise<unknown>>>(
     new Map(),
   );
+  const inspectorSheetDragRef = useRef<InspectorSheetDrag | null>(null);
+  const suppressInspectorSheetClickRef = useRef(false);
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
@@ -2401,6 +2422,13 @@ export function BadgeStudio() {
 
   useEffect(() => {
     selectedElementIdRef.current = selectedElementId;
+  }, [selectedElementId]);
+
+  useEffect(() => {
+    if (!selectedElementId) return;
+    setInspectorSheetState((current) =>
+      current === "collapsed" ? "half" : current,
+    );
   }, [selectedElementId]);
 
   useEffect(() => {
@@ -2582,6 +2610,107 @@ export function BadgeStudio() {
     setSelectedElementId(null);
   }, []);
 
+  function snapInspectorSheet(next: InspectorSheetState) {
+    setInspectorSheetState(next);
+    setInspectorSheetDragOffset(0);
+  }
+
+  function moveInspectorSheet(direction: "up" | "down") {
+    const currentIndex = inspectorSheetStates.indexOf(inspectorSheetState);
+    const nextIndex = clamp(
+      currentIndex + (direction === "up" ? 1 : -1),
+      0,
+      inspectorSheetStates.length - 1,
+    );
+    snapInspectorSheet(inspectorSheetStates[nextIndex]);
+  }
+
+  function handleInspectorSheetPointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    inspectorSheetDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      lastY: event.clientY,
+      moved: false,
+    };
+    suppressInspectorSheetClickRef.current = false;
+    setIsInspectorSheetDragging(true);
+    setInspectorSheetDragOffset(0);
+  }
+
+  function handleInspectorSheetPointerMove(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const current = inspectorSheetDragRef.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    const delta = event.clientY - current.startY;
+    current.lastY = event.clientY;
+    current.moved = current.moved || Math.abs(delta) > 6;
+    const viewportHeight = window.innerHeight;
+    const minimumOffset =
+      inspectorSheetState === "expanded" ? -12 : -viewportHeight * 0.62;
+    const maximumOffset =
+      inspectorSheetState === "collapsed" ? 12 : viewportHeight * 0.62;
+    setInspectorSheetDragOffset(
+      clamp(delta, minimumOffset, maximumOffset),
+    );
+  }
+
+  function handleInspectorSheetPointerEnd(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const current = inspectorSheetDragRef.current;
+    if (!current || current.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const delta = current.lastY - current.startY;
+    const snapThreshold = Math.min(84, window.innerHeight * 0.1);
+    suppressInspectorSheetClickRef.current = current.moved;
+    inspectorSheetDragRef.current = null;
+    setIsInspectorSheetDragging(false);
+    if (Math.abs(delta) >= snapThreshold) {
+      const currentIndex = inspectorSheetStates.indexOf(inspectorSheetState);
+      const stepCount = Math.abs(delta) >= snapThreshold * 2.4 ? 2 : 1;
+      const nextIndex = clamp(
+        currentIndex + (delta < 0 ? stepCount : -stepCount),
+        0,
+        inspectorSheetStates.length - 1,
+      );
+      snapInspectorSheet(inspectorSheetStates[nextIndex]);
+    } else {
+      setInspectorSheetDragOffset(0);
+    }
+  }
+
+  function cancelInspectorSheetPointer(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (inspectorSheetDragRef.current?.pointerId !== event.pointerId) return;
+    inspectorSheetDragRef.current = null;
+    suppressInspectorSheetClickRef.current = true;
+    setIsInspectorSheetDragging(false);
+    setInspectorSheetDragOffset(0);
+  }
+
+  function toggleInspectorSheet() {
+    if (suppressInspectorSheetClickRef.current) {
+      suppressInspectorSheetClickRef.current = false;
+      return;
+    }
+    snapInspectorSheet(
+      inspectorSheetState === "collapsed"
+        ? "half"
+        : inspectorSheetState === "half"
+          ? "expanded"
+          : "half",
+    );
+  }
+
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -2630,6 +2759,15 @@ export function BadgeStudio() {
         return;
       }
       if (event.key === "Escape") {
+        if (
+          inspectorSheetState !== "collapsed" &&
+          window.matchMedia("(min-width: 681px) and (max-width: 980px)")
+            .matches
+        ) {
+          setInspectorSheetState("collapsed");
+          setInspectorSheetDragOffset(0);
+          return;
+        }
         selectedElementIdRef.current = null;
         setSelectedElementId(null);
       }
@@ -2638,6 +2776,7 @@ export function BadgeStudio() {
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [
     deleteSelectedFromShortcut,
+    inspectorSheetState,
     mode,
     redoData,
     redoElements,
@@ -4255,10 +4394,71 @@ export function BadgeStudio() {
               </div>
             </section>
 
+            <button
+              type="button"
+              className={`inspector-sheet-scrim ${
+                inspectorSheetState === "expanded" ? "is-visible" : ""
+              }`}
+              onClick={() => snapInspectorSheet("collapsed")}
+              aria-label={t("closeInspectorSheet")}
+              aria-hidden={inspectorSheetState !== "expanded"}
+              tabIndex={inspectorSheetState === "expanded" ? 0 : -1}
+            />
+
             <aside
-              className="panel right-panel"
+              id="tablet-inspector-sheet"
+              className={`panel right-panel inspector-sheet is-${inspectorSheetState} ${
+                isInspectorSheetDragging ? "is-dragging" : ""
+              }`}
               aria-label={t("elementProperties")}
+              style={
+                {
+                  "--inspector-sheet-drag-offset": `${inspectorSheetDragOffset}px`,
+                } as CSSProperties
+              }
             >
+              <div className="inspector-sheet-toolbar">
+                <button
+                  type="button"
+                  className="inspector-sheet-grip"
+                  onPointerDown={handleInspectorSheetPointerDown}
+                  onPointerMove={handleInspectorSheetPointerMove}
+                  onPointerUp={handleInspectorSheetPointerEnd}
+                  onPointerCancel={cancelInspectorSheetPointer}
+                  onClick={toggleInspectorSheet}
+                  aria-label={t("dragInspectorSheet")}
+                  aria-expanded={inspectorSheetState !== "collapsed"}
+                  aria-controls="tablet-inspector-sheet"
+                >
+                  <span className="inspector-sheet-handle" aria-hidden="true" />
+                  <span className="inspector-sheet-copy">
+                    <strong>
+                      {selectedElement
+                        ? getElementLabel(selectedElement, t)
+                        : t("inspectorSheetOverview")}
+                    </strong>
+                    <small>{t("inspectorSheetDragHint")}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="inspector-sheet-action"
+                  onClick={() => moveInspectorSheet("up")}
+                  disabled={inspectorSheetState === "expanded"}
+                  aria-label={t("expandInspectorSheet")}
+                >
+                  <ArrowUp size={17} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="inspector-sheet-action"
+                  onClick={() => moveInspectorSheet("down")}
+                  disabled={inspectorSheetState === "collapsed"}
+                  aria-label={t("collapseInspectorSheet")}
+                >
+                  <ArrowDown size={17} aria-hidden="true" />
+                </button>
+              </div>
               {selectedElement ? (
                 <>
                   <section className="panel-section selected-summary">
