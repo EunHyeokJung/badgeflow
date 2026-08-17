@@ -2387,19 +2387,129 @@ select:focus {
   font-size: 9px;
 }
 
-.qr-add-control {
-  display: grid;
-  gap: 7px;
+.qr-launch-section {
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
-.qr-add-control label,
-.qr-add-control input {
-  width: 100%;
-}
-
-.qr-add-control .primary-button {
+.qr-launch-button {
   width: 100%;
   justify-content: center;
+  min-height: 42px;
+}
+
+.qr-dialog-overlay {
+  position: fixed;
+  z-index: 950;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.56);
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  animation: overlay-in 160ms ease-out both;
+}
+
+.qr-dialog {
+  width: min(100%, 440px);
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 26px 74px rgba(15, 23, 42, 0.28);
+  animation: dialog-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.qr-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 20px;
+}
+
+.qr-dialog-heading > div {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.qr-dialog-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.qr-dialog-heading h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.qr-dialog-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.qr-dialog-heading > button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.qr-dialog-heading > button:hover {
+  background: var(--panel-muted);
+  color: var(--ink);
+}
+
+.qr-dialog-form {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+}
+
+.qr-dialog-form input {
+  height: 44px;
+}
+
+.qr-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.qr-dialog-actions button {
+  min-width: 104px;
+  min-height: 42px;
+  justify-content: center;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    transform: translateY(8px) scale(0.985);
+    opacity: 0;
+  }
 }
 
 .canvas-workspace {
@@ -3402,27 +3512,6 @@ select:focus {
   font-size: 10px;
 }
 
-.reference-note {
-  margin: auto 14px 14px;
-  border: 1px solid #d8dfdd;
-  border-left: 3px solid var(--orange);
-  border-radius: 9px;
-  background: #fbfcfc;
-  padding: 12px;
-}
-
-.reference-note strong {
-  display: block;
-  margin-top: 0;
-  font-size: 11px;
-}
-
-.reference-note p {
-  margin: 3px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-}
-
 /* Data */
 .data-workspace {
   display: grid;
@@ -4369,10 +4458,6 @@ select:focus {
     order: 3;
     border-top: 1px solid var(--line);
     border-left: 0;
-  }
-
-  .reference-note {
-    margin-top: 14px;
   }
 
   .data-workspace,

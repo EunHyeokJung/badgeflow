@@ -2459,6 +2459,7 @@ export function BadgeStudio() {
   const [outputMode, setOutputMode] = useState<OutputMode>("standard");
   const [newField, setNewField] = useState("");
   const [newQrValue, setNewQrValue] = useState("");
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [resize, setResize] = useState<ResizeState | null>(null);
@@ -2479,6 +2480,9 @@ export function BadgeStudio() {
   const [isInspectorSheetDragging, setIsInspectorSheetDragging] =
     useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const qrDialogRef = useRef<HTMLElement>(null);
+  const qrInputRef = useRef<HTMLInputElement>(null);
+  const qrLaunchButtonRef = useRef<HTMLButtonElement>(null);
   const newFieldInputRef = useRef<HTMLInputElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
@@ -2610,6 +2614,42 @@ export function BadgeStudio() {
     const timer = window.setTimeout(() => setToast(""), 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!isQrDialogOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsQrDialogOpen(false);
+        window.requestAnimationFrame(() => qrLaunchButtonRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        qrDialogRef.current?.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), input:not(:disabled)",
+        ) || [],
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const focusFrame = window.requestAnimationFrame(() =>
+      qrInputRef.current?.focus(),
+    );
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isQrDialogOpen]);
 
   useEffect(() => {
     elementsRef.current = elements;
@@ -3129,6 +3169,11 @@ export function BadgeStudio() {
     setToast(t("toastCustom"));
   }
 
+  function closeQrDialog() {
+    setIsQrDialogOpen(false);
+    window.requestAnimationFrame(() => qrLaunchButtonRef.current?.focus());
+  }
+
   function canAddElement() {
     if (elementsRef.current.length < MAX_ELEMENTS) return true;
     setToast(t("errorProjectElements", { count: MAX_ELEMENTS }));
@@ -3283,6 +3328,7 @@ export function BadgeStudio() {
       mutateElements((current) => [...current, element]);
       setSelectedElementId(element.id);
       setNewQrValue("");
+      closeQrDialog();
       setToast(t("toastQrAdded"));
     } catch {
       setToast(t("toastQrFailed"));
@@ -4681,32 +4727,16 @@ export function BadgeStudio() {
                 </div>
               </section>
 
-              <section className="panel-section element-library-section grow-section">
-                <div className="section-title">
-                  <h2>{t("qrCode")}</h2>
-                </div>
-                <div className="qr-add-control">
-                  <label>
-                    <span className="sr-only">{t("qrContent")}</span>
-                    <input
-                      value={newQrValue}
-                      maxLength={MAX_CELL_LENGTH}
-                      placeholder={t("qrPlaceholder")}
-                      onChange={(event) => setNewQrValue(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") void addQrElement();
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => void addQrElement()}
-                  >
-                    <QrCode size={16} aria-hidden="true" />
-                    {t("addQrCode")}
-                  </button>
-                </div>
+              <section className="panel-section element-library-section grow-section qr-launch-section">
+                <button
+                  ref={qrLaunchButtonRef}
+                  type="button"
+                  className="secondary-button full-width qr-launch-button"
+                  onClick={() => setIsQrDialogOpen(true)}
+                >
+                  <QrCode size={17} aria-hidden="true" />
+                  {t("generateQrCode")}
+                </button>
               </section>
             </aside>
 
@@ -5489,106 +5519,108 @@ export function BadgeStudio() {
                 </div>
               )}
 
-              <section className="panel-section layer-panel">
-                <div className="section-title">
-                  <h2>
-                    <Layers3 size={15} />
-                    {t("layers")}
-                  </h2>
-                  <span>{t("topIsFront")}</span>
-                </div>
-                <div className="layer-list">
-                  {[...elements].reverse().map((element) => (
-                    <div
-                      key={element.id}
-                      className={`layer-row ${selectedElementId === element.id ? "is-selected" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        className="layer-main"
-                        onClick={() => setSelectedElementId(element.id)}
-                      >
-                        {element.type === "image" ? (
-                          <ImageIcon size={14} />
-                        ) : element.type === "shape" ? (
-                          <Square size={14} />
-                        ) : (
-                          <Type size={14} />
-                        )}
-                        <span>{getElementLabel(element, t)}</span>
-                      </button>
-                      <div className="layer-actions">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateElement(element.id, {
-                              hidden: !element.hidden,
-                            })
-                          }
-                          aria-label={
-                            element.hidden
-                              ? t("showElement", {
-                                  name: getElementLabel(element, t),
-                                })
-                              : t("hideElement", {
-                                  name: getElementLabel(element, t),
-                                })
-                          }
-                        >
-                          {element.hidden ? (
-                            <EyeOff size={13} />
-                          ) : (
-                            <Eye size={13} />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateElement(element.id, {
-                              locked: !element.locked,
-                            })
-                          }
-                          aria-label={
-                            element.locked
-                              ? t("unlockElement", {
-                                  name: getElementLabel(element, t),
-                                })
-                              : t("lockElement", {
-                                  name: getElementLabel(element, t),
-                                })
-                          }
-                        >
-                          {element.locked ? (
-                            <Lock size={13} />
-                          ) : (
-                            <Unlock size={13} />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveElementLayer(element.id, "up")}
-                          aria-label={t("moveForward", {
-                            name: getElementLabel(element, t),
-                          })}
-                        >
-                          <ArrowUp size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveElementLayer(element.id, "down")}
-                          aria-label={t("moveBackward", {
-                            name: getElementLabel(element, t),
-                          })}
-                        >
-                          <ArrowDown size={13} />
-                        </button>
-                      </div>
+              {!selectedElement && (
+                <>
+                  <section className="panel-section layer-panel">
+                    <div className="section-title">
+                      <h2>
+                        <Layers3 size={15} />
+                        {t("layers")}
+                      </h2>
+                      <span>{t("topIsFront")}</span>
                     </div>
-                  ))}
-                </div>
-              </section>
+                    <div className="layer-list">
+                      {[...elements].reverse().map((element) => (
+                        <div
+                          key={element.id}
+                          className={`layer-row ${selectedElementId === element.id ? "is-selected" : ""}`}
+                        >
+                          <button
+                            type="button"
+                            className="layer-main"
+                            onClick={() => setSelectedElementId(element.id)}
+                          >
+                            {element.type === "image" ? (
+                              <ImageIcon size={14} />
+                            ) : element.type === "shape" ? (
+                              <Square size={14} />
+                            ) : (
+                              <Type size={14} />
+                            )}
+                            <span>{getElementLabel(element, t)}</span>
+                          </button>
+                          <div className="layer-actions">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateElement(element.id, {
+                                  hidden: !element.hidden,
+                                })
+                              }
+                              aria-label={
+                                element.hidden
+                                  ? t("showElement", {
+                                      name: getElementLabel(element, t),
+                                    })
+                                  : t("hideElement", {
+                                      name: getElementLabel(element, t),
+                                    })
+                              }
+                            >
+                              {element.hidden ? (
+                                <EyeOff size={13} />
+                              ) : (
+                                <Eye size={13} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateElement(element.id, {
+                                  locked: !element.locked,
+                                })
+                              }
+                              aria-label={
+                                element.locked
+                                  ? t("unlockElement", {
+                                      name: getElementLabel(element, t),
+                                    })
+                                  : t("lockElement", {
+                                      name: getElementLabel(element, t),
+                                    })
+                              }
+                            >
+                              {element.locked ? (
+                                <Lock size={13} />
+                              ) : (
+                                <Unlock size={13} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveElementLayer(element.id, "up")}
+                              aria-label={t("moveForward", {
+                                name: getElementLabel(element, t),
+                              })}
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveElementLayer(element.id, "down")}
+                              aria-label={t("moveBackward", {
+                                name: getElementLabel(element, t),
+                              })}
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
 
-              <section className="panel-section variable-connections">
+                  <section className="panel-section variable-connections">
                   <div className="section-title">
                     <h2>
                       <Database size={15} />
@@ -5713,12 +5745,9 @@ export function BadgeStudio() {
                       <Plus size={15} aria-hidden="true" />
                     </button>
                   </div>
-                </section>
-
-              <div className="reference-note">
-                <strong>A4 · 95 × 123 mm · 4-UP</strong>
-                <p>{t("referenceReady")}</p>
-              </div>
+                  </section>
+                </>
+              )}
             </aside>
           </div>
         )}
@@ -6319,6 +6348,69 @@ export function BadgeStudio() {
           </div>
         )}
       </main>
+
+      {isQrDialogOpen && (
+        <div className="qr-dialog-overlay">
+          <section
+            ref={qrDialogRef}
+            className="qr-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-dialog-title"
+            aria-describedby="qr-dialog-description"
+          >
+            <header className="qr-dialog-heading">
+              <div>
+                <span className="qr-dialog-icon" aria-hidden="true">
+                  <QrCode size={21} />
+                </span>
+                <div>
+                  <h2 id="qr-dialog-title">{t("generateQrCode")}</h2>
+                  <p id="qr-dialog-description">{t("qrDialogDescription")}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeQrDialog}
+                aria-label={t("cancel")}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </header>
+            <form
+              className="qr-dialog-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void addQrElement();
+              }}
+            >
+              <label className="stacked-field">
+                {t("qrContent")}
+                <input
+                  ref={qrInputRef}
+                  value={newQrValue}
+                  maxLength={MAX_CELL_LENGTH}
+                  placeholder={t("qrPlaceholder")}
+                  onChange={(event) => setNewQrValue(event.target.value)}
+                />
+              </label>
+              <div className="qr-dialog-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={closeQrDialog}
+                >
+                  {t("cancel")}
+                </button>
+                <button type="submit" className="primary-button">
+                  <QrCode size={16} aria-hidden="true" />
+                  {t("generateQrCode")}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">

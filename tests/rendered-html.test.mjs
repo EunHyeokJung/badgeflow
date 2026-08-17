@@ -149,7 +149,10 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /addStaticElement\("body"\)/);
   assert.match(studio, /addStaticElement\("caption"\)/);
   assert.match(studio, /className="element-palette-grid shape-palette-grid"/);
-  assert.match(studio, /className="qr-add-control"/);
+  assert.match(studio, /className="secondary-button full-width qr-launch-button"/);
+  assert.match(studio, /className="qr-dialog-overlay"/);
+  assert.match(studio, /role="dialog"/);
+  assert.match(studio, /aria-labelledby="qr-dialog-title"/);
   assert.match(studio, /function moveElementLayer/);
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
@@ -171,6 +174,10 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
   assert.match(studio, /deleteSelectedFromShortcut/);
   assert.match(studio, /className="panel-section variable-connections"/);
+  assert.match(
+    studio,
+    /\{!selectedElement && \(\s*<>\s*<section className="panel-section layer-panel"/s,
+  );
   assert.match(studio, /function renameField/);
   assert.match(studio, /addVariableElement\(field\)/);
   assert.match(studio, /className="compact-variable-add"/);
@@ -182,6 +189,8 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /name: `\$\{getElementLabel\(selectedElement, t\)\}/);
   assert.match(studio, /className="variable-element-links"/);
   assert.doesNotMatch(studio, /className="panel-section selected-summary"/);
+  assert.doesNotMatch(studio, /className="reference-note"/);
+  assert.doesNotMatch(studio, /A4 · 95 × 123 mm · 4-UP/);
   assert.doesNotMatch(studio, /t\("browserOnly"\)/);
   assert.doesNotMatch(studio, /t\("badgeDesign"\)/);
   assert.doesNotMatch(studio, /t\("lanyardBadge"\)/);
@@ -210,7 +219,10 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.badge-shape-element/);
   assert.match(css, /\.element-palette-grid/);
-  assert.match(css, /\.qr-add-control/);
+  assert.match(css, /\.qr-launch-button/);
+  assert.match(css, /\.qr-dialog-overlay/);
+  assert.match(css, /\.qr-dialog\s*\{/);
+  assert.doesNotMatch(css, /\.reference-note/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.preset-card\.is-selected/);
   assert.match(css, /\.preset-products/);
