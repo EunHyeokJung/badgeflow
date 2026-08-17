@@ -62,7 +62,7 @@ import {
   loadProjectDraft,
   saveProjectDraft,
   type StoredProjectSummary,
-} from "@/lib/badgeflow/storage";
+} from "@/lib/lanyardstudio/storage";
 import {
   type Locale,
   type MessageKey,
@@ -210,7 +210,11 @@ type ActiveProject = Pick<
   "id" | "name" | "createdAt"
 >;
 
+const PROJECT_FORMAT = "lanyardstudio" as const;
+const PROJECT_VERSION = 5;
+
 type BadgeProject = {
+  format: typeof PROJECT_FORMAT;
   version: number;
   updatedAt: string;
   badgeWidth: number;
@@ -228,7 +232,6 @@ type BadgeProject = {
   outputMode: OutputMode;
 };
 
-const PROJECT_VERSION = 4;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_PROJECT_BYTES = 30 * 1024 * 1024;
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
@@ -1640,6 +1643,9 @@ function normalizePage(value: unknown): PageSettings {
 
 function normalizeProject(value: unknown): BadgeProject | null {
   if (!isRecord(value)) return null;
+  if (value.format !== undefined && value.format !== PROJECT_FORMAT) {
+    return null;
+  }
   if (
     typeof value.version === "number" &&
     value.version > PROJECT_VERSION
@@ -1711,6 +1717,7 @@ function normalizeProject(value: unknown): BadgeProject | null {
       : "#ffffff";
 
   return {
+    format: PROJECT_FORMAT,
     version: PROJECT_VERSION,
     updatedAt: new Date().toISOString(),
     badgeWidth,
@@ -2335,6 +2342,7 @@ export function BadgeStudio() {
     const timer = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
       const project: BadgeProject = {
+        format: PROJECT_FORMAT,
         version: PROJECT_VERSION,
         updatedAt,
         badgeWidth,
@@ -3455,6 +3463,7 @@ export function BadgeStudio() {
 
   function exportProject() {
     const project: BadgeProject = {
+      format: PROJECT_FORMAT,
       version: PROJECT_VERSION,
       updatedAt: new Date().toISOString(),
       badgeWidth,
@@ -4292,7 +4301,7 @@ export function BadgeStudio() {
                       {t("loadProject")}
                       <input
                         type="file"
-                        accept=".json,.lanyardstudio.json,.badgeflow.json,application/json"
+                        accept=".json,.lanyardstudio.json,application/json"
                         onChange={(event) => {
                           void importProject(event.target.files?.[0]);
                           event.currentTarget.value = "";

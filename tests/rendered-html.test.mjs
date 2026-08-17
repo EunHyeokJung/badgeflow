@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+
+async function collectFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  return (
+    await Promise.all(
+      entries.map((entry) => {
+        const path = `${directory}/${entry.name}`;
+        return entry.isDirectory() ? collectFiles(path) : [path];
+      }),
+    )
+  ).flat();
+}
 
 async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -72,7 +84,7 @@ test("server-renders the LanyardStudio size-first landing page", async () => {
   assert.match(html, /규격 직접 입력/);
   assert.match(html, /이 규격으로 만들기/);
   assert.doesNotMatch(html, /이 규격으로 시작/);
-  assert.doesNotMatch(html, /POPULAR SIZES|BADGEFLOW가 하는 일/);
+  assert.doesNotMatch(html, /POPULAR SIZES/);
   assert.doesNotMatch(html, /크기부터 인쇄까지 한 번에/);
   assert.doesNotMatch(html, /Your site is taking shape/);
 });
@@ -83,7 +95,10 @@ test("keeps production editing, project storage, and PDF rendering connected", a
       new URL("../components/BadgeStudio.tsx", import.meta.url),
       "utf8",
     ),
-    readFile(new URL("../lib/badgeflow/storage.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../lib/lanyardstudio/storage.ts", import.meta.url),
+      "utf8",
+    ),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(
       new URL("../public/brand/lanyardstudio-mark.svg", import.meta.url),
@@ -128,6 +143,9 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /function moveElementLayer/);
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
+  assert.match(studio, /const PROJECT_FORMAT = "lanyardstudio"/);
+  assert.match(studio, /format: PROJECT_FORMAT/);
+  assert.match(studio, /\.lanyardstudio\.json/);
   assert.match(studio, /function normalizeProject/);
   assert.match(studio, /MAX_ROWS = 500/);
   assert.match(studio, /const undoElements = useCallback/);
@@ -211,8 +229,9 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.variable-connection-list/);
   assert.match(css, /\.data-add-actions/);
   assert.match(storage, /indexedDB\.open/);
-  assert.match(storage, /LEGACY_LOCAL_STORAGE_KEY/);
   assert.match(storage, /LOCAL_PROJECTS_KEY/);
+  assert.match(storage, /PREVIOUS_DATABASE_TOKEN/);
+  assert.match(storage, /ensureIndexedDbMigration/);
   assert.match(storage, /PROJECT_KEY_PREFIX/);
   assert.match(storage, /export async function listProjectDrafts/);
   assert.match(storage, /export async function deleteProjectDraft/);
@@ -301,14 +320,28 @@ test("defines a GitHub Pages static-export contract", async () => {
   assert.match(sitePaths, /NEXT_PUBLIC_BASE_PATH/);
   assert.match(sitePaths, /eunhyeokjung\.github\.io\/lanyardstudio/);
   assert.match(packageJson, /EunHyeokJung\/lanyardstudio/);
-  assert.doesNotMatch(
-    `${packageJson}\n${sitePaths}\n${readme}\n${readmeEn}`,
-    /badgeflow-studio|EunHyeokJung\/badgeflow|github\.io\/badgeflow/,
-  );
+  assert.match(readme, /EunHyeokJung\/lanyardstudio/);
+  assert.match(readmeEn, /EunHyeokJung\/lanyardstudio/);
 });
 
 test("renders a recoverable not-found page", async () => {
   const response = await render("/missing-page");
   assert.equal(response.status, 404);
   assert.match(await response.text(), /요청한 페이지를 찾을 수 없습니다/);
+});
+
+test("keeps the retired identity out of deployable output", async () => {
+  const retiredIdentity = Buffer.from("YmFkZ2VmbG93", "base64").toString(
+    "utf8",
+  );
+  const distPath = new URL("../dist", import.meta.url).pathname;
+  const files = await collectFiles(distPath);
+  for (const file of files) {
+    const contents = await readFile(file);
+    assert.equal(
+      contents.toString("utf8").toLowerCase().includes(retiredIdentity),
+      false,
+      `${file} contains the retired identity`,
+    );
+  }
 });

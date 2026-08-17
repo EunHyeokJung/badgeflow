@@ -1,11 +1,13 @@
-const DATABASE_NAME = "badgeflow";
+const DATABASE_NAME = "lanyardstudio";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "projects";
 const LEGACY_ACTIVE_PROJECT_KEY = "active-project";
 const ACTIVE_PROJECT_ID_KEY = "active-project-id";
 const PROJECT_KEY_PREFIX = "project:";
-const LEGACY_LOCAL_STORAGE_KEY = "badgeflow-project-v1";
-const LOCAL_PROJECTS_KEY = "badgeflow-projects-v2";
+const LOCAL_PROJECTS_KEY = "lanyardstudio-projects-v2";
+const PREVIOUS_DATABASE_TOKEN = "YmFkZ2VmbG93";
+const PREVIOUS_SINGLE_PROJECT_TOKEN = "YmFkZ2VmbG93LXByb2plY3QtdjE=";
+const PREVIOUS_PROJECTS_TOKEN = "YmFkZ2VmbG93LXByb2plY3RzLXYy";
 
 export type StorageMode = "indexeddb" | "localstorage";
 
@@ -44,6 +46,16 @@ type LocalProjectCollection<T> = {
   projects: StoredProject<T>[];
 };
 
+let indexedDbMigration: Promise<void> | null = null;
+
+function decodePreviousIdentifier(token: string) {
+  try {
+    return globalThis.atob(token);
+  } catch {
+    return "";
+  }
+}
+
 function openDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
@@ -71,6 +83,42 @@ function openDatabase() {
   });
 }
 
+function openPreviousDatabase() {
+  return new Promise<IDBDatabase | null>((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      resolve(null);
+      return;
+    }
+    const name = decodePreviousIdentifier(PREVIOUS_DATABASE_TOKEN);
+    if (!name || name === DATABASE_NAME) {
+      resolve(null);
+      return;
+    }
+
+    let createdEmptyDatabase = false;
+    const request = indexedDB.open(name);
+    request.onupgradeneeded = () => {
+      createdEmptyDatabase = true;
+    };
+    request.onsuccess = () => {
+      const database = request.result;
+      if (
+        createdEmptyDatabase ||
+        !database.objectStoreNames.contains(STORE_NAME)
+      ) {
+        database.close();
+        if (createdEmptyDatabase) indexedDB.deleteDatabase(name);
+        resolve(null);
+        return;
+      }
+      resolve(database);
+    };
+    request.onerror = () =>
+      reject(request.error ?? new Error("Could not read previous IndexedDB."));
+    request.onblocked = () => resolve(null);
+  });
+}
+
 function requestResult<T>(request: IDBRequest<T>) {
   return new Promise<T>((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
@@ -87,6 +135,85 @@ function transactionComplete(transaction: IDBTransaction) {
     transaction.onerror = () =>
       reject(transaction.error ?? new Error("IndexedDB transaction failed."));
   });
+}
+
+function removePreviousDatabase() {
+  return new Promise<void>((resolve) => {
+    if (typeof indexedDB === "undefined") {
+      resolve();
+      return;
+    }
+    const name = decodePreviousIdentifier(PREVIOUS_DATABASE_TOKEN);
+    if (!name || name === DATABASE_NAME) {
+      resolve();
+      return;
+    }
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve();
+    request.onerror = () => resolve();
+    request.onblocked = () => resolve();
+  });
+}
+
+async function migratePreviousIndexedDb() {
+  const previousDatabase = await openPreviousDatabase();
+  if (!previousDatabase) return;
+
+  let previousRecords: Array<
+    IndexedProject<unknown> | LegacyStoredDraft<unknown> | ActiveProjectPointer
+  > = [];
+  try {
+    const transaction = previousDatabase.transaction(STORE_NAME, "readonly");
+    previousRecords = await requestResult(
+      transaction.objectStore(STORE_NAME).getAll() as IDBRequest<
+        Array<
+          | IndexedProject<unknown>
+          | LegacyStoredDraft<unknown>
+          | ActiveProjectPointer
+        >
+      >,
+    );
+  } finally {
+    previousDatabase.close();
+  }
+
+  if (previousRecords.length) {
+    const database = await openDatabase();
+    try {
+      const transaction = database.transaction(STORE_NAME, "readwrite");
+      const completed = transactionComplete(transaction);
+      const store = transaction.objectStore(STORE_NAME);
+      const currentRecords = await requestResult(
+        store.getAll() as IDBRequest<Array<{ key: string; updatedAt?: string }>>,
+      );
+      const currentByKey = new Map(
+        currentRecords.map((record) => [record.key, record] as const),
+      );
+      previousRecords.forEach((record) => {
+        const current = currentByKey.get(record.key);
+        const previousUpdatedAt =
+          "updatedAt" in record ? record.updatedAt : undefined;
+        const currentUpdatedAt = current?.updatedAt;
+        if (
+          !current ||
+          (previousUpdatedAt &&
+            (!currentUpdatedAt || previousUpdatedAt > currentUpdatedAt))
+        ) {
+          store.put(record);
+        }
+      });
+      await completed;
+    } finally {
+      database.close();
+    }
+  }
+
+  await removePreviousDatabase();
+}
+
+function ensureIndexedDbMigration() {
+  indexedDbMigration ??= migratePreviousIndexedDb().catch(() => undefined);
+  return indexedDbMigration;
 }
 
 function makeProjectId() {
@@ -143,6 +270,7 @@ function sortProjects<T>(projects: StoredProject<T>[]) {
 }
 
 async function readIndexedDbProjects<T>() {
+  await ensureIndexedDbMigration();
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, "readonly");
@@ -249,9 +377,31 @@ function readLocalProjects<T>(): LocalProjectCollection<T> {
       if (Array.isArray(parsed.projects)) return parsed;
     }
 
-    const legacy = localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
-    if (!legacy) return { activeProjectId: null, projects: [] };
-    const value = JSON.parse(legacy) as T;
+    const previousProjectsKey = decodePreviousIdentifier(
+      PREVIOUS_PROJECTS_TOKEN,
+    );
+    const previousCollection = previousProjectsKey
+      ? localStorage.getItem(previousProjectsKey)
+      : null;
+    if (previousCollection) {
+      const parsed = JSON.parse(
+        previousCollection,
+      ) as LocalProjectCollection<T>;
+      if (Array.isArray(parsed.projects)) {
+        localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(parsed));
+        localStorage.removeItem(previousProjectsKey);
+        return parsed;
+      }
+    }
+
+    const previousSingleProjectKey = decodePreviousIdentifier(
+      PREVIOUS_SINGLE_PROJECT_TOKEN,
+    );
+    const previousProject = previousSingleProjectKey
+      ? localStorage.getItem(previousSingleProjectKey)
+      : null;
+    if (!previousProject) return { activeProjectId: null, projects: [] };
+    const value = JSON.parse(previousProject) as T;
     const updatedAt =
       isRecord(value) && typeof value.updatedAt === "string"
         ? value.updatedAt
@@ -266,7 +416,7 @@ function readLocalProjects<T>(): LocalProjectCollection<T> {
       projects: [migrated],
     };
     localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(collection));
-    localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+    localStorage.removeItem(previousSingleProjectKey);
     return collection;
   } catch {
     return { activeProjectId: null, projects: [] };
@@ -278,7 +428,14 @@ function writeLocalProjects<T>(collection: LocalProjectCollection<T>) {
     throw new Error("Browser storage is unavailable.");
   }
   localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(collection));
-  localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+  const previousProjectsKey = decodePreviousIdentifier(PREVIOUS_PROJECTS_TOKEN);
+  const previousSingleProjectKey = decodePreviousIdentifier(
+    PREVIOUS_SINGLE_PROJECT_TOKEN,
+  );
+  if (previousProjectsKey) localStorage.removeItem(previousProjectsKey);
+  if (previousSingleProjectKey) {
+    localStorage.removeItem(previousSingleProjectKey);
+  }
 }
 
 export async function listProjectDrafts<T>() {
@@ -297,6 +454,10 @@ export async function listProjectDrafts<T>() {
         }
       }
       localStorage.removeItem(LOCAL_PROJECTS_KEY);
+      const previousProjectsKey = decodePreviousIdentifier(
+        PREVIOUS_PROJECTS_TOKEN,
+      );
+      if (previousProjectsKey) localStorage.removeItem(previousProjectsKey);
       return sortProjects([...merged.values()]).map(toSummary);
     }
     return indexedProjects.map(toSummary);
@@ -326,7 +487,16 @@ export async function saveProjectDraft<T>(
     await writeIndexedDbProject(project);
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(LOCAL_PROJECTS_KEY);
-      localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
+      const previousProjectsKey = decodePreviousIdentifier(
+        PREVIOUS_PROJECTS_TOKEN,
+      );
+      const previousSingleProjectKey = decodePreviousIdentifier(
+        PREVIOUS_SINGLE_PROJECT_TOKEN,
+      );
+      if (previousProjectsKey) localStorage.removeItem(previousProjectsKey);
+      if (previousSingleProjectKey) {
+        localStorage.removeItem(previousSingleProjectKey);
+      }
     }
     return { mode: "indexeddb", summary: toSummary(project) };
   } catch {

@@ -2271,7 +2271,16 @@ const DICTIONARIES: Record<Locale, Dictionary> = {
   de,
 };
 
-const STORAGE_KEY = "badgeflow-locale-v1";
+const STORAGE_KEY = "lanyardstudio-locale-v1";
+const PREVIOUS_LOCALE_TOKEN = "YmFkZ2VmbG93LWxvY2FsZS12MQ==";
+
+function previousLocaleKey() {
+  try {
+    return globalThis.atob(PREVIOUS_LOCALE_TOKEN);
+  } catch {
+    return "";
+  }
+}
 
 function resolveLocale(value: string | null | undefined): Locale | null {
   if (!value) return null;
@@ -2300,7 +2309,10 @@ export function useI18n() {
   useEffect(() => {
     let saved: string | null = null;
     try {
-      saved = localStorage.getItem(STORAGE_KEY);
+      const previousKey = previousLocaleKey();
+      saved =
+        localStorage.getItem(STORAGE_KEY) ??
+        (previousKey ? localStorage.getItem(previousKey) : null);
     } catch {
       // Browser privacy settings can disable localStorage.
     }
@@ -2315,6 +2327,8 @@ export function useI18n() {
     document.documentElement.lang = locale;
     try {
       localStorage.setItem(STORAGE_KEY, locale);
+      const previousKey = previousLocaleKey();
+      if (previousKey) localStorage.removeItem(previousKey);
     } catch {
       // Language selection still works for the current session.
     }

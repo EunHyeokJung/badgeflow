@@ -67,7 +67,7 @@ npm run start      # 빌드 결과 로컬 실행
 | --- | --- |
 | 이미지 | PNG, JPEG, WebP, SVG · 파일당 최대 10MB |
 | CSV | UTF-8 권장 · 최대 5MB, 500행, 50열 |
-| 프로젝트 | `.lanyardstudio.json` · 최대 30MB (`.badgeflow.json`도 호환) |
+| 프로젝트 | `.lanyardstudio.json` · 최대 30MB |
 | PDF | 150, 300, 600 DPI |
 | 저장 | IndexedDB 우선, localStorage 폴백 |
 
@@ -78,7 +78,7 @@ SVG는 스크립트, 외부 리소스 참조, 위험한 CSS를 제거한 뒤 사
 ```text
 app/                 Next.js App Router, 메타데이터, 오류 화면
 components/          LanyardStudio 편집기 UI와 PDF 렌더링
-lib/badgeflow/       브라우저 저장소 어댑터(기존 프로젝트 호환 키 유지)
+lib/lanyardstudio/   브라우저 저장소 어댑터와 자동 마이그레이션
 worker/              Cloudflare Worker 엔트리와 보안 헤더
 tests/               서버 렌더링 및 배포 계약 테스트
 docs/                아키텍처 문서

@@ -21,7 +21,7 @@ LanyardStudio는 계정이나 서버 데이터베이스 없이 명찰 디자인�
 ## 주요 모듈
 
 - `components/BadgeStudio.tsx`: 편집 상태, 캔버스 상호작용, import/export, PDF 생성
-- `lib/badgeflow/storage.ts`: IndexedDB 저장과 localStorage 폴백
+- `lib/lanyardstudio/storage.ts`: IndexedDB 저장, 이전 저장소 마이그레이션, localStorage 폴백
 - `worker/index.ts`: vinext 요청 처리, 이미지 최적화, 공통 보안 헤더
 - `lib/site.ts`: 기본 배포와 GitHub Pages 하위 경로를 정규화하는 URL 도우미
 - `app/layout.tsx`: 배포 대상별 canonical 및 공유 메타데이터

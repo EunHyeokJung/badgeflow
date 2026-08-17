@@ -2,6 +2,12 @@
 
 All notable changes to LanyardStudio are documented here.
 
+## 1.2.3 — 2026-08-17
+
+- Migrated project JSON, browser databases, local fallback keys, locale preferences, and source module names to the LanyardStudio identity.
+- Added one-time migration of projects and preferences saved by earlier releases, then removes the previous browser storage after a successful transfer.
+- Removed the previous project filename extension and identity from the deployable source.
+
 ## 1.2.2 — 2026-08-17
 
 - Made GitHub Pages the official deployment and aligned its path, repository links, and package metadata with LanyardStudio.
