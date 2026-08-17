@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  Circle,
   Columns3,
   Copy,
   CreditCard,
@@ -28,13 +29,16 @@ import {
   MousePointer2,
   MoveHorizontal,
   MoveVertical,
+  Minus,
   Palette,
   Pencil,
   Plus,
   Printer,
+  QrCode,
   Redo2,
   Ruler,
   ShieldCheck,
+  Square,
   Trash2,
   Type,
   Undo2,
@@ -43,6 +47,7 @@ import {
   X,
 } from "lucide-react";
 import Papa from "papaparse";
+import QRCode from "qrcode";
 import {
   type CSSProperties,
   type DragEvent as ReactDragEvent,
@@ -74,6 +79,7 @@ type Mode = "design" | "data" | "print";
 type AppView = "landing" | "studio";
 type Align = "left" | "center" | "right";
 type ElementKind = "variable" | "static";
+type ShapeKind = "rectangle" | "ellipse" | "line";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
 type OutputMode = "standard" | "table-tent";
@@ -82,7 +88,7 @@ type InspectorSheetState = "collapsed" | "half" | "expanded";
 type CommonElement = {
   id: string;
   name: string;
-  type: "text" | "image";
+  type: "text" | "image" | "shape";
   x: number;
   y: number;
   width: number;
@@ -110,9 +116,21 @@ type ImageElement = CommonElement & {
   height: number;
   fit: BackgroundFit;
   aspectRatio: number;
+  sourceKind?: "upload" | "qr";
+  qrValue?: string;
 };
 
-type CanvasElement = TextElement | ImageElement;
+type ShapeElement = CommonElement & {
+  type: "shape";
+  shapeKind: ShapeKind;
+  height: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  cornerRadius: number;
+};
+
+type CanvasElement = TextElement | ImageElement | ShapeElement;
 
 type BadgeRow = {
   id: string;
@@ -210,7 +228,7 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 6;
+const PROJECT_VERSION = 7;
 
 type BadgeProject = {
   format: typeof PROJECT_FORMAT;
@@ -1477,6 +1495,7 @@ function normalizeProjectName(value: string, fallback: string) {
 function getElementLabel(element: CanvasElement, t?: Translate) {
   if (element.name) return element.name;
   if (element.type === "image") return t?.("imageGeneric") || "Image";
+  if (element.type === "shape") return t?.("shapeGeneric") || "Shape";
   if (element.kind === "variable")
     return element.field || t?.("variable") || "Variable";
   return element.value || t?.("fixedText") || "Fixed text";
@@ -1523,6 +1542,12 @@ function isSafeImageDataUrl(value: unknown): value is string {
   );
 }
 
+function normalizedColor(value: unknown, fallback: string) {
+  return typeof value === "string" && /^#[\da-f]{3,8}$/i.test(value)
+    ? value
+    : fallback;
+}
+
 function normalizeElement(element: unknown): CanvasElement | null {
   if (!isRecord(element)) return null;
   const common = {
@@ -1552,6 +1577,37 @@ function normalizeElement(element: unknown): CanvasElement | null {
       height: boundedNumber(element.height, 20, 1, 500),
       fit,
       aspectRatio: boundedNumber(element.aspectRatio, 1, 0.01, 100),
+      sourceKind: element.sourceKind === "qr" ? "qr" : "upload",
+      qrValue:
+        element.sourceKind === "qr"
+          ? boundedString(element.qrValue, "", MAX_CELL_LENGTH)
+          : undefined,
+    };
+  }
+
+  if (element.type === "shape") {
+    const shapeKind: ShapeKind = ["rectangle", "ellipse", "line"].includes(
+      String(element.shapeKind),
+    )
+      ? (element.shapeKind as ShapeKind)
+      : "rectangle";
+    return {
+      ...common,
+      name:
+        boundedString(element.name, shapeKind === "line" ? "Line" : "Shape", 160).trim() ||
+        "Shape",
+      type: "shape",
+      shapeKind,
+      height: boundedNumber(
+        element.height,
+        shapeKind === "line" ? 1.5 : 20,
+        0.5,
+        500,
+      ),
+      fill: normalizedColor(element.fill, "#dbeafe"),
+      stroke: normalizedColor(element.stroke, "#2563eb"),
+      strokeWidth: boundedNumber(element.strokeWidth, 0.8, 0, 20),
+      cornerRadius: boundedNumber(element.cornerRadius, 2, 0, 250),
     };
   }
 
@@ -1563,11 +1619,7 @@ function normalizeElement(element: unknown): CanvasElement | null {
   )
     ? (element.align as Align)
     : "center";
-  const color =
-    typeof element.color === "string" &&
-    /^#[\da-f]{3,8}$/i.test(element.color)
-      ? element.color
-      : "#17201f";
+  const color = normalizedColor(element.color, "#17201f");
   const field = boundedString(element.field, "", MAX_FIELD_LENGTH);
   const value =
     kind === "static"
@@ -1701,6 +1753,16 @@ function normalizeProject(value: unknown): BadgeProject | null {
               height,
             };
           }
+          if (element.type === "shape") {
+            const height = Math.min(element.height, badgeHeight);
+            return {
+              ...element,
+              x,
+              y: clamp(element.y, 0, badgeHeight - height),
+              width,
+              height,
+            };
+          }
           return {
             ...element,
             x,
@@ -1779,14 +1841,14 @@ function getElementCenter(element: CanvasElement) {
   return {
     x: element.x + element.width / 2,
     y:
-      element.type === "image"
+      element.type !== "text"
         ? element.y + element.height / 2
         : element.y,
   };
 }
 
 function getElementMaxY(element: CanvasElement, badgeHeight: number) {
-  return element.type === "image"
+  return element.type !== "text"
     ? Math.max(0, badgeHeight - element.height)
     : badgeHeight;
 }
@@ -1954,6 +2016,43 @@ async function renderBadgeImage({
       continue;
     }
 
+    if (element.type === "shape") {
+      const width = element.width * scale;
+      const height = element.height * scale;
+      context.save();
+      context.globalAlpha = element.opacity;
+      context.translate(
+        (element.x + element.width / 2) * scale,
+        (element.y + element.height / 2) * scale,
+      );
+      context.rotate((element.rotation * Math.PI) / 180);
+      if (element.shapeKind === "line") {
+        context.fillStyle = element.stroke;
+        context.fillRect(-width / 2, -height / 2, width, height);
+      } else {
+        context.beginPath();
+        if (element.shapeKind === "ellipse") {
+          context.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2);
+        } else {
+          const radius = Math.min(
+            element.cornerRadius * scale,
+            width / 2,
+            height / 2,
+          );
+          context.roundRect(-width / 2, -height / 2, width, height, radius);
+        }
+        context.fillStyle = element.fill;
+        context.fill();
+        if (element.strokeWidth > 0) {
+          context.lineWidth = element.strokeWidth * scale;
+          context.strokeStyle = element.stroke;
+          context.stroke();
+        }
+      }
+      context.restore();
+      continue;
+    }
+
     const text = resolveText(element, row, false);
     if (!text) continue;
 
@@ -2006,7 +2105,11 @@ async function renderBadgeImage({
     context.restore();
   }
 
-  return canvas.toDataURL("image/jpeg", 0.96);
+  return elements.some(
+    (element) => element.type === "image" && element.sourceKind === "qr",
+  )
+    ? canvas.toDataURL("image/png")
+    : canvas.toDataURL("image/jpeg", 0.96);
 }
 
 async function rotateBadgeImage180(dataUrl: string) {
@@ -2116,12 +2219,7 @@ function BadgeContents({
       {elements.map((element, index) => {
         if (element.hidden) return null;
         const isSelected = selectedElementId === element.id;
-        const elementLabel =
-          element.type === "image"
-            ? element.name
-            : element.kind === "variable"
-              ? element.field
-              : element.value;
+        const elementLabel = getElementLabel(element, t);
 
         if (element.type === "image") {
           const imageStyle = {
@@ -2175,6 +2273,84 @@ function BadgeContents({
                     element.fit === "stretch" ? "fill" : element.fit,
                 }}
               />
+              {interactive && isSelected && !element.locked &&
+                RESIZE_DIRECTIONS.map((direction) => (
+                  <span
+                    key={direction}
+                    className={`selection-handle handle-${direction}`}
+                    onPointerDown={(event) =>
+                      onResizePointerDown?.(event, element, direction)
+                    }
+                    aria-hidden="true"
+                  />
+                ))}
+            </div>
+          );
+        }
+
+        if (element.type === "shape") {
+          const shapeStyle = {
+            left: `${(element.x / badgeWidth) * 100}%`,
+            top: `${(element.y / badgeHeight) * 100}%`,
+            width: `${(element.width / badgeWidth) * 100}%`,
+            height: `${(element.height / badgeHeight) * 100}%`,
+            opacity: element.opacity,
+            transform: `rotate(${element.rotation}deg)`,
+            zIndex: index + 2,
+            cursor: interactive
+              ? element.locked
+                ? "not-allowed"
+                : "grab"
+              : "default",
+          } as CSSProperties;
+          const visualStyle =
+            element.shapeKind === "line"
+              ? { background: element.stroke }
+              : {
+                  background: element.fill,
+                  border: `${(Math.max(element.strokeWidth, 0) * 100) / badgeWidth}cqw solid ${element.stroke}`,
+                  borderRadius:
+                    element.shapeKind === "ellipse"
+                      ? "50%"
+                      : `${Math.min(
+                          50,
+                          (element.cornerRadius /
+                            Math.max(
+                              0.1,
+                              Math.min(element.width, element.height),
+                            )) *
+                            100,
+                        )}%`,
+                };
+          const interactionProps = interactive
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                "aria-pressed": isSelected,
+                "aria-label": t("shapeElement", { name: elementLabel }),
+                onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+                  event.stopPropagation();
+                  onSelect?.(element.id);
+                },
+                onPointerDown: (
+                  event: ReactPointerEvent<HTMLDivElement>,
+                ) => {
+                  event.currentTarget.focus({ preventScroll: true });
+                  onPointerDown?.(event, element);
+                },
+                onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
+                  onKeyMove?.(event, element),
+              }
+            : {};
+
+          return (
+            <div
+              key={element.id}
+              className={`badge-shape-element ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
+              style={shapeStyle}
+              {...interactionProps}
+            >
+              <span className="shape-visual" style={visualStyle} />
               {interactive && isSelected && !element.locked &&
                 RESIZE_DIRECTIONS.map((direction) => (
                   <span
@@ -2282,6 +2458,7 @@ export function BadgeStudio() {
   const [dpi, setDpi] = useState(300);
   const [outputMode, setOutputMode] = useState<OutputMode>("standard");
   const [newField, setNewField] = useState("");
+  const [newQrValue, setNewQrValue] = useState("");
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [resize, setResize] = useState<ResizeState | null>(null);
@@ -2488,7 +2665,10 @@ export function BadgeStudio() {
 
   function updateElement(
     id: string,
-    patch: Partial<TextElement> | Partial<ImageElement>,
+    patch:
+      | Partial<TextElement>
+      | Partial<ImageElement>
+      | Partial<ShapeElement>,
     recordHistory = true,
   ) {
     mutateElements(
@@ -2949,7 +3129,14 @@ export function BadgeStudio() {
     setToast(t("toastCustom"));
   }
 
+  function canAddElement() {
+    if (elementsRef.current.length < MAX_ELEMENTS) return true;
+    setToast(t("errorProjectElements", { count: MAX_ELEMENTS }));
+    return false;
+  }
+
   function addVariableElement(field: string) {
+    if (!canAddElement()) return;
     const element: TextElement = {
       id: makeId("element"),
       name: field,
@@ -2972,19 +3159,43 @@ export function BadgeStudio() {
     setSelectedElementId(element.id);
   }
 
-  function addStaticElement() {
+  function addStaticElement(preset: "heading" | "body" | "caption" = "body") {
+    if (!canAddElement()) return;
+    const settings = {
+      heading: {
+        name: t("headingText"),
+        value: t("headingTextDefault"),
+        fontSize: 24,
+        fontWeight: 800,
+        color: "#17201f",
+      },
+      body: {
+        name: t("bodyText"),
+        value: t("bodyTextDefault"),
+        fontSize: 12,
+        fontWeight: 500,
+        color: "#334155",
+      },
+      caption: {
+        name: t("captionText"),
+        value: t("captionTextDefault"),
+        fontSize: 9,
+        fontWeight: 600,
+        color: "#64748b",
+      },
+    }[preset];
     const element: TextElement = {
       id: makeId("element"),
-      name: t("fixedText"),
+      name: settings.name,
       type: "text",
       kind: "static",
-      value: t("eventName"),
+      value: settings.value,
       x: 10,
-      y: 102,
+      y: clamp(28 + (elements.length % 8) * 9, 10, badgeHeight - 10),
       width: Math.max(20, badgeWidth - 20),
-      fontSize: 10,
-      fontWeight: 600,
-      color: "#2563eb",
+      fontSize: settings.fontSize,
+      fontWeight: settings.fontWeight,
+      color: settings.color,
       align: "center",
       opacity: 1,
       rotation: 0,
@@ -2995,8 +3206,107 @@ export function BadgeStudio() {
     setSelectedElementId(element.id);
   }
 
+  function addShapeElement(shapeKind: ShapeKind) {
+    if (!canAddElement()) return;
+    const isLine = shapeKind === "line";
+    const width = Math.min(isLine ? 48 : 32, badgeWidth * 0.55);
+    const height = Math.min(
+      isLine ? 1.5 : shapeKind === "ellipse" ? 24 : 20,
+      badgeHeight * 0.3,
+    );
+    const element: ShapeElement = {
+      id: makeId("shape"),
+      name:
+        shapeKind === "rectangle"
+          ? t("rectangle")
+          : shapeKind === "ellipse"
+            ? t("ellipse")
+            : t("line"),
+      type: "shape",
+      shapeKind,
+      x: Math.round(((badgeWidth - width) / 2) * 10) / 10,
+      y: Math.round(((badgeHeight - height) / 2) * 10) / 10,
+      width: Math.round(width * 10) / 10,
+      height: Math.round(height * 10) / 10,
+      fill: "#dbeafe",
+      stroke: "#2563eb",
+      strokeWidth: isLine ? 0 : 0.8,
+      cornerRadius: shapeKind === "rectangle" ? 2 : 0,
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    };
+    mutateElements((current) => [...current, element]);
+    setSelectedElementId(element.id);
+    setToast(t("toastShapeAdded", { name: element.name }));
+  }
+
+  async function makeQrDataUrl(value: string) {
+    return QRCode.toDataURL(value, {
+      width: 1024,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#111827", light: "#ffffff" },
+    });
+  }
+
+  async function addQrElement() {
+    if (!canAddElement()) return;
+    const value = newQrValue.trim();
+    if (!value) {
+      setToast(t("qrValueRequired"));
+      return;
+    }
+    try {
+      const src = await makeQrDataUrl(value);
+      const width = Math.min(30, badgeWidth * 0.34, badgeHeight * 0.34);
+      const element: ImageElement = {
+        id: makeId("qr"),
+        name: t("qrCode"),
+        type: "image",
+        sourceKind: "qr",
+        qrValue: value,
+        src,
+        mimeType: "image/png",
+        x: Math.round(((badgeWidth - width) / 2) * 10) / 10,
+        y: Math.round(((badgeHeight - width) / 2) * 10) / 10,
+        width: Math.round(width * 10) / 10,
+        height: Math.round(width * 10) / 10,
+        fit: "contain",
+        aspectRatio: 1,
+        opacity: 1,
+        rotation: 0,
+        locked: false,
+        hidden: false,
+      };
+      mutateElements((current) => [...current, element]);
+      setSelectedElementId(element.id);
+      setNewQrValue("");
+      setToast(t("toastQrAdded"));
+    } catch {
+      setToast(t("toastQrFailed"));
+    }
+  }
+
+  async function regenerateQrElement(id: string, nextValue: string) {
+    const value = nextValue.trim();
+    if (!value) {
+      setToast(t("qrValueRequired"));
+      return;
+    }
+    try {
+      const src = await makeQrDataUrl(value);
+      updateElement(id, { qrValue: value, src }, false);
+      setToast(t("toastQrUpdated"));
+    } catch {
+      setToast(t("toastQrFailed"));
+    }
+  }
+
   function duplicateSelected() {
     if (!selectedElement) return;
+    if (!canAddElement()) return;
     const duplicate = {
       ...selectedElement,
       id: makeId("element"),
@@ -3042,7 +3352,7 @@ export function BadgeStudio() {
     }
     updateElement(selectedElement.id, {
       y:
-        selectedElement.type === "image"
+        selectedElement.type !== "text"
           ? Math.round(((badgeHeight - selectedElement.height) / 2) * 10) / 10
           : Math.round((badgeHeight / 2) * 10) / 10,
     });
@@ -3096,10 +3406,12 @@ export function BadgeStudio() {
       elementX: element.x,
       elementY: element.y,
       elementWidth: element.width,
-      ...(element.type === "image"
+      ...(element.type !== "text"
         ? {
             elementHeight: element.height,
-            aspectRatio: element.aspectRatio,
+            ...(element.type === "image"
+              ? { aspectRatio: element.aspectRatio }
+              : {}),
           }
         : {}),
     });
@@ -3162,6 +3474,55 @@ export function BadgeStudio() {
           },
           false,
         );
+      } else if (
+        element.type === "shape" &&
+        resize.elementHeight !== undefined
+      ) {
+        const anchorX = isWest
+          ? resize.elementX + resize.elementWidth
+          : resize.elementX;
+        const anchorY = isNorth
+          ? resize.elementY + resize.elementHeight
+          : resize.elementY;
+        const maximumWidth = Math.max(
+          0.5,
+          isWest ? anchorX : badgeWidth - anchorX,
+        );
+        const maximumHeight = Math.max(
+          0.5,
+          isNorth ? anchorY : badgeHeight - anchorY,
+        );
+        const minimumWidth = Math.min(5, maximumWidth);
+        const minimumHeight = Math.min(
+          element.shapeKind === "line" ? 0.5 : 5,
+          maximumHeight,
+        );
+        const width =
+          Math.round(
+            clamp(
+              resize.elementWidth + (isWest ? -deltaX : deltaX),
+              minimumWidth,
+              maximumWidth,
+            ) * 10,
+          ) / 10;
+        const height =
+          Math.round(
+            clamp(
+              resize.elementHeight + (isNorth ? -deltaY : deltaY),
+              minimumHeight,
+              maximumHeight,
+            ) * 10,
+          ) / 10;
+        updateElement(
+          resize.id,
+          {
+            x: Math.round((isWest ? anchorX - width : anchorX) * 10) / 10,
+            y: Math.round((isNorth ? anchorY - height : anchorY) * 10) / 10,
+            width,
+            height,
+          },
+          false,
+        );
       } else {
         const anchorX = isWest
           ? resize.elementX + resize.elementWidth
@@ -3213,7 +3574,7 @@ export function BadgeStudio() {
     }
     if (snapsToHorizontalCenter) {
       nextY =
-        element.type === "image"
+        element.type !== "text"
           ? (badgeHeight - element.height) / 2
           : badgeHeight / 2;
     }
@@ -3368,6 +3729,7 @@ export function BadgeStudio() {
     dropPoint?: { x: number; y: number },
   ) {
     if (!file) return;
+    if (!canAddElement()) return;
     try {
       const asset = await readImageAsset(file);
       const image = await loadImage(asset.src);
@@ -3396,6 +3758,7 @@ export function BadgeStudio() {
       const element: ImageElement = {
         id: makeId("image"),
         type: "image",
+        sourceKind: "upload",
         name: file.name.replace(/\.[^.]+$/, "") || t("imageGeneric"),
         src: asset.src,
         mimeType: asset.mimeType,
@@ -3443,6 +3806,8 @@ export function BadgeStudio() {
       updateElement(selectedElement.id, {
         src: asset.src,
         mimeType: asset.mimeType,
+        sourceKind: "upload",
+        qrValue: undefined,
         name: file.name.replace(/\.[^.]+$/, "") || selectedElement.name,
         aspectRatio,
         width: Math.round(width * 10) / 10,
@@ -3626,7 +3991,14 @@ export function BadgeStudio() {
 
   function addField() {
     const value = newField.trim();
-    if (!value || fields.includes(value)) return;
+    if (!value) {
+      setToast(t("errorFieldRequired"));
+      return;
+    }
+    if (fields.includes(value)) {
+      setToast(t("errorFieldDuplicate"));
+      return;
+    }
     if (FORBIDDEN_FIELD_NAMES.has(value)) {
       setToast(t("errorFieldReserved"));
       return;
@@ -3649,11 +4021,57 @@ export function BadgeStudio() {
     newFieldInputRef.current?.focus();
   }
 
+  function renameField(field: string, nextName: string) {
+    const value = nextName.trim();
+    if (value === field) return true;
+    if (!value || fields.includes(value)) {
+      setToast(value ? t("errorFieldDuplicate") : t("errorFieldRequired"));
+      return false;
+    }
+    if (FORBIDDEN_FIELD_NAMES.has(value)) {
+      setToast(t("errorFieldReserved"));
+      return false;
+    }
+    if (value.length > MAX_FIELD_LENGTH) {
+      setToast(t("errorFieldLength", { count: MAX_FIELD_LENGTH }));
+      return false;
+    }
+
+    rememberData(true);
+    setFields((current) =>
+      current.map((candidate) => (candidate === field ? value : candidate)),
+    );
+    setRows((current) =>
+      current.map((row) => {
+        const next = { ...row, [value]: row[field] || "" };
+        delete next[field];
+        return next;
+      }),
+    );
+    mutateElements(
+      (current) =>
+        current.map((element) =>
+          element.type === "text" &&
+          element.kind === "variable" &&
+          element.field === field
+            ? {
+                ...element,
+                field: value,
+                name: element.name === field ? value : element.name,
+              }
+            : element,
+        ),
+      false,
+    );
+    return true;
+  }
+
   function removeField(field: string) {
     if (fields.length <= 1) {
       setToast(t("errorFieldMinimum"));
       return;
     }
+    if (!window.confirm(t("deleteVariableConfirm", { name: field }))) return;
     rememberData(true);
     setFields((current) => current.filter((item) => item !== field));
     setRows((current) =>
@@ -4223,40 +4641,72 @@ export function BadgeStudio() {
                 </label>
               </section>
 
-              <section className="panel-section grow-section">
+              <section className="panel-section element-library-section">
                 <div className="section-title">
-                  <h2>{t("addText")}</h2>
-                  <span>{t("totalElements", { count: elements.length })}</span>
+                  <h2>{t("textElements")}</h2>
                 </div>
-                <p className="section-helper">
-                  {t("variableHint")}
-                </p>
-                <div className="variable-list">
-                  {fields.map((field) => (
-                    <button
-                      key={field}
-                      type="button"
-                      onClick={() => addVariableElement(field)}
-                    >
-                      <span className="variable-icon">
-                        <Type size={15} />
-                      </span>
-                      <span>
-                        <strong>{field}</strong>
-                        <small>{`{{${field}}}`}</small>
-                      </span>
-                      <Plus size={16} />
-                    </button>
-                  ))}
+                <div className="element-palette-grid text-palette-grid">
+                  <button type="button" onClick={() => addStaticElement("heading")}>
+                    <Type size={18} aria-hidden="true" />
+                    <span>{t("headingText")}</span>
+                  </button>
+                  <button type="button" onClick={() => addStaticElement("body")}>
+                    <Type size={16} aria-hidden="true" />
+                    <span>{t("bodyText")}</span>
+                  </button>
+                  <button type="button" onClick={() => addStaticElement("caption")}>
+                    <Type size={14} aria-hidden="true" />
+                    <span>{t("captionText")}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="secondary-button full-width"
-                  onClick={addStaticElement}
-                >
-                  <Plus size={16} />
-                  {t("addStaticText")}
-                </button>
+              </section>
+
+              <section className="panel-section element-library-section">
+                <div className="section-title">
+                  <h2>{t("shapes")}</h2>
+                </div>
+                <div className="element-palette-grid shape-palette-grid">
+                  <button type="button" onClick={() => addShapeElement("rectangle")}>
+                    <Square size={18} aria-hidden="true" />
+                    <span>{t("rectangle")}</span>
+                  </button>
+                  <button type="button" onClick={() => addShapeElement("ellipse")}>
+                    <Circle size={18} aria-hidden="true" />
+                    <span>{t("ellipse")}</span>
+                  </button>
+                  <button type="button" onClick={() => addShapeElement("line")}>
+                    <Minus size={19} aria-hidden="true" />
+                    <span>{t("line")}</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="panel-section element-library-section grow-section">
+                <div className="section-title">
+                  <h2>{t("qrCode")}</h2>
+                </div>
+                <div className="qr-add-control">
+                  <label>
+                    <span className="sr-only">{t("qrContent")}</span>
+                    <input
+                      value={newQrValue}
+                      maxLength={MAX_CELL_LENGTH}
+                      placeholder={t("qrPlaceholder")}
+                      onChange={(event) => setNewQrValue(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") void addQrElement();
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => void addQrElement()}
+                  >
+                    <QrCode size={16} aria-hidden="true" />
+                    {t("addQrCode")}
+                  </button>
+                </div>
               </section>
             </aside>
 
@@ -4655,10 +5105,14 @@ export function BadgeStudio() {
                         </div>
                       </section>
                     </>
-                  ) : (
+                  ) : selectedElement.type === "image" ? (
                     <section className="panel-section">
                       <div className="section-title">
-                        <h2>{t("image")}</h2>
+                        <h2>
+                          {selectedElement.sourceKind === "qr"
+                            ? t("qrCode")
+                            : t("image")}
+                        </h2>
                         <span>{t("keepRatio")}</span>
                       </div>
                       <div className="image-inspector-preview">
@@ -4666,27 +5120,51 @@ export function BadgeStudio() {
                         <div>
                           <strong>{selectedElement.name}</strong>
                           <small>
-                            {selectedElement.mimeType === "image/svg+xml"
-                              ? t("vectorSvg")
-                              : t("rasterImage")}
+                            {selectedElement.sourceKind === "qr"
+                              ? t("qrCode")
+                              : selectedElement.mimeType === "image/svg+xml"
+                                ? t("vectorSvg")
+                                : t("rasterImage")}
                           </small>
                         </div>
                       </div>
-                      <div className="image-inspector-actions">
-                        <label className="secondary-button">
-                          <ImagePlus size={15} />
-                          {t("replaceImage")}
+                      {selectedElement.sourceKind === "qr" && (
+                        <label className="stacked-field qr-inspector-field">
+                          {t("qrContent")}
                           <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
-                            onChange={(event) => {
-                              void replaceSelectedImage(
-                                event.target.files?.[0],
-                              );
-                              event.currentTarget.value = "";
+                            key={`${selectedElement.id}:${selectedElement.qrValue || ""}`}
+                            defaultValue={selectedElement.qrValue || ""}
+                            maxLength={MAX_CELL_LENGTH}
+                            onFocus={rememberElements}
+                            onBlur={(event) =>
+                              void regenerateQrElement(
+                                selectedElement.id,
+                                event.currentTarget.value,
+                              )
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") event.currentTarget.blur();
                             }}
                           />
                         </label>
+                      )}
+                      <div className="image-inspector-actions">
+                        {selectedElement.sourceKind !== "qr" && (
+                          <label className="secondary-button">
+                            <ImagePlus size={15} />
+                            {t("replaceImage")}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                              onChange={(event) => {
+                                void replaceSelectedImage(
+                                  event.target.files?.[0],
+                                );
+                                event.currentTarget.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
                         <label className="stacked-field compact-fit-field">
                           {t("fit")}
                           <select
@@ -4704,6 +5182,97 @@ export function BadgeStudio() {
                         </label>
                       </div>
                     </section>
+                  ) : (
+                    <section className="panel-section">
+                      <div className="section-title">
+                        <h2>{t("shapes")}</h2>
+                      </div>
+                      <label className="stacked-field">
+                        {t("shapeType")}
+                        <select
+                          value={selectedElement.shapeKind}
+                          onChange={(event) =>
+                            updateElement(selectedElement.id, {
+                              shapeKind: event.target.value as ShapeKind,
+                            })
+                          }
+                        >
+                          <option value="rectangle">{t("rectangle")}</option>
+                          <option value="ellipse">{t("ellipse")}</option>
+                          <option value="line">{t("line")}</option>
+                        </select>
+                      </label>
+                      <div className="shape-style-grid">
+                        {selectedElement.shapeKind !== "line" && (
+                          <label className="shape-color-field">
+                            <span>{t("fillColor")}</span>
+                            <input
+                              type="color"
+                              value={selectedElement.fill}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  fill: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                        <label className="shape-color-field">
+                          <span>{t("strokeColor")}</span>
+                          <input
+                            type="color"
+                            value={selectedElement.stroke}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                stroke: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        {selectedElement.shapeKind !== "line" && (
+                          <label>
+                            {t("strokeWidth")}
+                            <input
+                              type="number"
+                              min="0"
+                              max="20"
+                              step="0.2"
+                              value={selectedElement.strokeWidth}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  strokeWidth: clamp(
+                                    Number(event.target.value),
+                                    0,
+                                    20,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                        {selectedElement.shapeKind === "rectangle" && (
+                          <label>
+                            {t("cornerRadius")}
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              value={selectedElement.cornerRadius}
+                              onChange={(event) =>
+                                updateElement(selectedElement.id, {
+                                  cornerRadius: clamp(
+                                    Number(event.target.value),
+                                    0,
+                                    100,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </section>
                   )}
 
                   <section className="panel-section">
@@ -4712,7 +5281,7 @@ export function BadgeStudio() {
                       <span>mm</span>
                     </div>
                     <div
-                      className={`field-grid ${selectedElement.type === "image" ? "two-columns" : "three-columns"}`}
+                      className={`field-grid ${selectedElement.type === "text" ? "three-columns" : "two-columns"}`}
                     >
                       <label>
                         X
@@ -4784,33 +5353,48 @@ export function BadgeStudio() {
                           }}
                         />
                       </label>
-                      {selectedElement.type === "image" && (
+                      {selectedElement.type !== "text" && (
                         <label>
                           {t("height")}
                           <input
                             type="number"
                             step="0.5"
-                            min="5"
+                            min={
+                              selectedElement.type === "shape" &&
+                              selectedElement.shapeKind === "line"
+                                ? 0.5
+                                : 5
+                            }
                             value={selectedElement.height}
                             onChange={(event) => {
                               const height = clamp(
                                 Number(event.target.value),
-                                5,
-                                Math.min(
-                                  badgeHeight - selectedElement.y,
-                                  (badgeWidth - selectedElement.x) /
-                                    selectedElement.aspectRatio,
-                                ),
+                                selectedElement.type === "shape" &&
+                                  selectedElement.shapeKind === "line"
+                                  ? 0.5
+                                  : 5,
+                                selectedElement.type === "image"
+                                  ? Math.min(
+                                      badgeHeight - selectedElement.y,
+                                      (badgeWidth - selectedElement.x) /
+                                        selectedElement.aspectRatio,
+                                    )
+                                  : badgeHeight - selectedElement.y,
                               );
-                              updateElement(selectedElement.id, {
-                                height,
-                                width:
-                                  Math.round(
-                                    height *
-                                      selectedElement.aspectRatio *
-                                      10,
-                                  ) / 10,
-                              });
+                              updateElement(
+                                selectedElement.id,
+                                selectedElement.type === "image"
+                                  ? {
+                                      height,
+                                      width:
+                                        Math.round(
+                                          height *
+                                            selectedElement.aspectRatio *
+                                            10,
+                                        ) / 10,
+                                    }
+                                  : { height },
+                              );
                             }}
                           />
                         </label>
@@ -4926,6 +5510,8 @@ export function BadgeStudio() {
                       >
                         {element.type === "image" ? (
                           <ImageIcon size={14} />
+                        ) : element.type === "shape" ? (
+                          <Square size={14} />
                         ) : (
                           <Type size={14} />
                         )}
@@ -5002,8 +5588,7 @@ export function BadgeStudio() {
                 </div>
               </section>
 
-              {!selectedElement && (
-                <section className="panel-section variable-connections">
+              <section className="panel-section variable-connections">
                   <div className="section-title">
                     <h2>
                       <Database size={15} />
@@ -5028,32 +5613,74 @@ export function BadgeStudio() {
                             className="layer-main variable-connection-main"
                           >
                             <Type size={14} aria-hidden="true" />
-                            <span>
-                              <strong>{field}</strong>
+                            <label>
+                              <span className="sr-only">
+                                {t("renameVariable", { name: field })}
+                              </span>
+                              <input
+                                defaultValue={field}
+                                maxLength={MAX_FIELD_LENGTH}
+                                onBlur={(event) => {
+                                  if (!renameField(field, event.currentTarget.value)) {
+                                    event.currentTarget.value = field;
+                                  }
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") event.currentTarget.blur();
+                                  if (event.key === "Escape") {
+                                    event.currentTarget.value = field;
+                                    event.currentTarget.blur();
+                                  }
+                                }}
+                              />
                               <small>{`{{${field}}}`}</small>
-                            </span>
+                            </label>
                             <span className="sr-only">
                               {t("connectedElementCount", {
                                 count: linkedElements.length,
                               })}
                             </span>
                           </div>
+                          <div className="variable-row-actions">
+                            <button
+                              type="button"
+                              onClick={() => addVariableElement(field)}
+                              title={t("addElementForVariable", { name: field })}
+                              aria-label={t("addElementForVariable", { name: field })}
+                            >
+                              <Plus size={14} aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className="danger-text"
+                              onClick={() => removeField(field)}
+                              title={t("deleteField", { name: field })}
+                              aria-label={t("deleteField", { name: field })}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
+                          </div>
                           <div className="variable-element-links">
                             {linkedElements.length ? (
-                              linkedElements.map((element) => (
+                              <>
                                 <button
                                   type="button"
-                                  key={element.id}
                                   onClick={() => {
+                                    const element = linkedElements[0];
                                     selectedElementIdRef.current = element.id;
                                     setSelectedElementId(element.id);
                                   }}
-                                  title={getElementLabel(element, t)}
-                                  aria-label={getElementLabel(element, t)}
+                                  title={getElementLabel(linkedElements[0], t)}
+                                  aria-label={getElementLabel(linkedElements[0], t)}
                                 >
-                                  {getElementLabel(element, t)}
+                                  {getElementLabel(linkedElements[0], t)}
                                 </button>
-                              ))
+                                {linkedElements.length > 1 && (
+                                  <span className="variable-link-count">
+                                    +{linkedElements.length - 1}
+                                  </span>
+                                )}
+                              </>
                             ) : (
                               <span className="variable-unlinked">
                                 {t("noLinkedElements")}
@@ -5064,8 +5691,29 @@ export function BadgeStudio() {
                       );
                     })}
                   </div>
+                  <div className="compact-variable-add">
+                    <label>
+                      <span className="sr-only">{t("newVariable")}</span>
+                      <input
+                        value={newField}
+                        maxLength={MAX_FIELD_LENGTH}
+                        placeholder={t("employeeNumber")}
+                        onChange={(event) => setNewField(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") addField();
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addField}
+                      title={t("addVariable")}
+                      aria-label={t("addVariable")}
+                    >
+                      <Plus size={15} aria-hidden="true" />
+                    </button>
+                  </div>
                 </section>
-              )}
 
               <div className="reference-note">
                 <strong>A4 · 95 × 123 mm · 4-UP</strong>
