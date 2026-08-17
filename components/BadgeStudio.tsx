@@ -80,6 +80,7 @@ type AppView = "landing" | "studio";
 type Align = "left" | "center" | "right";
 type ElementKind = "variable" | "static";
 type ShapeKind = "rectangle" | "ellipse" | "line";
+type FontFamilyKey = "sans" | "serif" | "rounded" | "display" | "mono";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
 type OutputMode = "standard" | "table-tent";
@@ -105,6 +106,7 @@ type TextElement = CommonElement & {
   value?: string;
   fontSize: number;
   fontWeight: number;
+  fontFamily: FontFamilyKey;
   color: string;
   align: Align;
 };
@@ -228,7 +230,55 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 7;
+const PROJECT_VERSION = 8;
+
+const FONT_FAMILIES: ReadonlyArray<{
+  value: FontFamilyKey;
+  labelKey: MessageKey;
+  stack: string;
+}> = [
+  {
+    value: "sans",
+    labelKey: "fontSans",
+    stack:
+      'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif',
+  },
+  {
+    value: "serif",
+    labelKey: "fontSerif",
+    stack:
+      'ui-serif, "Noto Serif CJK KR", "Noto Serif KR", AppleMyungjo, Batang, "Times New Roman", serif',
+  },
+  {
+    value: "rounded",
+    labelKey: "fontRounded",
+    stack:
+      'ui-rounded, "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif',
+  },
+  {
+    value: "display",
+    labelKey: "fontDisplay",
+    stack:
+      'Impact, Haettenschweiler, "Arial Narrow Bold", "Noto Sans KR", "Malgun Gothic", sans-serif',
+  },
+  {
+    value: "mono",
+    labelKey: "fontMono",
+    stack:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  },
+];
+
+const FONT_FAMILY_KEYS = new Set<FontFamilyKey>(
+  FONT_FAMILIES.map(({ value }) => value),
+);
+
+function getFontFamily(fontFamily: FontFamilyKey) {
+  return (
+    FONT_FAMILIES.find(({ value }) => value === fontFamily)?.stack ??
+    FONT_FAMILIES[0].stack
+  );
+}
 
 type BadgeProject = {
   format: typeof PROJECT_FORMAT;
@@ -453,6 +503,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     width: 79,
     fontSize: 11,
     fontWeight: 500,
+    fontFamily: "sans",
     color: "#687076",
     align: "center",
     opacity: 1,
@@ -471,6 +522,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     width: 79,
     fontSize: 25,
     fontWeight: 700,
+    fontFamily: "sans",
     color: "#17201f",
     align: "center",
     opacity: 1,
@@ -489,6 +541,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
     width: 79,
     fontSize: 11,
     fontWeight: 500,
+    fontFamily: "sans",
     color: "#687076",
     align: "center",
     opacity: 1,
@@ -538,6 +591,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
       width: contentWidth,
       fontSize: isLandscape ? 8 : 11,
       fontWeight: 600,
+      fontFamily: "sans",
       color: "#64748b",
       align: "center",
       opacity: 1,
@@ -555,7 +609,8 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
       y: Math.round(height * 0.5 * 10) / 10,
       width: contentWidth,
       fontSize: nameSize,
-      fontWeight: 750,
+      fontWeight: 700,
+      fontFamily: "sans",
       color: "#17201f",
       align: "center",
       opacity: 1,
@@ -574,6 +629,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
       width: contentWidth,
       fontSize: isLandscape ? 8 : 11,
       fontWeight: 500,
+      fontFamily: "sans",
       color: "#64748b",
       align: "center",
       opacity: 1,
@@ -597,6 +653,7 @@ function createTableTentElements(): CanvasElement[] {
       width: 257,
       fontSize: 14,
       fontWeight: 600,
+      fontFamily: "sans",
       color: "#64748b",
       align: "center",
       opacity: 1,
@@ -615,6 +672,7 @@ function createTableTentElements(): CanvasElement[] {
       width: 257,
       fontSize: 32,
       fontWeight: 800,
+      fontFamily: "sans",
       color: "#17201f",
       align: "center",
       opacity: 1,
@@ -633,6 +691,7 @@ function createTableTentElements(): CanvasElement[] {
       width: 257,
       fontSize: 13,
       fontWeight: 500,
+      fontFamily: "sans",
       color: "#64748b",
       align: "center",
       opacity: 1,
@@ -1620,6 +1679,11 @@ function normalizeElement(element: unknown): CanvasElement | null {
     ? (element.align as Align)
     : "center";
   const color = normalizedColor(element.color, "#17201f");
+  const fontFamily = FONT_FAMILY_KEYS.has(
+    element.fontFamily as FontFamilyKey,
+  )
+    ? (element.fontFamily as FontFamilyKey)
+    : "sans";
   const field = boundedString(element.field, "", MAX_FIELD_LENGTH);
   const value =
     kind === "static"
@@ -1647,6 +1711,7 @@ function normalizeElement(element: unknown): CanvasElement | null {
         : undefined,
     fontSize: boundedNumber(element.fontSize, 12, 1, 200),
     fontWeight: boundedNumber(element.fontWeight, 500, 100, 900),
+    fontFamily,
     color,
     align,
   };
@@ -2059,8 +2124,7 @@ async function renderBadgeImage({
     const maxWidth = element.width * scale;
     const intendedFontSize = element.fontSize * (dpi / 72);
     let fontSize = intendedFontSize;
-    const fontFamily =
-      '"Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif';
+    const fontFamily = getFontFamily(element.fontFamily);
     context.font = `${element.fontWeight} ${fontSize}px ${fontFamily}`;
 
     const longestLine = text
@@ -2372,6 +2436,7 @@ function BadgeContents({
           width: `${(element.width / badgeWidth) * 100}%`,
           fontSize: `${(element.fontSize * 0.352778 * 100) / badgeWidth}cqw`,
           fontWeight: element.fontWeight,
+          fontFamily: getFontFamily(element.fontFamily),
           color: element.color,
           textAlign: element.align,
           opacity: element.opacity,
@@ -3193,6 +3258,7 @@ export function BadgeStudio() {
       width: Math.max(20, badgeWidth - 20),
       fontSize: field === "이름" ? 22 : 12,
       fontWeight: field === "이름" ? 700 : 500,
+      fontFamily: "sans",
       color: "#17201f",
       align: "center",
       opacity: 1,
@@ -3240,6 +3306,7 @@ export function BadgeStudio() {
       width: Math.max(20, badgeWidth - 20),
       fontSize: settings.fontSize,
       fontWeight: settings.fontWeight,
+      fontFamily: "sans",
       color: settings.color,
       align: "center",
       opacity: 1,
@@ -5048,6 +5115,32 @@ export function BadgeStudio() {
                         <div className="section-title">
                           <h2>{t("typography")}</h2>
                         </div>
+                        <label className="stacked-field font-family-field">
+                          {t("fontFamily")}
+                          <select
+                            value={selectedElement.fontFamily}
+                            style={{
+                              fontFamily: getFontFamily(
+                                selectedElement.fontFamily,
+                              ),
+                            }}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                fontFamily: event.target.value as FontFamilyKey,
+                              })
+                            }
+                          >
+                            {FONT_FAMILIES.map((font) => (
+                              <option
+                                key={font.value}
+                                value={font.value}
+                                style={{ fontFamily: font.stack }}
+                              >
+                                {t(font.labelKey)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <div className="field-grid two-columns">
                           <label>
                             {t("size")}

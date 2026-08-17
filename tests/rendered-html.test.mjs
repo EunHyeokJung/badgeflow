@@ -157,7 +157,13 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
   assert.match(studio, /const PROJECT_FORMAT = "lanyardstudio"/);
-  assert.match(studio, /const PROJECT_VERSION = 7/);
+  assert.match(studio, /const PROJECT_VERSION = 8/);
+  assert.match(studio, /type FontFamilyKey =/);
+  assert.match(studio, /const FONT_FAMILIES:/);
+  assert.match(studio, /function getFontFamily/);
+  assert.match(studio, /fontFamily: getFontFamily\(element\.fontFamily\)/);
+  assert.match(studio, /const fontFamily = getFontFamily\(element\.fontFamily\)/);
+  assert.match(studio, /t\("fontFamily"\)/);
   assert.match(studio, /format: PROJECT_FORMAT/);
   assert.match(studio, /\.lanyardstudio\.json/);
   assert.match(studio, /function normalizeProject/);
