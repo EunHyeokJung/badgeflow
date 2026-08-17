@@ -2,7 +2,7 @@
 
 LanyardStudio is an open-source, browser-based name badge designer that connects CSV data to reusable layouts and exports print-ready PDFs at true physical size.
 
-[Open the web app](https://eunhyeokjung.github.io/lanyardstudio/) · [GitHub repository](https://github.com/EunHyeokJung/lanyardstudio) · [Download the latest release](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [한국어 README](README.md)
+[Open the web app](https://lanyardstudio.silverhyeok.dev/) · [GitHub repository](https://github.com/EunHyeokJung/lanyardstudio) · [Download the latest release](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [한국어 README](README.md)
 
 ![LanyardStudio preview](public/og.png)
 
@@ -23,7 +23,7 @@ Uploaded images and CSV data are processed in your browser and are not sent to a
 
 ## Install the app
 
-Open the [LanyardStudio web app](https://eunhyeokjung.github.io/lanyardstudio/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
+Open the [LanyardStudio web app](https://lanyardstudio.silverhyeok.dev/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
 
 The locale picker changes application UI only. It never rewrites CSV headers, roster values, or text placed on the badge. New untranslated messages fall back to English.
 
@@ -47,15 +47,17 @@ npm test
 npm run check
 npm run build
 npm run build:pages
+npm run build:cloudflare-pages
 npm run start
 ```
 
 The official deployment is a static Next.js export published from `main` to
-[GitHub Pages](https://eunhyeokjung.github.io/lanyardstudio/). The vinext build
-remains part of verification for Cloudflare Worker compatibility, while the
-published PWA uses project-scoped, base-path-aware assets.
+[Cloudflare Pages](https://lanyardstudio.silverhyeok.dev/). Set the build command
+to `npm run build:cloudflare-pages` and the output directory to `out`. The GitHub
+Pages deployment remains available as a mirror. Set `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+to enable the optional GA4 integration; no analytics script is emitted when it is empty.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), [docs/PWA.md](docs/PWA.md), and the [preset product sources](docs/PRESET_PRODUCT_SOURCES.md) for contribution and implementation details.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), [docs/PWA.md](docs/PWA.md), [docs/ANALYTICS.md](docs/ANALYTICS.md), and the [preset product sources](docs/PRESET_PRODUCT_SOURCES.md) for contribution and implementation details.
 
 ## Security
 

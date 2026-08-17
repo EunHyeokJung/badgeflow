@@ -240,6 +240,33 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(logo, /linearGradient id="bg"/);
 });
 
+test("keeps Cloudflare Pages and optional GA4 deployment configuration portable", async () => {
+  const [layout, analytics, nextConfig, packageJson, cloudflareHeaders] =
+    await Promise.all([
+      readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL("../components/GoogleAnalytics.tsx", import.meta.url),
+        "utf8",
+      ),
+      readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+      readFile(new URL("../package.json", import.meta.url), "utf8"),
+      readFile(new URL("../public/_headers", import.meta.url), "utf8"),
+    ]);
+
+  assert.match(layout, /<body>[\s\S]*<GoogleAnalytics \/>[\s\S]*<\/body>/);
+  assert.match(analytics, /NEXT_PUBLIC_GA_MEASUREMENT_ID/);
+  assert.match(analytics, /service_name/);
+  assert.match(analytics, /return null/);
+  assert.doesNotMatch(analytics, /G-[A-Z0-9]{6,}/);
+  assert.match(nextConfig, /STATIC_EXPORT/);
+  assert.match(nextConfig, /NEXT_PUBLIC_BASE_PATH/);
+  assert.match(packageJson, /build:cloudflare-pages/);
+  assert.match(packageJson, /lanyardstudio\.silverhyeok\.dev/);
+  assert.match(cloudflareHeaders, /Content-Security-Policy/);
+  assert.match(cloudflareHeaders, /www\.googletagmanager\.com/);
+  assert.match(cloudflareHeaders, /google-analytics\.com/);
+});
+
 test("ships an installable multilingual PWA contract", async () => {
   const [manifestResponse, i18n, controls, serviceWorker] = await Promise.all([
     render("/manifest.webmanifest"),
@@ -313,12 +340,15 @@ test("defines a GitHub Pages static-export contract", async () => {
     ]);
 
   assert.match(nextConfig, /output: "export"/);
-  assert.match(nextConfig, /basePath: "\/lanyardstudio"/);
+  assert.match(nextConfig, /basePath/);
+  assert.match(nextConfig, /NEXT_PUBLIC_BASE_PATH/);
   assert.match(packageJson, /"build:pages"/);
+  assert.match(packageJson, /NEXT_PUBLIC_BASE_PATH=\/lanyardstudio/);
+  assert.match(packageJson, /eunhyeokjung\.github\.io\/lanyardstudio/);
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.match(sitePaths, /NEXT_PUBLIC_BASE_PATH/);
-  assert.match(sitePaths, /eunhyeokjung\.github\.io\/lanyardstudio/);
+  assert.match(sitePaths, /lanyardstudio\.silverhyeok\.dev/);
   assert.match(packageJson, /EunHyeokJung\/lanyardstudio/);
   assert.match(readme, /EunHyeokJung\/lanyardstudio/);
   assert.match(readmeEn, /EunHyeokJung\/lanyardstudio/);

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
-const isGitHubPages = process.env.GITHUB_PAGES === "true";
+const isStaticExport =
+  process.env.STATIC_EXPORT === "true" ||
+  process.env.GITHUB_PAGES === "true";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim();
 
 const nextConfig: NextConfig = {
   compress: true,
@@ -9,16 +12,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  ...(isGitHubPages
+  ...(isStaticExport
     ? {
         output: "export",
-        basePath: "/lanyardstudio",
+        ...(basePath ? { basePath } : {}),
         trailingSlash: true,
       }
     : {}),
   images: {
     dangerouslyAllowSVG: false,
-    unoptimized: isGitHubPages,
+    unoptimized: isStaticExport,
   },
 };
 

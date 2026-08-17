@@ -1,5 +1,5 @@
 const DEFAULT_SITE_URL =
-  "https://eunhyeokjung.github.io/lanyardstudio/";
+  "https://lanyardstudio.silverhyeok.dev/";
 
 function normalizeBasePath(value: string | undefined) {
   const trimmed = value?.trim().replace(/^\/+|\/+$/g, "") ?? "";
