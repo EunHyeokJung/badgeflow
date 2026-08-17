@@ -2703,11 +2703,7 @@ export function BadgeStudio() {
       return;
     }
     snapInspectorSheet(
-      inspectorSheetState === "collapsed"
-        ? "half"
-        : inspectorSheetState === "half"
-          ? "expanded"
-          : "half",
+      inspectorSheetState === "collapsed" ? "half" : "collapsed",
     );
   }
 
@@ -4426,20 +4422,24 @@ export function BadgeStudio() {
                   onPointerUp={handleInspectorSheetPointerEnd}
                   onPointerCancel={cancelInspectorSheetPointer}
                   onClick={toggleInspectorSheet}
-                  aria-label={t("dragInspectorSheet")}
+                  aria-label={
+                    inspectorSheetState === "collapsed"
+                      ? t("expandInspectorSheet")
+                      : t("collapseInspectorSheet")
+                  }
                   aria-expanded={inspectorSheetState !== "collapsed"}
                   aria-controls="tablet-inspector-sheet"
                 >
                   <span className="inspector-sheet-handle" aria-hidden="true" />
-                  <span className="inspector-sheet-copy">
-                    <strong>
-                      {selectedElement
-                        ? getElementLabel(selectedElement, t)
-                        : t("inspectorSheetOverview")}
-                    </strong>
-                    <small>{t("inspectorSheetDragHint")}</small>
-                  </span>
                 </button>
+                <span className="inspector-sheet-copy">
+                  <strong>
+                    {selectedElement
+                      ? getElementLabel(selectedElement, t)
+                      : t("inspectorSheetOverview")}
+                  </strong>
+                  <small>{t("inspectorSheetDragHint")}</small>
+                </span>
                 <button
                   type="button"
                   className="inspector-sheet-action"

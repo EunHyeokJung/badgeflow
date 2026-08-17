@@ -1,5 +1,5 @@
 const DEFAULT_SITE_URL =
-  "https://badgeflow-studio.silverhyeok-dev.chatgpt.site/";
+  "https://eunhyeokjung.github.io/lanyardstudio/";
 
 function normalizeBasePath(value: string | undefined) {
   const trimmed = value?.trim().replace(/^\/+|\/+$/g, "") ?? "";

@@ -1,5 +1,5 @@
 name: 버그 신고
-description: 재현 가능한 BadgeFlow 문제를 알려 주세요.
+description: 재현 가능한 LanyardStudio 문제를 알려 주세요.
 title: "[Bug]: "
 labels: ["bug", "triage"]
 body:

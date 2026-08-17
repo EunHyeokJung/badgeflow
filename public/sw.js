@@ -1,4 +1,4 @@
-const CACHE_NAME = "lanyardstudio-app-v1";
+const CACHE_NAME = "lanyardstudio-app-v2";
 const SCOPE_URL = new URL(self.registration.scope);
 const SCOPE_PATH = SCOPE_URL.pathname.endsWith("/")
   ? SCOPE_URL.pathname

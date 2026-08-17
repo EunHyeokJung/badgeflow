@@ -2,6 +2,11 @@
 
 All notable changes to LanyardStudio are documented here.
 
+## 1.2.2 — 2026-08-17
+
+- Made GitHub Pages the official deployment and aligned its path, repository links, and package metadata with LanyardStudio.
+- Reworked the tablet bottom-sheet control into a conventional centered grab indicator that toggles open and closed on press.
+
 ## 1.2.1 — 2026-08-17
 
 - Replaced the tablet inspector below the canvas with a draggable three-stage bottom sheet overlay.

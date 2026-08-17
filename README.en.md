@@ -2,7 +2,7 @@
 
 LanyardStudio is an open-source, browser-based name badge designer that connects CSV data to reusable layouts and exports print-ready PDFs at true physical size.
 
-[Open the web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages mirror](https://eunhyeokjung.github.io/badgeflow/) · [Download the latest release](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [한국어 README](README.md)
+[Open the web app](https://eunhyeokjung.github.io/lanyardstudio/) · [GitHub repository](https://github.com/EunHyeokJung/lanyardstudio) · [Download the latest release](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [한국어 README](README.md)
 
 ![LanyardStudio preview](public/og.png)
 
@@ -23,7 +23,7 @@ Uploaded images and CSV data are processed in your browser and are not sent to a
 
 ## Install the app
 
-Open the [LanyardStudio web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
+Open the [LanyardStudio web app](https://eunhyeokjung.github.io/lanyardstudio/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
 
 The locale picker changes application UI only. It never rewrites CSV headers, roster values, or text placed on the badge. New untranslated messages fall back to English.
 
@@ -32,8 +32,8 @@ The locale picker changes application UI only. It never rewrites CSV headers, ro
 Requirements: Node.js 22.13 or later and npm 10 or later.
 
 ```bash
-git clone https://github.com/EunHyeokJung/badgeflow.git
-cd badgeflow
+git clone https://github.com/EunHyeokJung/lanyardstudio.git
+cd lanyardstudio
 npm ci
 npm run dev
 ```
@@ -50,11 +50,10 @@ npm run build:pages
 npm run start
 ```
 
-The primary deployment uses the vinext Cloudflare Worker build. Pushes to
-`main` also run a static Next.js export and publish the project-scoped
-[GitHub Pages mirror](https://eunhyeokjung.github.io/badgeflow/). The static
-mirror includes base-path-aware PWA assets; Worker response headers remain
-specific to the primary deployment.
+The official deployment is a static Next.js export published from `main` to
+[GitHub Pages](https://eunhyeokjung.github.io/lanyardstudio/). The vinext build
+remains part of verification for Cloudflare Worker compatibility, while the
+published PWA uses project-scoped, base-path-aware assets.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), [docs/PWA.md](docs/PWA.md), and the [preset product sources](docs/PRESET_PRODUCT_SOURCES.md) for contribution and implementation details.
 

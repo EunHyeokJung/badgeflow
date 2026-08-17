@@ -9,7 +9,7 @@ LanyardStudio is distributed as an installable Progressive Web App.
 - `public/sw.js` provides navigation fallback and same-origin runtime caching.
 - `public/icons/` contains the 192 px, 512 px, Apple touch, and source-size icons.
 - `lib/site.ts` scopes those URLs to `/` on the primary deployment and
-  `/badgeflow/` on GitHub Pages.
+  `/lanyardstudio/` on GitHub Pages.
 
 ## Cache policy
 

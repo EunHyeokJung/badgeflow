@@ -4228,7 +4228,7 @@ select:focus {
 
 @media (min-width: 681px) and (max-width: 980px) {
   .right-panel.inspector-sheet {
-    --inspector-sheet-base-translate: calc(100% - 76px);
+    --inspector-sheet-base-translate: calc(100% - 96px);
     --inspector-sheet-drag-offset: 0px;
     position: fixed;
     z-index: 70;
@@ -4240,7 +4240,7 @@ select:focus {
     max-height: calc(100dvh - 166px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    scroll-padding-top: 76px;
+    scroll-padding-top: 96px;
     border: 1px solid #cbd5e1;
     border-radius: 20px;
     background: var(--paper);
@@ -4275,9 +4275,10 @@ select:focus {
     z-index: 4;
     top: 0;
     display: grid;
-    min-height: 76px;
+    min-height: 96px;
     flex: 0 0 auto;
     grid-template-columns: minmax(0, 1fr) 44px 44px;
+    grid-template-rows: 44px 52px;
     align-items: center;
     border-bottom: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.96);
@@ -4286,15 +4287,15 @@ select:focus {
 
   .inspector-sheet-grip {
     display: grid;
-    min-width: 0;
-    min-height: 64px;
-    grid-template-columns: 40px minmax(0, 1fr);
-    align-items: center;
-    gap: 2px;
+    width: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    grid-column: 1 / -1;
+    place-items: center;
     border: 0;
-    border-radius: 12px;
+    border-radius: 12px 12px 6px 6px;
     background: transparent;
-    padding: 0 8px 0 0;
+    padding: 0;
     color: var(--ink);
     text-align: left;
     touch-action: none;
@@ -4317,16 +4318,27 @@ select:focus {
   }
 
   .inspector-sheet-handle {
-    width: 28px;
+    width: 40px;
     height: 5px;
-    justify-self: center;
     border-radius: 999px;
-    background: #94a3b8;
+    background: #cbd5e1;
+    transition:
+      width 160ms ease,
+      background 160ms ease;
+  }
+
+  .inspector-sheet-grip:hover .inspector-sheet-handle,
+  .inspector-sheet-grip:focus-visible .inspector-sheet-handle,
+  .inspector-sheet.is-dragging .inspector-sheet-handle {
+    width: 46px;
+    background: #64748b;
   }
 
   .inspector-sheet-copy {
     display: block;
     min-width: 0;
+    align-self: center;
+    padding-left: 8px;
   }
 
   .inspector-sheet-copy strong,

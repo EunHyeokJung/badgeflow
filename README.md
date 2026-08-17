@@ -2,7 +2,7 @@
 
 브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
-[웹 앱 실행](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages 미러](https://eunhyeokjung.github.io/badgeflow/) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [English README](README.en.md)
+[웹 앱 실행](https://eunhyeokjung.github.io/lanyardstudio/) · [GitHub 저장소](https://github.com/EunHyeokJung/lanyardstudio) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [English README](README.en.md)
 
 ![LanyardStudio 미리보기](public/og.png)
 
@@ -26,7 +26,7 @@
 
 LanyardStudio는 별도 앱 스토어 없이 설치하는 PWA입니다.
 
-1. [LanyardStudio 웹 앱](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)을 Chrome, Edge 또는 Safari로 엽니다.
+1. [LanyardStudio 웹 앱](https://eunhyeokjung.github.io/lanyardstudio/)을 Chrome, Edge 또는 Safari로 엽니다.
 2. 상단의 **앱 설치**를 누릅니다. 버튼이 보이지 않으면 브라우저 메뉴의 **앱 설치** 또는 **홈 화면에 추가**를 선택합니다.
 3. 설치 후에는 앱 창과 홈 화면 아이콘으로 실행할 수 있으며, 한 번 연 화면은 네트워크가 불안정해도 다시 열 수 있습니다.
 
@@ -40,8 +40,8 @@ LanyardStudio는 별도 앱 스토어 없이 설치하는 PWA입니다.
 - npm 10 이상
 
 ```bash
-git clone https://github.com/EunHyeokJung/badgeflow.git
-cd badgeflow
+git clone https://github.com/EunHyeokJung/lanyardstudio.git
+cd lanyardstudio
 npm ci
 npm run dev
 ```
@@ -78,7 +78,7 @@ SVG는 스크립트, 외부 리소스 참조, 위험한 CSS를 제거한 뒤 사
 ```text
 app/                 Next.js App Router, 메타데이터, 오류 화면
 components/          LanyardStudio 편집기 UI와 PDF 렌더링
-lib/badgeflow/       브라우저 저장소 어댑터
+lib/badgeflow/       브라우저 저장소 어댑터(기존 프로젝트 호환 키 유지)
 worker/              Cloudflare Worker 엔트리와 보안 헤더
 tests/               서버 렌더링 및 배포 계약 테스트
 docs/                아키텍처 문서
@@ -88,7 +88,7 @@ docs/                아키텍처 문서
 
 ## 배포
 
-기본 프로덕션은 vinext를 사용해 Next.js App Router를 Cloudflare Worker 런타임으로 빌드합니다. `main` 브랜치에 푸시하면 [GitHub Pages 미러](https://eunhyeokjung.github.io/badgeflow/)도 별도 Actions 워크플로로 정적 export되어 배포됩니다.
+공식 프로덕션은 `main` 브랜치에서 정적 export한 뒤 [GitHub Pages](https://eunhyeokjung.github.io/lanyardstudio/)로 자동 배포됩니다. vinext 빌드는 Cloudflare Worker 호환 여부를 검증하는 용도로 함께 유지합니다.
 
 ```bash
 npm ci
@@ -97,7 +97,7 @@ npm run build
 npm run build:pages
 ```
 
-기본 호스팅 환경에는 정적 에셋을 제공하는 `ASSETS` 바인딩이 필요합니다. GitHub Pages 빌드는 `/badgeflow/` base path를 적용해 PWA manifest, 아이콘, 서비스 워커까지 하위 경로에서 동작합니다. Worker가 추가하는 보안 응답 헤더는 기본 배포에만 적용됩니다. 플랫폼별 비밀 값은 저장소에 커밋하지 마세요.
+GitHub Pages 빌드는 `/lanyardstudio/` base path를 적용해 PWA manifest, 아이콘, 서비스 워커까지 하위 경로에서 동작합니다. 플랫폼별 비밀 값은 저장소에 커밋하지 마세요.
 
 ## 기여
 

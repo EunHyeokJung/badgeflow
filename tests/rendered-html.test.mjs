@@ -149,6 +149,11 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /className={`panel right-panel inspector-sheet/);
   assert.match(studio, /className={`inspector-sheet-scrim/);
   assert.match(studio, /inspectorSheetState === "expanded"/);
+  assert.match(
+    studio,
+    /inspectorSheetState === "collapsed" \? "half" : "collapsed"/,
+  );
+  assert.match(studio, /className="inspector-sheet-handle"/);
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
   assert.doesNotMatch(
@@ -189,6 +194,8 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   );
   assert.match(css, /\.right-panel\.inspector-sheet\s*{[^}]*position: fixed/s);
   assert.match(css, /touch-action: none/);
+  assert.match(css, /\.inspector-sheet-grip\s*{[^}]*place-items: center/s);
+  assert.match(css, /\.inspector-sheet-handle\s*{[^}]*width: 40px/s);
   assert.match(css, /\.editor-project-name/);
   assert.match(css, /\.landing-shell:lang\(ko\)\s*{[^}]*word-break: keep-all/s);
   assert.match(css, /\.service-overview-heading\s*{[^}]*max-width: 900px/s);
@@ -250,7 +257,7 @@ test("ships an installable multilingual PWA contract", async () => {
     controls,
     /navigator\.serviceWorker\.register\(withBasePath\("\/sw\.js"\)/,
   );
-  assert.match(serviceWorker, /lanyardstudio-app-v1/);
+  assert.match(serviceWorker, /lanyardstudio-app-v2/);
   assert.match(serviceWorker, /self\.registration\.scope/);
   assert.match(serviceWorker, /cache\.put\(SCOPE_PATH, copy\)/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
@@ -273,22 +280,31 @@ test("keeps the desktop editor inside the dynamic viewport", async () => {
 });
 
 test("defines a GitHub Pages static-export contract", async () => {
-  const [nextConfig, packageJson, workflow, sitePaths] = await Promise.all([
-    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(
-      new URL("../.github/workflows/pages.yml", import.meta.url),
-      "utf8",
-    ),
-    readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
-  ]);
+  const [nextConfig, packageJson, workflow, sitePaths, readme, readmeEn] =
+    await Promise.all([
+      readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+      readFile(new URL("../package.json", import.meta.url), "utf8"),
+      readFile(
+        new URL("../.github/workflows/pages.yml", import.meta.url),
+        "utf8",
+      ),
+      readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
+      readFile(new URL("../README.md", import.meta.url), "utf8"),
+      readFile(new URL("../README.en.md", import.meta.url), "utf8"),
+    ]);
 
   assert.match(nextConfig, /output: "export"/);
-  assert.match(nextConfig, /basePath: "\/badgeflow"/);
+  assert.match(nextConfig, /basePath: "\/lanyardstudio"/);
   assert.match(packageJson, /"build:pages"/);
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.match(sitePaths, /NEXT_PUBLIC_BASE_PATH/);
+  assert.match(sitePaths, /eunhyeokjung\.github\.io\/lanyardstudio/);
+  assert.match(packageJson, /EunHyeokJung\/lanyardstudio/);
+  assert.doesNotMatch(
+    `${packageJson}\n${sitePaths}\n${readme}\n${readmeEn}`,
+    /badgeflow-studio|EunHyeokJung\/badgeflow|github\.io\/badgeflow/,
+  );
 });
 
 test("renders a recoverable not-found page", async () => {

@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   ...(isGitHubPages
     ? {
         output: "export",
-        basePath: "/badgeflow",
+        basePath: "/lanyardstudio",
         trailingSlash: true,
       }
     : {}),
