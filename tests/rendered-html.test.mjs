@@ -157,7 +157,9 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
   assert.match(studio, /const PROJECT_FORMAT = "lanyardstudio"/);
-  assert.match(studio, /const PROJECT_VERSION = 8/);
+  assert.match(studio, /const PROJECT_VERSION = 9/);
+  assert.match(studio, /const shouldMigratePersonName =/);
+  assert.match(studio, /field: "사람 이름"/);
   assert.match(studio, /type FontFamilyKey =/);
   assert.match(studio, /const FONT_FAMILIES:/);
   assert.match(studio, /function getFontFamily/);
@@ -172,6 +174,9 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /const undoData = useCallback/);
   assert.match(studio, /mode === "data"/);
   assert.match(studio, /className="data-add-actions"/);
+  assert.match(studio, /className="add-column-cell"/);
+  assert.match(studio, /const DEFAULT_FIELDS = \["사람 이름", "팀", "직책"\]/);
+  assert.match(studio, /name: "이름 텍스트"/);
   assert.match(studio, /newColumnVariable/);
   assert.doesNotMatch(studio, /\{t\("addRow"\)\}/);
   assert.match(studio, /type ResizeState =/);
@@ -180,6 +185,11 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
   assert.match(studio, /deleteSelectedFromShortcut/);
   assert.match(studio, /className="panel-section variable-connections"/);
+  const variableConnectionsMarkup = studio.slice(
+    studio.indexOf('className="panel-section variable-connections"'),
+    studio.indexOf('className="compact-variable-add"'),
+  );
+  assert.doesNotMatch(variableConnectionsMarkup, /\{\{\$\{field\}\}\}/);
   assert.match(
     studio,
     /\{!selectedElement && \(\s*<>\s*<section className="panel-section layer-panel"/s,
@@ -191,6 +201,7 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /noLinkedElements/);
   assert.match(studio, /name: string/);
   assert.match(studio, /className="panel-section element-header"/);
+  assert.match(studio, /className="element-name-label"/);
   assert.match(studio, /aria-label=\{t\("elementName"\)\}/);
   assert.match(studio, /name: `\$\{getElementLabel\(selectedElement, t\)\}/);
   assert.match(studio, /className="variable-element-links"/);
@@ -274,6 +285,7 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.element-header-actions/);
   assert.match(css, /\.variable-element-links/);
   assert.match(css, /\.data-add-actions/);
+  assert.match(css, /\.data-table \.add-column-cell/);
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /LOCAL_PROJECTS_KEY/);
   assert.match(storage, /PREVIOUS_DATABASE_TOKEN/);

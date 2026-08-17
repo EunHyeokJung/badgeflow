@@ -2947,15 +2947,23 @@ select:focus {
 .element-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: end;
   gap: 8px;
   background: var(--panel-muted);
   padding: 12px 14px;
 }
 
 .element-name-field {
-  display: block;
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.element-name-label {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 750;
 }
 
 .element-name-field input {
@@ -3333,7 +3341,7 @@ select:focus {
 }
 
 .variable-connection-row {
-  grid-template-columns: minmax(86px, 1fr) minmax(52px, 0.72fr) auto;
+  grid-template-columns: minmax(76px, 1fr) minmax(70px, 0.9fr) auto;
   padding: 3px;
 }
 
@@ -3341,8 +3349,7 @@ select:focus {
   min-width: 0;
 }
 
-.variable-connection-main > label,
-.variable-connection-main small {
+.variable-connection-main > label {
   display: block;
   min-width: 0;
 }
@@ -3352,8 +3359,7 @@ select:focus {
   overflow: hidden;
 }
 
-.variable-connection-main input,
-.variable-connection-main small {
+.variable-connection-main input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3376,17 +3382,11 @@ select:focus {
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
-.variable-connection-main small {
-  margin-top: -1px;
-  color: var(--muted);
-  font-size: 8px;
-}
-
 .variable-element-links {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 3px;
   padding: 0 3px;
   overflow: hidden;
@@ -3646,7 +3646,7 @@ select:focus {
   font-weight: 800;
 }
 
-.data-table th:not(.row-number, .row-actions) {
+.data-table th:not(.row-number, .row-actions, .add-column-cell) {
   min-width: 170px;
 }
 
@@ -3722,6 +3722,31 @@ select:focus {
   color: var(--danger);
 }
 
+.data-table .add-column-cell {
+  width: 48px;
+  min-width: 48px;
+  padding: 0;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.data-table th.add-column-cell button {
+  width: 100%;
+  height: 49px;
+  margin: 0;
+  border-radius: 0;
+  color: var(--teal-dark);
+}
+
+.data-table th.add-column-cell button:hover {
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.data-table tr.is-selected td.add-column-cell {
+  background: #f8fafc;
+}
+
 .empty-table {
   position: absolute;
   inset: 52px 0 0;
@@ -3745,7 +3770,7 @@ select:focus {
 
 .data-add-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--line);
   border-top: 0;
@@ -3768,10 +3793,6 @@ select:focus {
   line-height: 1.35;
   padding: 0 10px;
   text-align: center;
-}
-
-.data-add-action + .data-add-action {
-  border-left: 1px solid var(--line);
 }
 
 .data-add-action:hover {

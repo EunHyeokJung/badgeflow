@@ -10,7 +10,6 @@ import {
   ArrowUp,
   Check,
   Circle,
-  Columns3,
   Copy,
   CreditCard,
   Database,
@@ -230,7 +229,7 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 8;
+const PROJECT_VERSION = 9;
 
 const FONT_FAMILIES: ReadonlyArray<{
   value: FontFamilyKey;
@@ -327,7 +326,7 @@ const PAGE_PRESETS: Record<
   Letter: { width: 215.9, height: 279.4, label: "Letter · 216 × 279 mm" },
 };
 
-const DEFAULT_FIELDS = ["이름", "팀", "직책"];
+const DEFAULT_FIELDS = ["사람 이름", "팀", "직책"];
 // Commercial product specifications were last checked on 2026-08-17.
 // Keep the purchase-time size reminder visible when updating these examples.
 const BADGE_PRESETS: BadgePreset[] = [
@@ -485,16 +484,16 @@ const BADGE_PRESETS: BadgePreset[] = [
 ];
 
 const SAMPLE_ROWS: BadgeRow[] = [
-  { id: "row-1", 이름: "김민지", 팀: "브랜드팀", 직책: "디자이너" },
-  { id: "row-2", 이름: "박준호", 팀: "제품팀", 직책: "프로덕트 매니저" },
-  { id: "row-3", 이름: "이서연", 팀: "운영팀", 직책: "매니저" },
-  { id: "row-4", 이름: "최현우", 팀: "개발팀", 직책: "엔지니어" },
+  { id: "row-1", "사람 이름": "김민지", 팀: "브랜드팀", 직책: "디자이너" },
+  { id: "row-2", "사람 이름": "박준호", 팀: "제품팀", 직책: "프로덕트 매니저" },
+  { id: "row-3", "사람 이름": "이서연", 팀: "운영팀", 직책: "매니저" },
+  { id: "row-4", "사람 이름": "최현우", 팀: "개발팀", 직책: "엔지니어" },
 ];
 
 const DEFAULT_ELEMENTS: CanvasElement[] = [
   {
     id: "element-team",
-    name: "팀",
+    name: "팀 텍스트",
     type: "text",
     kind: "variable",
     field: "팀",
@@ -513,10 +512,10 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
   },
   {
     id: "element-name",
-    name: "이름",
+    name: "이름 텍스트",
     type: "text",
     kind: "variable",
-    field: "이름",
+    field: "사람 이름",
     x: 8,
     y: 57,
     width: 79,
@@ -532,7 +531,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
   },
   {
     id: "element-title",
-    name: "직책",
+    name: "직책 텍스트",
     type: "text",
     kind: "variable",
     field: "직책",
@@ -582,7 +581,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
   return [
     {
       id: "element-team",
-      name: "팀",
+      name: "팀 텍스트",
       type: "text",
       kind: "variable",
       field: "팀",
@@ -601,10 +600,10 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-name",
-      name: "이름",
+      name: "이름 텍스트",
       type: "text",
       kind: "variable",
-      field: "이름",
+      field: "사람 이름",
       x: inset,
       y: Math.round(height * 0.5 * 10) / 10,
       width: contentWidth,
@@ -620,7 +619,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-title",
-      name: "직책",
+      name: "직책 텍스트",
       type: "text",
       kind: "variable",
       field: "직책",
@@ -644,7 +643,7 @@ function createTableTentElements(): CanvasElement[] {
   return [
     {
       id: "element-team",
-      name: "팀",
+      name: "팀 텍스트",
       type: "text",
       kind: "variable",
       field: "팀",
@@ -663,10 +662,10 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-name",
-      name: "이름",
+      name: "이름 텍스트",
       type: "text",
       kind: "variable",
-      field: "이름",
+      field: "사람 이름",
       x: 20,
       y: 55,
       width: 257,
@@ -682,7 +681,7 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-title",
-      name: "직책",
+      name: "직책 텍스트",
       type: "text",
       kind: "variable",
       field: "직책",
@@ -1797,11 +1796,47 @@ function normalizeProject(value: unknown): BadgeProject | null {
     outputMode === "table-tent"
       ? 105
       : boundedNumber(value.badgeHeight, 123, 20, 500);
-  const fields = normalizeFields(value.fields);
-  const rows = normalizeRows(value.rows, fields);
+  const shouldMigratePersonName =
+    (typeof value.version !== "number" || value.version < 9) &&
+    Array.isArray(value.fields) &&
+    value.fields.some((field) => field === "이름") &&
+    !value.fields.some((field) => field === "사람 이름");
+  const sourceFields = shouldMigratePersonName
+    && Array.isArray(value.fields)
+    ? value.fields.map((field: unknown) =>
+        field === "이름" ? "사람 이름" : field,
+      )
+    : value.fields;
+  const sourceRows =
+    shouldMigratePersonName && Array.isArray(value.rows)
+      ? value.rows.map((row) =>
+          isRecord(row)
+            ? { ...row, "사람 이름": row.이름 }
+            : row,
+        )
+      : value.rows;
+  const sourceElements =
+    shouldMigratePersonName && Array.isArray(value.elements)
+      ? value.elements.map((element) => {
+          if (!isRecord(element)) return element;
+          const defaultName =
+            element.id === "element-name" && element.name === "이름"
+              ? "이름 텍스트"
+              : element.id === "element-team" && element.name === "팀"
+                ? "팀 텍스트"
+                : element.id === "element-title" && element.name === "직책"
+                  ? "직책 텍스트"
+                  : element.name;
+          return element.type === "text" && element.field === "이름"
+            ? { ...element, name: defaultName, field: "사람 이름" }
+            : { ...element, name: defaultName };
+        })
+      : value.elements;
+  const fields = normalizeFields(sourceFields);
+  const rows = normalizeRows(sourceRows, fields);
   const usedElementIds = new Set<string>();
-  const elements = Array.isArray(value.elements)
-    ? value.elements
+  const elements = Array.isArray(sourceElements)
+    ? sourceElements
         .slice(0, MAX_ELEMENTS)
         .map(normalizeElement)
         .filter((element): element is CanvasElement => Boolean(element))
@@ -3249,15 +3284,15 @@ export function BadgeStudio() {
     if (!canAddElement()) return;
     const element: TextElement = {
       id: makeId("element"),
-      name: field,
+      name: `${field} ${t("textElements")}`,
       type: "text",
       kind: "variable",
       field,
       x: 10,
       y: clamp(30 + elements.length * 8, 12, badgeHeight - 12),
       width: Math.max(20, badgeWidth - 20),
-      fontSize: field === "이름" ? 22 : 12,
-      fontWeight: field === "이름" ? 700 : 500,
+      fontSize: field === DEFAULT_FIELDS[0] ? 22 : 12,
+      fontWeight: field === DEFAULT_FIELDS[0] ? 700 : 500,
       fontFamily: "sans",
       color: "#17201f",
       align: "center",
@@ -4868,7 +4903,7 @@ export function BadgeStudio() {
                     >
                       {rows.map((row, index) => (
                         <option key={row.id} value={row.id}>
-                          {row.이름 || t("badgeNumber", { count: index + 1 })}
+                          {row[fields[0]] || t("badgeNumber", { count: index + 1 })}
                         </option>
                       ))}
                     </select>
@@ -5015,7 +5050,9 @@ export function BadgeStudio() {
                 <>
                   <section className="panel-section element-header">
                     <label className="element-name-field">
-                      <span className="sr-only">{t("elementName")}</span>
+                      <span className="element-name-label">
+                        {t("elementName")}
+                      </span>
                       <input
                         value={selectedElement.name}
                         maxLength={160}
@@ -5758,32 +5795,12 @@ export function BadgeStudio() {
                                   }
                                 }}
                               />
-                              <small>{`{{${field}}}`}</small>
                             </label>
                             <span className="sr-only">
                               {t("connectedElementCount", {
                                 count: linkedElements.length,
                               })}
                             </span>
-                          </div>
-                          <div className="variable-row-actions">
-                            <button
-                              type="button"
-                              onClick={() => addVariableElement(field)}
-                              title={t("addElementForVariable", { name: field })}
-                              aria-label={t("addElementForVariable", { name: field })}
-                            >
-                              <Plus size={14} aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              className="danger-text"
-                              onClick={() => removeField(field)}
-                              title={t("deleteField", { name: field })}
-                              aria-label={t("deleteField", { name: field })}
-                            >
-                              <Trash2 size={14} aria-hidden="true" />
-                            </button>
                           </div>
                           <div className="variable-element-links">
                             {linkedElements.length ? (
@@ -5811,6 +5828,25 @@ export function BadgeStudio() {
                                 {t("noLinkedElements")}
                               </span>
                             )}
+                          </div>
+                          <div className="variable-row-actions">
+                            <button
+                              type="button"
+                              onClick={() => addVariableElement(field)}
+                              title={t("addElementForVariable", { name: field })}
+                              aria-label={t("addElementForVariable", { name: field })}
+                            >
+                              <Plus size={14} aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className="danger-text"
+                              onClick={() => removeField(field)}
+                              title={t("deleteField", { name: field })}
+                              aria-label={t("deleteField", { name: field })}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
                           </div>
                         </div>
                       );
@@ -5900,6 +5936,17 @@ export function BadgeStudio() {
                         </th>
                       ))}
                       <th className="row-actions">{t("manage")}</th>
+                      <th className="add-column-cell">
+                        <button
+                          type="button"
+                          onClick={focusNewFieldInput}
+                          aria-label={t("newColumnVariable")}
+                          title={t("newColumnVariable")}
+                          aria-controls="new-field"
+                        >
+                          <Plus size={16} aria-hidden="true" />
+                        </button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5947,6 +5994,7 @@ export function BadgeStudio() {
                             <Trash2 size={15} />
                           </button>
                         </td>
+                        <td className="add-column-cell" aria-hidden="true" />
                       </tr>
                     ))}
                   </tbody>
@@ -5968,15 +6016,6 @@ export function BadgeStudio() {
                 >
                   <Plus size={16} />
                   {t("newRow")}
-                </button>
-                <button
-                  type="button"
-                  className="data-add-action"
-                  onClick={focusNewFieldInput}
-                  aria-controls="new-field"
-                >
-                  <Columns3 size={16} />
-                  {t("newColumnVariable")}
                 </button>
               </div>
             </section>
@@ -6043,7 +6082,7 @@ export function BadgeStudio() {
                 </span>
                 <div>
                   <strong>{t("csvExample")}</strong>
-                  <code>이름,팀,직책</code>
+                  <code>사람 이름,팀,직책</code>
                   <code>김민지,브랜드팀,디자이너</code>
                 </div>
               </section>
