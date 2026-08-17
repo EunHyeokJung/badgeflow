@@ -11,6 +11,7 @@ LanyardStudio is an open-source, browser-based name badge designer that connects
 - Popular 95 × 123 mm lanyard, A7, B7, CR80, and landscape presets
 - A3, A4, Letter, and custom paper sizes
 - Fixed and variable text plus PNG, JPEG, WebP, and sanitized SVG layers
+- Horizontal or vertical brand bars with multi-logo import, per-logo cropping, and automatic equal spacing
 - Drag and drop, keyboard movement, layer controls, locking, hiding, undo, and redo
 - Horizontal and vertical center actions with magnetic snap guides
 - CSV import and direct roster-table editing

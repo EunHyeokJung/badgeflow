@@ -157,7 +157,7 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
   assert.match(studio, /const PROJECT_FORMAT = "lanyardstudio"/);
-  assert.match(studio, /const PROJECT_VERSION = 10/);
+  assert.match(studio, /const PROJECT_VERSION = 11/);
   assert.match(studio, /const shouldMigratePersonName =/);
   assert.match(studio, /field: "사람 이름"/);
   assert.match(studio, /type FontFamilyKey =/);
@@ -171,6 +171,25 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /format: PROJECT_FORMAT/);
   assert.match(studio, /\.lanyardstudio\.json/);
   assert.match(studio, /function normalizeProject/);
+  assert.match(studio, /type BrandBarElement/);
+  assert.match(studio, /type: "brandBar"/);
+  assert.match(studio, /function getBrandBarSlots/);
+  assert.match(studio, /function drawBrandLogoCropped/);
+  assert.match(
+    studio,
+    /multiple[\s\S]{0,120}accept="image\/png,image\/jpeg,image\/webp,image\/svg\+xml,.svg"/,
+  );
+  assert.match(studio, /className="brand-crop-dialog"/);
+  assert.match(studio, /applyBrandCropSession/);
+  assert.match(studio, /SAMPLE_DATA_BY_LOCALE/);
+  assert.match(studio, /"Alex Morgan"/);
+  assert.match(studio, /const \[previewPageIndex, setPreviewPageIndex\]/);
+  assert.match(studio, /previewRows\.map\(\(row, index\) =>/);
+  assert.match(studio, /className="preview-pagination"/);
+  assert.match(studio, /function PreviewCropMarks/);
+  assert.match(studio, /<PreviewCropMarks/);
+  assert.match(studio, /className="secondary-button full-width orientation-swap-button"/);
+  assert.doesNotMatch(studio, /<h2>\{t\("outputSettings"\)\}<\/h2>/);
   assert.match(studio, /MAX_ROWS = 500/);
   assert.match(studio, /const undoElements = useCallback/);
   assert.match(studio, /const undoData = useCallback/);
@@ -251,6 +270,12 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.qr-launch-button/);
   assert.match(css, /\.qr-dialog-overlay/);
   assert.match(css, /\.qr-dialog\s*\{/);
+  assert.match(css, /\.badge-brand-bar/);
+  assert.match(css, /\.brand-crop-dialog/);
+  assert.match(css, /\.brand-logo-row/);
+  assert.match(css, /\.preview-crop-marks/);
+  assert.match(css, /\.preview-pagination button/);
+  assert.match(css, /\.orientation-swap-button\s*{[^}]*margin-top: 12px/s);
   assert.doesNotMatch(css, /\.reference-note/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.preset-card\.is-selected/);

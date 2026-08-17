@@ -2,6 +2,14 @@
 
 All notable changes to LanyardStudio are documented here.
 
+## 1.7.0 — 2026-08-18
+
+- Added brand bars with multi-logo upload, per-logo drag cropping and zoom, horizontal or vertical automatic spacing, reordering, background color, padding, and gap controls.
+- Added project-schema validation, local persistence, canvas preview, and print/PDF rendering for brand bars.
+- Localized new-project and sample roster data for all eight supported UI languages.
+- Added accessible multi-page print-preview pagination and visible crop marks that match the final PDF drawing order.
+- Simplified the output sidebar and corrected spacing around the paper-orientation control.
+
 ## 1.2.3 — 2026-08-17
 
 - Migrated project JSON, browser databases, local fallback keys, locale preferences, and source module names to the LanyardStudio identity.

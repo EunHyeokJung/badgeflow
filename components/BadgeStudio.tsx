@@ -9,9 +9,13 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Circle,
+  Columns3,
   Copy,
   CreditCard,
+  Crop,
   Database,
   Download,
   Eye,
@@ -19,6 +23,7 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
+  GalleryHorizontal,
   Group,
   Image as ImageIcon,
   ImagePlus,
@@ -37,6 +42,7 @@ import {
   QrCode,
   Redo2,
   Ruler,
+  Rows3,
   ShieldCheck,
   Square,
   Trash2,
@@ -81,6 +87,7 @@ type AppView = "landing" | "studio";
 type Align = "left" | "center" | "right";
 type ElementKind = "variable" | "static";
 type ShapeKind = "rectangle" | "ellipse" | "line";
+type BrandBarDirection = "horizontal" | "vertical";
 type FontFamilyKey = "sans" | "serif" | "rounded" | "display" | "mono";
 type BackgroundFit = "cover" | "contain" | "stretch";
 type PagePreset = "A4" | "A3" | "Letter" | "custom";
@@ -91,7 +98,7 @@ type CommonElement = {
   id: string;
   name: string;
   groupId?: string;
-  type: "text" | "image" | "shape";
+  type: "text" | "image" | "shape" | "brandBar";
   x: number;
   y: number;
   width: number;
@@ -134,7 +141,33 @@ type ShapeElement = CommonElement & {
   cornerRadius: number;
 };
 
-type CanvasElement = TextElement | ImageElement | ShapeElement;
+type BrandLogo = {
+  id: string;
+  name: string;
+  src: string;
+  mimeType: string;
+  aspectRatio: number;
+  cropX: number;
+  cropY: number;
+  zoom: number;
+};
+
+type BrandBarElement = CommonElement & {
+  type: "brandBar";
+  height: number;
+  direction: BrandBarDirection;
+  gap: number;
+  padding: number;
+  backgroundColor: string;
+  cornerRadius: number;
+  logos: BrandLogo[];
+};
+
+type CanvasElement =
+  | TextElement
+  | ImageElement
+  | ShapeElement
+  | BrandBarElement;
 
 type BadgeRow = {
   id: string;
@@ -198,6 +231,23 @@ type CanvasContextMenu = {
   groupId?: string;
 };
 
+type BrandCropSession = {
+  targetElementId?: string;
+  replaceLogoId?: string;
+  logos: BrandLogo[];
+  activeIndex: number;
+  direction: BrandBarDirection;
+  backgroundColor: string;
+};
+
+type BrandCropDrag = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  cropX: number;
+  cropY: number;
+};
+
 type InspectorSheetDrag = {
   pointerId: number;
   startY: number;
@@ -239,7 +289,7 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 10;
+const PROJECT_VERSION = 11;
 
 const FONT_FAMILIES: ReadonlyArray<{
   value: FontFamilyKey;
@@ -312,12 +362,14 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_PROJECT_BYTES = 30 * 1024 * 1024;
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_DATA_URL_LENGTH = 14 * 1024 * 1024;
+const MAX_BRAND_BAR_DATA_LENGTH = 24 * 1024 * 1024;
 const MAX_ELEMENTS = 200;
 const MAX_ROWS = 500;
 const MAX_FIELDS = 50;
 const MAX_FIELD_LENGTH = 80;
 const MAX_CELL_LENGTH = 2_000;
 const MAX_PROJECT_NAME_LENGTH = 80;
+const MAX_BRAND_LOGOS = 24;
 const FORBIDDEN_FIELD_NAMES = new Set([
   "id",
   "__proto__",
@@ -500,6 +552,98 @@ const SAMPLE_ROWS: BadgeRow[] = [
   { id: "row-4", "사람 이름": "최현우", 팀: "개발팀", 직책: "엔지니어" },
 ];
 
+const SAMPLE_DATA_BY_LOCALE: Record<
+  Locale,
+  { fields: [string, string, string]; rows: Array<[string, string, string]> }
+> = {
+  ko: {
+    fields: ["사람 이름", "팀", "직책"],
+    rows: [
+      ["김민지", "브랜드팀", "디자이너"],
+      ["박준호", "제품팀", "프로덕트 매니저"],
+      ["이서연", "운영팀", "매니저"],
+      ["최현우", "개발팀", "엔지니어"],
+    ],
+  },
+  en: {
+    fields: ["Name", "Team", "Role"],
+    rows: [
+      ["Alex Morgan", "Brand", "Designer"],
+      ["Jordan Lee", "Product", "Product Manager"],
+      ["Taylor Kim", "Operations", "Manager"],
+      ["Casey Park", "Engineering", "Engineer"],
+    ],
+  },
+  ja: {
+    fields: ["氏名", "チーム", "役職"],
+    rows: [
+      ["佐藤 美咲", "ブランド", "デザイナー"],
+      ["鈴木 健太", "プロダクト", "プロダクトマネージャー"],
+      ["高橋 葵", "運営", "マネージャー"],
+      ["田中 悠斗", "開発", "エンジニア"],
+    ],
+  },
+  "zh-CN": {
+    fields: ["姓名", "团队", "职务"],
+    rows: [
+      ["陈雨欣", "品牌团队", "设计师"],
+      ["李明浩", "产品团队", "产品经理"],
+      ["王思琪", "运营团队", "经理"],
+      ["张子轩", "开发团队", "工程师"],
+    ],
+  },
+  "zh-TW": {
+    fields: ["姓名", "團隊", "職稱"],
+    rows: [
+      ["陳雨欣", "品牌團隊", "設計師"],
+      ["李明浩", "產品團隊", "產品經理"],
+      ["王思琪", "營運團隊", "經理"],
+      ["張子軒", "開發團隊", "工程師"],
+    ],
+  },
+  es: {
+    fields: ["Nombre", "Equipo", "Cargo"],
+    rows: [
+      ["Sofía García", "Marca", "Diseñadora"],
+      ["Mateo López", "Producto", "Product Manager"],
+      ["Valentina Ruiz", "Operaciones", "Gerente"],
+      ["Lucas Martín", "Ingeniería", "Ingeniero"],
+    ],
+  },
+  fr: {
+    fields: ["Nom", "Équipe", "Fonction"],
+    rows: [
+      ["Camille Bernard", "Marque", "Designer"],
+      ["Louis Martin", "Produit", "Chef de produit"],
+      ["Chloé Robert", "Opérations", "Responsable"],
+      ["Hugo Petit", "Ingénierie", "Ingénieur"],
+    ],
+  },
+  de: {
+    fields: ["Name", "Team", "Rolle"],
+    rows: [
+      ["Mia Schneider", "Marke", "Designerin"],
+      ["Paul Wagner", "Produkt", "Produktmanager"],
+      ["Emma Becker", "Betrieb", "Managerin"],
+      ["Leon Fischer", "Entwicklung", "Ingenieur"],
+    ],
+  },
+};
+
+function getLocalizedSampleData(locale: Locale) {
+  const sample = SAMPLE_DATA_BY_LOCALE[locale];
+  const [nameField, teamField, roleField] = sample.fields;
+  return {
+    fields: [...sample.fields],
+    rows: sample.rows.map(([name, team, role], index) => ({
+      id: `row-${index + 1}`,
+      [nameField]: name,
+      [teamField]: team,
+      [roleField]: role,
+    })),
+  };
+}
+
 const DEFAULT_ELEMENTS: CanvasElement[] = [
   {
     id: "element-team",
@@ -580,10 +724,17 @@ const TABLE_TENT_PAGE: PageSettings = {
   showCropMarks: false,
 };
 
-function createPresetElements(width: number, height: number): CanvasElement[] {
+function createPresetElements(
+  width: number,
+  height: number,
+  fields: string[] = DEFAULT_FIELDS,
+  t?: Translate,
+): CanvasElement[] {
   const isLandscape = width > height;
   const inset = Math.max(4, Math.round(width * 0.08 * 10) / 10);
   const contentWidth = Math.round((width - inset * 2) * 10) / 10;
+  const [nameField, teamField, roleField] = fields;
+  const elementSuffix = t?.("textElements") || "텍스트";
   const nameSize = isLandscape
     ? Math.max(14, Math.min(20, Math.round(width * 0.2)))
     : Math.max(20, Math.min(26, Math.round(width * 0.28)));
@@ -591,10 +742,10 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
   return [
     {
       id: "element-team",
-      name: "팀 텍스트",
+      name: `${teamField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "팀",
+      field: teamField,
       x: inset,
       y: Math.round(height * 0.25 * 10) / 10,
       width: contentWidth,
@@ -610,10 +761,10 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-name",
-      name: "이름 텍스트",
+      name: `${nameField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "사람 이름",
+      field: nameField,
       x: inset,
       y: Math.round(height * 0.5 * 10) / 10,
       width: contentWidth,
@@ -629,10 +780,10 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-title",
-      name: "직책 텍스트",
+      name: `${roleField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "직책",
+      field: roleField,
       x: inset,
       y: Math.round(height * 0.74 * 10) / 10,
       width: contentWidth,
@@ -649,14 +800,19 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
   ];
 }
 
-function createTableTentElements(): CanvasElement[] {
+function createTableTentElements(
+  fields: string[] = DEFAULT_FIELDS,
+  t?: Translate,
+): CanvasElement[] {
+  const [nameField, teamField, roleField] = fields;
+  const elementSuffix = t?.("textElements") || "텍스트";
   return [
     {
       id: "element-team",
-      name: "팀 텍스트",
+      name: `${teamField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "팀",
+      field: teamField,
       x: 20,
       y: 30,
       width: 257,
@@ -672,10 +828,10 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-name",
-      name: "이름 텍스트",
+      name: `${nameField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "사람 이름",
+      field: nameField,
       x: 20,
       y: 55,
       width: 257,
@@ -691,10 +847,10 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-title",
-      name: "직책 텍스트",
+      name: `${roleField} ${elementSuffix}`,
       type: "text",
       kind: "variable",
-      field: "직책",
+      field: roleField,
       x: 20,
       y: 80,
       width: 257,
@@ -1556,12 +1712,30 @@ function displayNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function getDefaultBrandBarDimensions(
+  direction: BrandBarDirection,
+  badgeWidth: number,
+  badgeHeight: number,
+) {
+  if (direction === "vertical") {
+    return {
+      width: Math.max(14, Math.min(30, badgeWidth * 0.32)),
+      height: Math.max(32, Math.min(82, badgeHeight * 0.72)),
+    };
+  }
+  return {
+    width: Math.max(32, Math.min(82, badgeWidth * 0.86)),
+    height: Math.max(14, Math.min(28, badgeHeight * 0.23)),
+  };
+}
+
 function normalizeProjectName(value: string, fallback: string) {
   return value.trim().slice(0, MAX_PROJECT_NAME_LENGTH) || fallback;
 }
 
 function getElementLabel(element: CanvasElement, t?: Translate) {
   if (element.name) return element.name;
+  if (element.type === "brandBar") return t?.("brandBar") || "Brand bar";
   if (element.type === "image") return t?.("imageGeneric") || "Image";
   if (element.type === "shape") return t?.("shapeGeneric") || "Shape";
   if (element.kind === "variable")
@@ -1570,7 +1744,14 @@ function getElementLabel(element: CanvasElement, t?: Translate) {
 }
 
 function cloneElements(source: CanvasElement[]) {
-  return source.map((element) => ({ ...element })) as CanvasElement[];
+  return source.map((element) =>
+    element.type === "brandBar"
+      ? {
+          ...element,
+          logos: element.logos.map((logo) => ({ ...logo })),
+        }
+      : { ...element },
+  ) as CanvasElement[];
 }
 
 function cloneRows(source: BadgeRow[]) {
@@ -1632,6 +1813,46 @@ function normalizeElement(element: unknown): CanvasElement | null {
     locked: Boolean(element.locked),
     hidden: Boolean(element.hidden),
   };
+
+  if (element.type === "brandBar") {
+    const direction: BrandBarDirection =
+      element.direction === "vertical" ? "vertical" : "horizontal";
+    const logos = Array.isArray(element.logos)
+      ? element.logos.slice(0, MAX_BRAND_LOGOS).flatMap((candidate) => {
+          if (!isRecord(candidate) || !isSafeImageDataUrl(candidate.src)) {
+            return [];
+          }
+          return [
+            {
+              id:
+                boundedString(candidate.id, makeId("brand-logo"), 120) ||
+                makeId("brand-logo"),
+              name:
+                boundedString(candidate.name, "Logo", 160).trim() || "Logo",
+              src: candidate.src,
+              mimeType: boundedString(candidate.mimeType, "image/png", 80),
+              aspectRatio: boundedNumber(candidate.aspectRatio, 1, 0.01, 100),
+              cropX: boundedNumber(candidate.cropX, 50, 0, 100),
+              cropY: boundedNumber(candidate.cropY, 50, 0, 100),
+              zoom: boundedNumber(candidate.zoom, 1, 1, 4),
+            },
+          ];
+        })
+      : [];
+    if (!logos.length) return null;
+    return {
+      ...common,
+      type: "brandBar",
+      name: boundedString(element.name, "Brand bar", 160) || "Brand bar",
+      height: boundedNumber(element.height, 24, 5, 500),
+      direction,
+      gap: boundedNumber(element.gap, 2, 0, 100),
+      padding: boundedNumber(element.padding, 2, 0, 100),
+      backgroundColor: normalizedColor(element.backgroundColor, "#ffffff"),
+      cornerRadius: boundedNumber(element.cornerRadius, 2, 0, 250),
+      logos,
+    };
+  }
 
   if (element.type === "image") {
     if (!isSafeImageDataUrl(element.src)) return null;
@@ -1884,6 +2105,30 @@ function normalizeProject(value: unknown): BadgeProject | null {
               y: clamp(element.y, bounds.minY, bounds.maxY),
             };
           }
+          if (element.type === "brandBar") {
+            const height = Math.min(element.height, badgeHeight * 2);
+            const maxInset = Math.max(0, Math.min(width, height) / 2 - 0.1);
+            const sizedElement = {
+              ...element,
+              width,
+              height,
+              padding: Math.min(element.padding, maxInset),
+              gap: Math.min(
+                element.gap,
+                element.direction === "horizontal" ? width : height,
+              ),
+            };
+            const bounds = getElementMoveBounds(
+              sizedElement,
+              badgeWidth,
+              badgeHeight,
+            );
+            return {
+              ...sizedElement,
+              x: clamp(element.x, bounds.minX, bounds.maxX),
+              y: clamp(element.y, bounds.minY, bounds.maxY),
+            };
+          }
           const sizedElement = { ...element, width };
           const bounds = getElementMoveBounds(
             sizedElement,
@@ -2114,6 +2359,91 @@ function drawImageFitted(
   context.restore();
 }
 
+function getBrandBarSlots(element: BrandBarElement) {
+  const count = Math.max(1, element.logos.length);
+  const padding = Math.min(
+    element.padding,
+    Math.max(0, Math.min(element.width, element.height) / 2 - 0.1),
+  );
+  const innerWidth = Math.max(0.1, element.width - padding * 2);
+  const innerHeight = Math.max(0.1, element.height - padding * 2);
+  const availableLength =
+    element.direction === "horizontal" ? innerWidth : innerHeight;
+  const gap = Math.min(
+    element.gap,
+    count > 1 ? Math.max(0, (availableLength - count * 0.1) / (count - 1)) : 0,
+  );
+  const cellLength = Math.max(
+    0.1,
+    (availableLength - gap * (count - 1)) / count,
+  );
+
+  return element.logos.map((logo, index) => ({
+    logo,
+    x:
+      element.direction === "horizontal"
+        ? padding + index * (cellLength + gap)
+        : padding,
+    y:
+      element.direction === "vertical"
+        ? padding + index * (cellLength + gap)
+        : padding,
+    width: element.direction === "horizontal" ? cellLength : innerWidth,
+    height: element.direction === "vertical" ? cellLength : innerHeight,
+  }));
+}
+
+function getBrandLogoStyle(
+  logo: BrandLogo,
+  slotWidth: number,
+  slotHeight: number,
+) {
+  const slotAspectRatio = slotWidth / Math.max(0.01, slotHeight);
+  const baseWidth =
+    logo.aspectRatio > slotAspectRatio
+      ? (logo.aspectRatio / slotAspectRatio) * 100
+      : 100;
+  const baseHeight =
+    logo.aspectRatio > slotAspectRatio
+      ? 100
+      : (slotAspectRatio / logo.aspectRatio) * 100;
+  const width = baseWidth * logo.zoom;
+  const height = baseHeight * logo.zoom;
+  return {
+    width: `${width}%`,
+    height: `${height}%`,
+    left: `${-((width - 100) * logo.cropX) / 100}%`,
+    top: `${-((height - 100) * logo.cropY) / 100}%`,
+  } as CSSProperties;
+}
+
+function drawBrandLogoCropped(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  logo: BrandLogo,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scaleFactor =
+    Math.max(width / image.width, height / image.height) * logo.zoom;
+  const drawWidth = image.width * scaleFactor;
+  const drawHeight = image.height * scaleFactor;
+  context.save();
+  context.beginPath();
+  context.rect(x, y, width, height);
+  context.clip();
+  context.drawImage(
+    image,
+    x - (drawWidth - width) * (logo.cropX / 100),
+    y - (drawHeight - height) * (logo.cropY / 100),
+    drawWidth,
+    drawHeight,
+  );
+  context.restore();
+}
+
 async function renderBadgeImage({
   badgeWidth,
   badgeHeight,
@@ -2161,6 +2491,43 @@ async function renderBadgeImage({
 
   for (const element of elements) {
     if (element.hidden) continue;
+
+    if (element.type === "brandBar") {
+      const width = element.width * scale;
+      const height = element.height * scale;
+      context.save();
+      context.globalAlpha = element.opacity;
+      context.translate(
+        (element.x + element.width / 2) * scale,
+        (element.y + element.height / 2) * scale,
+      );
+      context.rotate((element.rotation * Math.PI) / 180);
+      context.beginPath();
+      context.roundRect(
+        -width / 2,
+        -height / 2,
+        width,
+        height,
+        Math.min(element.cornerRadius * scale, width / 2, height / 2),
+      );
+      context.fillStyle = element.backgroundColor;
+      context.fill();
+      context.clip();
+      for (const slot of getBrandBarSlots(element)) {
+        const image = await loadImage(slot.logo.src);
+        drawBrandLogoCropped(
+          context,
+          image,
+          slot.logo,
+          -width / 2 + slot.x * scale,
+          -height / 2 + slot.y * scale,
+          slot.width * scale,
+          slot.height * scale,
+        );
+      }
+      context.restore();
+      continue;
+    }
 
     if (element.type === "image") {
       const image = await loadImage(element.src);
@@ -2415,6 +2782,103 @@ function BadgeContents({
         const isSelected = selectionSet.has(element.id);
         const elementLabel = getElementLabel(element, t);
 
+        if (element.type === "brandBar") {
+          const brandBarStyle = {
+            left: `${(element.x / badgeWidth) * 100}%`,
+            top: `${(element.y / badgeHeight) * 100}%`,
+            width: `${(element.width / badgeWidth) * 100}%`,
+            height: `${(element.height / badgeHeight) * 100}%`,
+            opacity: element.opacity,
+            transform: `rotate(${element.rotation}deg)`,
+            zIndex: index + 2,
+            borderRadius: `${Math.min(
+              50,
+              (element.cornerRadius /
+                Math.max(0.1, Math.min(element.width, element.height))) *
+                100,
+            )}%`,
+            cursor: interactive
+              ? element.locked
+                ? "not-allowed"
+                : "grab"
+              : "default",
+          } as CSSProperties;
+          const interactionProps = interactive
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                "aria-pressed": isSelected,
+                "aria-label": t("brandBarElement", { name: elementLabel }),
+                onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
+                  event.stopPropagation();
+                  if (event.detail === 0) onSelect?.(element.id, false);
+                },
+                onPointerDown: (
+                  event: ReactPointerEvent<HTMLDivElement>,
+                ) => {
+                  event.currentTarget.focus({ preventScroll: true });
+                  onPointerDown?.(event, element);
+                },
+                onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
+                  onKeyMove?.(event, element),
+                onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) =>
+                  onElementContextMenu?.(event, element),
+              }
+            : {};
+
+          return (
+            <div
+              key={element.id}
+              className={`badge-brand-bar ${isSelected ? "is-selected" : ""} ${element.locked ? "is-locked" : ""}`}
+              style={brandBarStyle}
+              {...interactionProps}
+            >
+              <span
+                className="brand-bar-visual"
+                style={{ background: element.backgroundColor }}
+              >
+                {getBrandBarSlots(element).map((slot) => (
+                  <span
+                    key={slot.logo.id}
+                    className="brand-logo-slot"
+                    style={{
+                      left: `${(slot.x / element.width) * 100}%`,
+                      top: `${(slot.y / element.height) * 100}%`,
+                      width: `${(slot.width / element.width) * 100}%`,
+                      height: `${(slot.height / element.height) * 100}%`,
+                    }}
+                  >
+                    <img
+                      src={slot.logo.src}
+                      alt=""
+                      draggable={false}
+                      style={getBrandLogoStyle(
+                        slot.logo,
+                        slot.width,
+                        slot.height,
+                      )}
+                    />
+                  </span>
+                ))}
+              </span>
+              {interactive &&
+                isSelected &&
+                selectedElementIds.length === 1 &&
+                !element.locked &&
+                RESIZE_DIRECTIONS.map((direction) => (
+                  <span
+                    key={direction}
+                    className={`selection-handle handle-${direction}`}
+                    onPointerDown={(event) =>
+                      onResizePointerDown?.(event, element, direction)
+                    }
+                    aria-hidden="true"
+                  />
+                ))}
+            </div>
+          );
+        }
+
         if (element.type === "image") {
           const imageStyle = {
             left: `${(element.x / badgeWidth) * 100}%`,
@@ -2629,6 +3093,34 @@ function BadgeContents({
   );
 }
 
+function PreviewCropMarks({
+  badgeWidth,
+  badgeHeight,
+}: {
+  badgeWidth: number;
+  badgeHeight: number;
+}) {
+  const style = {
+    "--crop-mark-x": `${(3 / badgeWidth) * 100}%`,
+    "--crop-mark-y": `${(3 / badgeHeight) * 100}%`,
+    "--crop-offset-x": `${(1 / badgeWidth) * 100}%`,
+    "--crop-offset-y": `${(1 / badgeHeight) * 100}%`,
+  } as CSSProperties;
+
+  return (
+    <span className="preview-crop-marks" style={style} aria-hidden="true">
+      <i className="crop-mark top-left-horizontal" />
+      <i className="crop-mark top-left-vertical" />
+      <i className="crop-mark top-right-horizontal" />
+      <i className="crop-mark top-right-vertical" />
+      <i className="crop-mark bottom-left-horizontal" />
+      <i className="crop-mark bottom-left-vertical" />
+      <i className="crop-mark bottom-right-horizontal" />
+      <i className="crop-mark bottom-right-vertical" />
+    </span>
+  );
+}
+
 export function BadgeStudio() {
   const { locale, setLocale, t } = useI18n();
   const [view, setView] = useState<AppView>("landing");
@@ -2661,9 +3153,13 @@ export function BadgeStudio() {
   const [page, setPage] = useState<PageSettings>(DEFAULT_PAGE);
   const [dpi, setDpi] = useState(300);
   const [outputMode, setOutputMode] = useState<OutputMode>("standard");
+  const [previewPageIndex, setPreviewPageIndex] = useState(0);
   const [newField, setNewField] = useState("");
   const [newQrValue, setNewQrValue] = useState("");
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [brandCropSession, setBrandCropSession] =
+    useState<BrandCropSession | null>(null);
+  const [isBrandLogoReading, setIsBrandLogoReading] = useState(false);
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [resize, setResize] = useState<ResizeState | null>(null);
@@ -2689,6 +3185,10 @@ export function BadgeStudio() {
   const qrDialogRef = useRef<HTMLElement>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
   const qrLaunchButtonRef = useRef<HTMLButtonElement>(null);
+  const brandBarLaunchButtonRef = useRef<HTMLLabelElement>(null);
+  const brandCropDialogRef = useRef<HTMLElement>(null);
+  const brandCropCloseRef = useRef<HTMLButtonElement>(null);
+  const brandCropDragRef = useRef<BrandCropDrag | null>(null);
   const canvasContextMenuRef = useRef<HTMLDivElement>(null);
   const newFieldInputRef = useRef<HTMLInputElement>(null);
   const guideTimerRef = useRef<number | null>(null);
@@ -2737,13 +3237,88 @@ export function BadgeStudio() {
     )
       ? selectedElements[0].groupId
       : undefined;
+  const localizedSampleData = useMemo(
+    () => getLocalizedSampleData(locale),
+    [locale],
+  );
   const layout = useMemo(
     () => getPageLayout(page, badgeWidth, badgeHeight),
     [page, badgeWidth, badgeHeight],
   );
+  const brandCropPreview = useMemo(() => {
+    if (!brandCropSession) return null;
+    const activeLogo = brandCropSession.logos[brandCropSession.activeIndex];
+    if (!activeLogo) return null;
+    const target = brandCropSession.targetElementId
+      ? elements.find(
+          (element): element is BrandBarElement =>
+            element.id === brandCropSession.targetElementId &&
+            element.type === "brandBar",
+        )
+      : undefined;
+    let previewElement: BrandBarElement;
+    if (target) {
+      const logos = brandCropSession.replaceLogoId
+        ? target.logos.map((logo) =>
+            logo.id === brandCropSession.replaceLogoId
+              ? { ...activeLogo, id: logo.id }
+              : logo,
+          )
+        : [...target.logos, ...brandCropSession.logos];
+      previewElement = { ...target, logos };
+    } else {
+      const dimensions = getDefaultBrandBarDimensions(
+        brandCropSession.direction,
+        badgeWidth,
+        badgeHeight,
+      );
+      previewElement = {
+        id: "brand-crop-preview",
+        name: "",
+        type: "brandBar",
+        x: 0,
+        y: 0,
+        width: dimensions.width,
+        height: dimensions.height,
+        opacity: 1,
+        rotation: 0,
+        locked: false,
+        hidden: false,
+        direction: brandCropSession.direction,
+        gap: 2,
+        padding: 2,
+        backgroundColor: brandCropSession.backgroundColor,
+        cornerRadius: 2,
+        logos: brandCropSession.logos,
+      };
+    }
+    const activeId = brandCropSession.replaceLogoId || activeLogo.id;
+    const slot =
+      getBrandBarSlots(previewElement).find(
+        (candidate) => candidate.logo.id === activeId,
+      ) || getBrandBarSlots(previewElement)[0];
+    return slot ? { logo: activeLogo, slot } : null;
+  }, [brandCropSession, badgeWidth, badgeHeight, elements]);
   const recordsPerPage = outputMode === "table-tent" ? 1 : layout.capacity;
   const pageCount =
     recordsPerPage > 0 ? Math.max(1, Math.ceil(rows.length / recordsPerPage)) : 0;
+  const currentPreviewPage = Math.min(
+    previewPageIndex,
+    Math.max(0, pageCount - 1),
+  );
+  const previewRows =
+    recordsPerPage > 0
+      ? rows.slice(
+          currentPreviewPage * recordsPerPage,
+          (currentPreviewPage + 1) * recordsPerPage,
+        )
+      : [];
+
+  useEffect(() => {
+    setPreviewPageIndex((current) =>
+      Math.min(current, Math.max(0, pageCount - 1)),
+    );
+  }, [pageCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2885,6 +3460,49 @@ export function BadgeStudio() {
   }, [isQrDialogOpen]);
 
   useEffect(() => {
+    if (!brandCropSession) return;
+    const returnFocusTarget =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() =>
+      brandCropCloseRef.current?.focus(),
+    );
+    const handleDialogKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setBrandCropSession(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        brandCropDialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) || [],
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleDialogKey);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleDialogKey);
+      window.requestAnimationFrame(() => returnFocusTarget?.focus());
+    };
+  }, [brandCropSession]);
+
+  useEffect(() => {
     if (!canvasContextMenu) return;
     const closeMenu = () => setCanvasContextMenu(null);
     const closeOnOutsidePointer = (event: PointerEvent) => {
@@ -2979,7 +3597,8 @@ export function BadgeStudio() {
     patch:
       | Partial<TextElement>
       | Partial<ImageElement>
-      | Partial<ShapeElement>,
+      | Partial<ShapeElement>
+      | Partial<BrandBarElement>,
     recordHistory = true,
   ) {
     mutateElements(
@@ -3410,10 +4029,16 @@ export function BadgeStudio() {
   ) {
     const createdAt = new Date().toISOString();
     const nextOutputMode = preset.outputMode ?? "standard";
+    const sampleData = localizedSampleData;
     const presetElements =
       nextOutputMode === "table-tent"
-        ? createTableTentElements()
-        : createPresetElements(preset.width, preset.height);
+        ? createTableTentElements(sampleData.fields, t)
+        : createPresetElements(
+            preset.width,
+            preset.height,
+            sampleData.fields,
+            t,
+          );
     setBadgeWidth(preset.width);
     setBadgeHeight(preset.height);
     setSafeArea(nextOutputMode === "table-tent" ? 8 : preset.width > preset.height ? 3 : 5);
@@ -3426,8 +4051,8 @@ export function BadgeStudio() {
     setHistoryPast([]);
     setHistoryFuture([]);
     setSelectedElementId("element-name");
-    setFields(DEFAULT_FIELDS);
-    setRows(SAMPLE_ROWS.map((row) => ({ ...row })));
+    setFields(sampleData.fields);
+    setRows(sampleData.rows);
     setSelectedRowId("row-1");
     resetDataHistory();
     setPage(
@@ -3480,8 +4105,8 @@ export function BadgeStudio() {
       x: 10,
       y: clamp(30 + elements.length * 8, 12, badgeHeight - 12),
       width: Math.max(20, badgeWidth - 20),
-      fontSize: field === DEFAULT_FIELDS[0] ? 22 : 12,
-      fontWeight: field === DEFAULT_FIELDS[0] ? 700 : 500,
+      fontSize: field === fields[0] ? 22 : 12,
+      fontWeight: field === fields[0] ? 700 : 500,
       fontFamily: "sans",
       color: "#17201f",
       align: "center",
@@ -3723,7 +4348,15 @@ export function BadgeStudio() {
     if (!selectedElement) return;
     if (!canAddElement()) return;
     const duplicate = {
-      ...selectedElement,
+      ...(selectedElement.type === "brandBar"
+        ? {
+            ...selectedElement,
+            logos: selectedElement.logos.map((logo) => ({
+              ...logo,
+              id: makeId("brand-logo"),
+            })),
+          }
+        : selectedElement),
       id: makeId("element"),
       name: `${getElementLabel(selectedElement, t)} ${t("duplicate")}`,
       x: selectedElement.x + 3,
@@ -3914,7 +4547,7 @@ export function BadgeStudio() {
           false,
         );
       } else if (
-        element.type === "shape" &&
+        (element.type === "shape" || element.type === "brandBar") &&
         resize.elementHeight !== undefined
       ) {
         const anchorX = isWest
@@ -3933,7 +4566,7 @@ export function BadgeStudio() {
         );
         const minimumWidth = Math.min(5, maximumWidth);
         const minimumHeight = Math.min(
-          element.shapeKind === "line" ? 0.5 : 5,
+          element.type === "shape" && element.shapeKind === "line" ? 0.5 : 5,
           maximumHeight,
         );
         const width =
@@ -4230,6 +4863,261 @@ export function BadgeStudio() {
       throw new Error(t("errorImageUnsupported"));
     }
     return { src, mimeType: file.type };
+  }
+
+  async function beginBrandLogoImport(
+    files: File[],
+    targetElementId?: string,
+  ) {
+    if (!files.length || isBrandLogoReading) return;
+    const target = targetElementId
+      ? elementsRef.current.find(
+          (element): element is BrandBarElement =>
+            element.id === targetElementId && element.type === "brandBar",
+        )
+      : undefined;
+    if (!target && !canAddElement()) return;
+    const available = MAX_BRAND_LOGOS - (target?.logos.length || 0);
+    if (available <= 0) {
+      setToast(t("brandLogoLimit", { count: MAX_BRAND_LOGOS }));
+      return;
+    }
+    let estimatedDataLength =
+      target?.logos.reduce((total, logo) => total + logo.src.length, 0) || 0;
+    const selectedFiles = files.slice(0, available).filter((file) => {
+      const nextLength = estimatedDataLength + Math.ceil(file.size * 1.4);
+      if (nextLength > MAX_BRAND_BAR_DATA_LENGTH) return false;
+      estimatedDataLength = nextLength;
+      return true;
+    });
+    if (!selectedFiles.length) {
+      setToast(t("brandLogoTotalLimit"));
+      return;
+    }
+    setIsBrandLogoReading(true);
+    try {
+      const logos = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const asset = await readImageAsset(file);
+          const image = await loadImage(asset.src);
+          return {
+            id: makeId("brand-logo"),
+            name: file.name.replace(/\.[^.]+$/, "") || t("logo"),
+            src: asset.src,
+            mimeType: asset.mimeType,
+            aspectRatio:
+              image.naturalWidth > 0 && image.naturalHeight > 0
+                ? image.naturalWidth / image.naturalHeight
+                : 1,
+            cropX: 50,
+            cropY: 50,
+            zoom: 1,
+          } satisfies BrandLogo;
+        }),
+      );
+      setBrandCropSession({
+        targetElementId,
+        logos,
+        activeIndex: 0,
+        direction: target?.direction || "horizontal",
+        backgroundColor: target?.backgroundColor || "#ffffff",
+      });
+      if (files.length > selectedFiles.length) {
+        setToast(
+          files.length > available
+            ? t("brandLogoLimit", { count: MAX_BRAND_LOGOS })
+            : t("brandLogoTotalLimit"),
+        );
+      }
+    } catch (error) {
+      setToast(
+        error instanceof Error ? error.message : t("toastBrandBarFailed"),
+      );
+    } finally {
+      setIsBrandLogoReading(false);
+    }
+  }
+
+  function editBrandLogo(element: BrandBarElement, logoId: string) {
+    const logo = element.logos.find((item) => item.id === logoId);
+    if (!logo) return;
+    setBrandCropSession({
+      targetElementId: element.id,
+      replaceLogoId: logo.id,
+      logos: [{ ...logo }],
+      activeIndex: 0,
+      direction: element.direction,
+      backgroundColor: element.backgroundColor,
+    });
+  }
+
+  function updateActiveBrandCrop(patch: Partial<BrandLogo>) {
+    setBrandCropSession((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        logos: current.logos.map((logo, index) =>
+          index === current.activeIndex ? { ...logo, ...patch } : logo,
+        ),
+      };
+    });
+  }
+
+  function handleBrandCropPointerDown(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    if (!brandCropSession) return;
+    const logo = brandCropSession.logos[brandCropSession.activeIndex];
+    if (!logo) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    brandCropDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      cropX: logo.cropX,
+      cropY: logo.cropY,
+    };
+  }
+
+  function handleBrandCropPointerMove(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    const dragState = brandCropDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const logo = brandCropSession?.logos[brandCropSession.activeIndex];
+    if (!logo) return;
+    updateActiveBrandCrop({
+      cropX: clamp(
+        dragState.cropX -
+          ((event.clientX - dragState.startX) / rect.width) *
+            (100 / logo.zoom),
+        0,
+        100,
+      ),
+      cropY: clamp(
+        dragState.cropY -
+          ((event.clientY - dragState.startY) / rect.height) *
+            (100 / logo.zoom),
+        0,
+        100,
+      ),
+    });
+  }
+
+  function handleBrandCropPointerEnd(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    if (brandCropDragRef.current?.pointerId !== event.pointerId) return;
+    brandCropDragRef.current = null;
+  }
+
+  function applyBrandCropSession() {
+    if (!brandCropSession?.logos.length) return;
+    const target = brandCropSession.targetElementId
+      ? elementsRef.current.find(
+          (element): element is BrandBarElement =>
+            element.id === brandCropSession.targetElementId &&
+            element.type === "brandBar",
+        )
+      : undefined;
+    if (target) {
+      if (brandCropSession.replaceLogoId) {
+        const replacement = brandCropSession.logos[0];
+        updateElement(target.id, {
+          logos: target.logos.map((logo) =>
+            logo.id === brandCropSession.replaceLogoId
+              ? { ...replacement, id: logo.id }
+              : logo,
+          ),
+        });
+      } else {
+        updateElement(target.id, {
+          logos: [...target.logos, ...brandCropSession.logos].slice(
+            0,
+            MAX_BRAND_LOGOS,
+          ),
+        });
+      }
+      setSelectedElementId(target.id);
+      setBrandCropSession(null);
+      setToast(t("toastBrandBarUpdated"));
+      return;
+    }
+
+    const { width, height } = getDefaultBrandBarDimensions(
+      brandCropSession.direction,
+      badgeWidth,
+      badgeHeight,
+    );
+    const element: BrandBarElement = {
+      id: makeId("brand-bar"),
+      name: t("brandBar"),
+      type: "brandBar",
+      x: Math.round(((badgeWidth - width) / 2) * 10) / 10,
+      y: Math.round(((badgeHeight - height) / 2) * 10) / 10,
+      width: Math.round(width * 10) / 10,
+      height: Math.round(height * 10) / 10,
+      direction: brandCropSession.direction,
+      gap: 2,
+      padding: 2,
+      backgroundColor: brandCropSession.backgroundColor,
+      cornerRadius: 2,
+      logos: brandCropSession.logos,
+      opacity: 1,
+      rotation: 0,
+      locked: false,
+      hidden: false,
+    };
+    mutateElements((current) => [...current, element]);
+    setSelectedElementId(element.id);
+    setBrandCropSession(null);
+    setToast(t("toastBrandBarAdded"));
+  }
+
+  function moveBrandLogo(
+    element: BrandBarElement,
+    logoId: string,
+    direction: "back" | "forward",
+  ) {
+    const index = element.logos.findIndex((logo) => logo.id === logoId);
+    const nextIndex = direction === "back" ? index - 1 : index + 1;
+    if (index < 0 || nextIndex < 0 || nextIndex >= element.logos.length) return;
+    const logos = element.logos.map((logo) => ({ ...logo }));
+    [logos[index], logos[nextIndex]] = [logos[nextIndex], logos[index]];
+    updateElement(element.id, { logos });
+  }
+
+  function removeBrandLogo(element: BrandBarElement, logoId: string) {
+    if (element.logos.length <= 1) {
+      setToast(t("brandBarNeedsLogo"));
+      return;
+    }
+    updateElement(element.id, {
+      logos: element.logos.filter((logo) => logo.id !== logoId),
+    });
+  }
+
+  function changeBrandBarDirection(
+    element: BrandBarElement,
+    direction: BrandBarDirection,
+  ) {
+    if (element.direction === direction) return;
+    const candidate = {
+      ...element,
+      direction,
+      width: element.height,
+      height: element.width,
+    };
+    const bounds = getElementMoveBounds(candidate, badgeWidth, badgeHeight);
+    updateElement(element.id, {
+      direction,
+      width: candidate.width,
+      height: candidate.height,
+      x: clamp(candidate.x, bounds.minX, bounds.maxX),
+      y: clamp(candidate.y, bounds.minY, bounds.maxY),
+    });
   }
 
   async function addImageElement(
@@ -4779,62 +5667,78 @@ export function BadgeStudio() {
             "FAST",
           );
 
-          if (page.showOutline) {
-            doc.setDrawColor(116, 116, 116);
-            doc.setLineWidth(0.12);
-            doc.rect(x, y, badgeWidth, badgeHeight);
-          }
-
-          if (page.showCropMarks) {
-            const mark = 3;
-            const offset = 1;
-            doc.setDrawColor(75, 75, 75);
-            doc.setLineWidth(0.15);
-            [
-              [x - offset - mark, y, x - offset, y],
-              [x, y - offset - mark, x, y - offset],
-              [x + badgeWidth + offset, y, x + badgeWidth + offset + mark, y],
-              [
-                x + badgeWidth,
-                y - offset - mark,
-                x + badgeWidth,
-                y - offset,
-              ],
-              [
-                x - offset - mark,
-                y + badgeHeight,
-                x - offset,
-                y + badgeHeight,
-              ],
-              [
-                x,
-                y + badgeHeight + offset,
-                x,
-                y + badgeHeight + offset + mark,
-              ],
-              [
-                x + badgeWidth + offset,
-                y + badgeHeight,
-                x + badgeWidth + offset + mark,
-                y + badgeHeight,
-              ],
-              [
-                x + badgeWidth,
-                y + badgeHeight + offset,
-                x + badgeWidth,
-                y + badgeHeight + offset + mark,
-              ],
-            ].forEach(([x1, y1, x2, y2]) => {
-              doc.line(x1, y1, x2, y2);
-            });
-          }
-
           processedRows += 1;
           setExportProgress(Math.round((processedRows / rows.length) * 100));
           if (processedRows % 4 === 0) {
             await new Promise<void>((resolve) =>
               window.requestAnimationFrame(() => resolve()),
             );
+          }
+        }
+
+        // Draw cutting guides after every badge image so neighboring full-bleed
+        // artwork cannot cover marks when the page gap is set to zero.
+        if (page.showOutline || page.showCropMarks) {
+          for (let index = 0; index < pageRows.length; index += 1) {
+            const column = index % layout.columns;
+            const rowIndex = Math.floor(index / layout.columns);
+            const x = layout.startX + column * (badgeWidth + page.gapX);
+            const y = layout.startY + rowIndex * (badgeHeight + page.gapY);
+
+            if (page.showOutline) {
+              doc.setDrawColor(116, 116, 116);
+              doc.setLineWidth(0.12);
+              doc.rect(x, y, badgeWidth, badgeHeight);
+            }
+
+            if (page.showCropMarks) {
+              const mark = 3;
+              const offset = 1;
+              doc.setDrawColor(45, 45, 45);
+              doc.setLineWidth(0.18);
+              [
+                [x - offset - mark, y, x - offset, y],
+                [x, y - offset - mark, x, y - offset],
+                [
+                  x + badgeWidth + offset,
+                  y,
+                  x + badgeWidth + offset + mark,
+                  y,
+                ],
+                [
+                  x + badgeWidth,
+                  y - offset - mark,
+                  x + badgeWidth,
+                  y - offset,
+                ],
+                [
+                  x - offset - mark,
+                  y + badgeHeight,
+                  x - offset,
+                  y + badgeHeight,
+                ],
+                [
+                  x,
+                  y + badgeHeight + offset,
+                  x,
+                  y + badgeHeight + offset + mark,
+                ],
+                [
+                  x + badgeWidth + offset,
+                  y + badgeHeight,
+                  x + badgeWidth + offset + mark,
+                  y + badgeHeight,
+                ],
+                [
+                  x + badgeWidth,
+                  y + badgeHeight + offset,
+                  x + badgeWidth,
+                  y + badgeHeight + offset + mark,
+                ],
+              ].forEach(([x1, y1, x2, y2]) => {
+                doc.line(x1, y1, x2, y2);
+              });
+            }
           }
         }
       }
@@ -5139,6 +6043,39 @@ export function BadgeStudio() {
                     accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
                     onChange={(event) => {
                       void addImageElement(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <label
+                  ref={brandBarLaunchButtonRef}
+                  className={`asset-upload-button brand-bar-upload-button ${isBrandLogoReading ? "is-loading" : ""}`}
+                >
+                  <span className="upload-icon">
+                    {isBrandLogoReading ? (
+                      <LoaderCircle className="spin" size={19} />
+                    ) : (
+                      <GalleryHorizontal size={19} />
+                    )}
+                  </span>
+                  <span className="upload-copy">
+                    <strong>
+                      {isBrandLogoReading
+                        ? t("loadingLogos")
+                        : t("addBrandBar")}
+                    </strong>
+                    <small>{t("selectMultipleLogos")}</small>
+                  </span>
+                  <Plus size={16} />
+                  <input
+                    type="file"
+                    multiple
+                    disabled={isBrandLogoReading}
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                    onChange={(event) => {
+                      void beginBrandLogoImport(
+                        Array.from(event.target.files || []),
+                      );
                       event.currentTarget.value = "";
                     }}
                   />
@@ -5695,6 +6632,218 @@ export function BadgeStudio() {
                         </label>
                       </div>
                     </section>
+                  ) : selectedElement.type === "brandBar" ? (
+                    <section className="panel-section brand-bar-inspector">
+                      <div className="section-title">
+                        <h2>{t("brandBar")}</h2>
+                        <span>
+                          {t("logoCount", {
+                            count: selectedElement.logos.length,
+                          })}
+                        </span>
+                      </div>
+                      <fieldset
+                        className="brand-direction-control"
+                        aria-label={t("brandBarDirection")}
+                      >
+                        <button
+                          type="button"
+                          className={
+                            selectedElement.direction === "horizontal"
+                              ? "is-active"
+                              : ""
+                          }
+                          onClick={() =>
+                            changeBrandBarDirection(
+                              selectedElement,
+                              "horizontal",
+                            )
+                          }
+                        >
+                          <Columns3 size={16} aria-hidden="true" />
+                          {t("horizontal")}
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            selectedElement.direction === "vertical"
+                              ? "is-active"
+                              : ""
+                          }
+                          onClick={() =>
+                            changeBrandBarDirection(selectedElement, "vertical")
+                          }
+                        >
+                          <Rows3 size={16} aria-hidden="true" />
+                          {t("vertical")}
+                        </button>
+                      </fieldset>
+                      <div className="brand-bar-style-grid">
+                        <label className="shape-color-field">
+                          <span>{t("backgroundColor")}</span>
+                          <input
+                            type="color"
+                            value={selectedElement.backgroundColor}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                backgroundColor: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          {t("logoGap")}
+                          <input
+                            type="number"
+                            min="0"
+                            max="30"
+                            step="0.5"
+                            value={selectedElement.gap}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                gap: clamp(
+                                  Number(event.target.value),
+                                  0,
+                                  30,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          {t("innerPadding")}
+                          <input
+                            type="number"
+                            min="0"
+                            max="30"
+                            step="0.5"
+                            value={selectedElement.padding}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                padding: clamp(
+                                  Number(event.target.value),
+                                  0,
+                                  30,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          {t("cornerRadius")}
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            value={selectedElement.cornerRadius}
+                            onChange={(event) =>
+                              updateElement(selectedElement.id, {
+                                cornerRadius: clamp(
+                                  Number(event.target.value),
+                                  0,
+                                  100,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="brand-logo-list">
+                        {selectedElement.logos.map((logo, index) => (
+                          <div className="brand-logo-row" key={logo.id}>
+                            <span className="brand-logo-thumb">
+                              <img src={logo.src} alt="" />
+                            </span>
+                            <strong title={logo.name}>{logo.name}</strong>
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  moveBrandLogo(
+                                    selectedElement,
+                                    logo.id,
+                                    "back",
+                                  )
+                                }
+                                disabled={index === 0}
+                                title={t("moveLogoBack")}
+                                aria-label={t("moveLogoBack")}
+                              >
+                                <ChevronLeft size={14} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  moveBrandLogo(
+                                    selectedElement,
+                                    logo.id,
+                                    "forward",
+                                  )
+                                }
+                                disabled={
+                                  index === selectedElement.logos.length - 1
+                                }
+                                title={t("moveLogoForward")}
+                                aria-label={t("moveLogoForward")}
+                              >
+                                <ChevronRight size={14} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  editBrandLogo(selectedElement, logo.id)
+                                }
+                                title={t("editCrop")}
+                                aria-label={t("editCrop")}
+                              >
+                                <Crop size={14} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                className="danger-text"
+                                onClick={() =>
+                                  removeBrandLogo(selectedElement, logo.id)
+                                }
+                                title={t("removeLogo")}
+                                aria-label={t("removeLogo")}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <label
+                        className={`secondary-button brand-logo-add-button ${isBrandLogoReading ? "is-loading" : ""}`}
+                      >
+                        {isBrandLogoReading ? (
+                          <LoaderCircle
+                            className="spin"
+                            size={15}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <ImagePlus size={15} aria-hidden="true" />
+                        )}
+                        {isBrandLogoReading
+                          ? t("loadingLogos")
+                          : t("addMoreLogos")}
+                        <input
+                          type="file"
+                          multiple
+                          disabled={isBrandLogoReading}
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                          onChange={(event) => {
+                            void beginBrandLogoImport(
+                              Array.from(event.target.files || []),
+                              selectedElement.id,
+                            );
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    </section>
                   ) : (
                     <section className="panel-section">
                       <div className="section-title">
@@ -6079,6 +7228,8 @@ export function BadgeStudio() {
                           >
                             {element.type === "image" ? (
                               <ImageIcon size={14} />
+                            ) : element.type === "brandBar" ? (
+                              <GalleryHorizontal size={14} />
                             ) : element.type === "shape" ? (
                               <Square size={14} />
                             ) : (
@@ -6488,8 +7639,15 @@ export function BadgeStudio() {
                 </span>
                 <div>
                   <strong>{t("csvExample")}</strong>
-                  <code>사람 이름,팀,직책</code>
-                  <code>김민지,브랜드팀,디자이너</code>
+                  <code>{localizedSampleData.fields.join(",")}</code>
+                  <code>
+                    {localizedSampleData.fields
+                      .map(
+                        (field) =>
+                          localizedSampleData.rows[0]?.[field] || "",
+                      )
+                      .join(",")}
+                  </code>
                 </div>
               </section>
 
@@ -6497,10 +7655,46 @@ export function BadgeStudio() {
                 type="button"
                 className="secondary-button full-width"
                 onClick={() => {
-                  rememberData();
-                  setFields([...DEFAULT_FIELDS]);
-                  setRows(cloneRows(SAMPLE_ROWS));
-                  setSelectedRowId(SAMPLE_ROWS[0].id);
+                  rememberData(true);
+                  const currentVariableElements = elementsRef.current.filter(
+                    (element): element is TextElement =>
+                      element.type === "text" && element.kind === "variable",
+                  );
+                  const fieldMap = new Map(
+                    fields.map((field, index) => [
+                      field,
+                      localizedSampleData.fields[index],
+                    ]),
+                  );
+                  const nextElements = elementsRef.current.map((element) => {
+                    if (
+                      element.type !== "text" ||
+                      element.kind !== "variable" ||
+                      !element.field
+                    ) {
+                      return element;
+                    }
+                    const nextField = fieldMap.get(element.field);
+                    return nextField
+                      ? {
+                          ...element,
+                          field: nextField,
+                          name:
+                            currentVariableElements.find(
+                              (item) => item.id === element.id,
+                            )?.name === `${element.field} ${t("textElements")}`
+                              ? `${nextField} ${t("textElements")}`
+                              : element.name,
+                        }
+                      : element;
+                  });
+                  elementsRef.current = nextElements;
+                  fieldsRef.current = localizedSampleData.fields;
+                  rowsRef.current = localizedSampleData.rows;
+                  setElements(nextElements);
+                  setFields(localizedSampleData.fields);
+                  setRows(localizedSampleData.rows);
+                  setSelectedRowId(localizedSampleData.rows[0].id);
                   setToast(t("toastSampleData"));
                 }}
               >
@@ -6554,7 +7748,7 @@ export function BadgeStudio() {
                 >
                   {layout.fits &&
                     outputMode === "standard" &&
-                    rows.slice(0, layout.capacity).map((row, index) => {
+                    previewRows.map((row, index) => {
                       const column = index % layout.columns;
                       const rowIndex = Math.floor(index / layout.columns);
                       const x =
@@ -6584,10 +7778,18 @@ export function BadgeStudio() {
                             row={row}
                             t={t}
                           />
+                          {page.showCropMarks && (
+                            <PreviewCropMarks
+                              badgeWidth={badgeWidth}
+                              badgeHeight={badgeHeight}
+                            />
+                          )}
                         </div>
                       );
                     })}
-                  {layout.fits && outputMode === "table-tent" && rows[0] && (
+                  {layout.fits &&
+                    outputMode === "table-tent" &&
+                    rows[currentPreviewPage] && (
                     <>
                       <div
                         className="page-badge table-tent-panel is-reversed"
@@ -6605,7 +7807,7 @@ export function BadgeStudio() {
                           background={background}
                           backgroundFit={backgroundFit}
                           elements={elements}
-                          row={rows[0]}
+                          row={rows[currentPreviewPage]}
                           t={t}
                         />
                       </div>
@@ -6625,7 +7827,7 @@ export function BadgeStudio() {
                           background={background}
                           backgroundFit={backgroundFit}
                           elements={elements}
-                          row={rows[0]}
+                          row={rows[currentPreviewPage]}
                           t={t}
                         />
                       </div>
@@ -6642,9 +7844,45 @@ export function BadgeStudio() {
                   )}
                 </div>
                 <div className="page-caption">
-                  <span>
-                    1 / {pageCount || 1} {t("page")}
-                  </span>
+                  {pageCount > 1 ? (
+                    <nav
+                      className="preview-pagination"
+                      aria-label={t("previewPagination")}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewPageIndex((current) =>
+                            Math.max(0, current - 1),
+                          )
+                        }
+                        disabled={currentPreviewPage === 0}
+                        aria-label={t("previousPage")}
+                      >
+                        <ChevronLeft size={18} aria-hidden="true" />
+                      </button>
+                      <span aria-live="polite">
+                        <strong>{currentPreviewPage + 1}</strong> / {pageCount}{" "}
+                        {t("page")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewPageIndex((current) =>
+                            Math.min(pageCount - 1, current + 1),
+                          )
+                        }
+                        disabled={currentPreviewPage >= pageCount - 1}
+                        aria-label={t("nextPage")}
+                      >
+                        <ChevronRight size={18} aria-hidden="true" />
+                      </button>
+                    </nav>
+                  ) : (
+                    <span>
+                      1 / {pageCount || 1} {t("page")}
+                    </span>
+                  )}
                   <strong>
                     {displayNumber(page.width)} × {displayNumber(page.height)} mm
                   </strong>
@@ -6652,14 +7890,10 @@ export function BadgeStudio() {
               </div>
             </section>
 
-            <aside className="panel print-settings">
-              <div className="panel-heading compact">
-                <div>
-                  <h2>{t("outputSettings")}</h2>
-                </div>
-                <Printer size={19} />
-              </div>
-
+            <aside
+              className="panel print-settings"
+              aria-label={t("outputSettings")}
+            >
               {outputMode === "table-tent" ? (
                 <section className="panel-section table-tent-output">
                   <div className="section-title">
@@ -6737,7 +7971,7 @@ export function BadgeStudio() {
                 </div>
                 <button
                   type="button"
-                  className="secondary-button full-width"
+                  className="secondary-button full-width orientation-swap-button"
                   onClick={() =>
                     setPage((current) => ({
                       ...current,
@@ -6994,6 +8228,238 @@ export function BadgeStudio() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {brandCropSession && brandCropPreview && (
+        <div className="qr-dialog-overlay brand-crop-overlay">
+          <section
+            ref={brandCropDialogRef}
+            className="brand-crop-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="brand-crop-title"
+            aria-describedby="brand-crop-description"
+          >
+            <header className="qr-dialog-heading">
+              <div>
+                <span className="qr-dialog-icon" aria-hidden="true">
+                  <Crop size={21} />
+                </span>
+                <div>
+                  <h2 id="brand-crop-title">{t("cropBrandLogos")}</h2>
+                  <p id="brand-crop-description">{t("cropBrandLogosHelp")}</p>
+                </div>
+              </div>
+              <button
+                ref={brandCropCloseRef}
+                type="button"
+                onClick={() => setBrandCropSession(null)}
+                aria-label={t("cancel")}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </header>
+
+            <div className="brand-crop-body">
+              <div className="brand-crop-toolbar">
+                {!brandCropSession.targetElementId && (
+                  <fieldset
+                    className="brand-direction-control"
+                    aria-label={t("brandBarDirection")}
+                  >
+                    <button
+                      type="button"
+                      className={
+                        brandCropSession.direction === "horizontal"
+                          ? "is-active"
+                          : ""
+                      }
+                      onClick={() =>
+                        setBrandCropSession((current) =>
+                          current
+                            ? { ...current, direction: "horizontal" }
+                            : current,
+                        )
+                      }
+                    >
+                      <Columns3 size={16} aria-hidden="true" />
+                      {t("horizontal")}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        brandCropSession.direction === "vertical"
+                          ? "is-active"
+                          : ""
+                      }
+                      onClick={() =>
+                        setBrandCropSession((current) =>
+                          current
+                            ? { ...current, direction: "vertical" }
+                            : current,
+                        )
+                      }
+                    >
+                      <Rows3 size={16} aria-hidden="true" />
+                      {t("vertical")}
+                    </button>
+                  </fieldset>
+                )}
+                <span>
+                  {brandCropSession.activeIndex + 1} /{" "}
+                  {brandCropSession.logos.length}
+                </span>
+              </div>
+
+              {brandCropSession.logos.length > 1 && (
+                <div className="brand-crop-thumbnails">
+                  {brandCropSession.logos.map((logo, index) => (
+                    <button
+                      key={logo.id}
+                      type="button"
+                      className={
+                        index === brandCropSession.activeIndex
+                          ? "is-active"
+                          : ""
+                      }
+                      onClick={() =>
+                        setBrandCropSession((current) =>
+                          current ? { ...current, activeIndex: index } : current,
+                        )
+                      }
+                      aria-label={t("editLogoNumber", { index: index + 1 })}
+                      aria-pressed={index === brandCropSession.activeIndex}
+                    >
+                      <img src={logo.src} alt="" />
+                      <span>{index + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="brand-crop-editor">
+                <div
+                  className="brand-crop-stage"
+                  style={{
+                    aspectRatio: `${brandCropPreview.slot.width} / ${brandCropPreview.slot.height}`,
+                    background: brandCropSession.backgroundColor,
+                  }}
+                  onPointerDown={handleBrandCropPointerDown}
+                  onPointerMove={handleBrandCropPointerMove}
+                  onPointerUp={handleBrandCropPointerEnd}
+                  onPointerCancel={handleBrandCropPointerEnd}
+                >
+                  <img
+                    src={brandCropPreview.logo.src}
+                    alt=""
+                    draggable={false}
+                    style={getBrandLogoStyle(
+                      brandCropPreview.logo,
+                      brandCropPreview.slot.width,
+                      brandCropPreview.slot.height,
+                    )}
+                  />
+                  <span className="brand-crop-grid" aria-hidden="true" />
+                </div>
+
+                <div className="brand-crop-controls">
+                  <label>
+                    <span>{t("zoom")}</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="4"
+                      step="0.05"
+                      value={brandCropPreview.logo.zoom}
+                      onChange={(event) =>
+                        updateActiveBrandCrop({
+                          zoom: Number(event.target.value),
+                        })
+                      }
+                    />
+                    <output>{brandCropPreview.logo.zoom.toFixed(2)}×</output>
+                  </label>
+                  <label>
+                    <span>{t("horizontalPosition")}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={brandCropPreview.logo.cropX}
+                      onChange={(event) =>
+                        updateActiveBrandCrop({
+                          cropX: Number(event.target.value),
+                        })
+                      }
+                    />
+                    <output>{Math.round(brandCropPreview.logo.cropX)}%</output>
+                  </label>
+                  <label>
+                    <span>{t("verticalPosition")}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={brandCropPreview.logo.cropY}
+                      onChange={(event) =>
+                        updateActiveBrandCrop({
+                          cropY: Number(event.target.value),
+                        })
+                      }
+                    />
+                    <output>{Math.round(brandCropPreview.logo.cropY)}%</output>
+                  </label>
+                  {!brandCropSession.targetElementId && (
+                    <label className="brand-crop-background">
+                      <span>{t("backgroundColor")}</span>
+                      <input
+                        type="color"
+                        value={brandCropSession.backgroundColor}
+                        onChange={(event) =>
+                          setBrandCropSession((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  backgroundColor: event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                      />
+                      <output>
+                        {brandCropSession.backgroundColor.toUpperCase()}
+                      </output>
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <footer className="brand-crop-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setBrandCropSession(null)}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={applyBrandCropSession}
+              >
+                <Check size={16} aria-hidden="true" />
+                {brandCropSession.replaceLogoId
+                  ? t("applyCrop")
+                  : brandCropSession.targetElementId
+                    ? t("addSelectedLogos")
+                    : t("addBrandBar")}
+              </button>
+            </footer>
           </section>
         </div>
       )}
