@@ -162,6 +162,15 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /className="panel-section variable-connections"/);
   assert.match(studio, /connectedElementCount/);
   assert.match(studio, /noLinkedElements/);
+  assert.match(studio, /name: string/);
+  assert.match(studio, /className="panel-section element-header"/);
+  assert.match(studio, /aria-label=\{t\("elementName"\)\}/);
+  assert.match(studio, /name: `\$\{getElementLabel\(selectedElement, t\)\}/);
+  assert.match(studio, /className="variable-element-links"/);
+  assert.doesNotMatch(studio, /className="panel-section selected-summary"/);
+  assert.doesNotMatch(studio, /t\("browserOnly"\)/);
+  assert.doesNotMatch(studio, /t\("badgeDesign"\)/);
+  assert.doesNotMatch(studio, /t\("lanyardBadge"\)/);
   assert.match(studio, /type InspectorSheetState =/);
   assert.match(studio, /handleInspectorSheetPointerDown/);
   assert.match(studio, /className={`panel right-panel inspector-sheet/);
@@ -227,6 +236,8 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.alignment-guide/);
   assert.match(css, /\.selection-handle\s*{[^}]*width: 16px/s);
   assert.match(css, /\.variable-connection-list/);
+  assert.match(css, /\.element-header-actions/);
+  assert.match(css, /\.variable-element-links/);
   assert.match(css, /\.data-add-actions/);
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /LOCAL_PROJECTS_KEY/);

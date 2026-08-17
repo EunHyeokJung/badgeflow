@@ -25,7 +25,6 @@ import {
   LayoutTemplate,
   LoaderCircle,
   Lock,
-  LockKeyhole,
   MousePointer2,
   MoveHorizontal,
   MoveVertical,
@@ -82,6 +81,7 @@ type InspectorSheetState = "collapsed" | "half" | "expanded";
 
 type CommonElement = {
   id: string;
+  name: string;
   type: "text" | "image";
   x: number;
   y: number;
@@ -105,7 +105,6 @@ type TextElement = CommonElement & {
 
 type ImageElement = CommonElement & {
   type: "image";
-  name: string;
   src: string;
   mimeType: string;
   height: number;
@@ -211,7 +210,7 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 5;
+const PROJECT_VERSION = 6;
 
 type BadgeProject = {
   format: typeof PROJECT_FORMAT;
@@ -427,6 +426,7 @@ const SAMPLE_ROWS: BadgeRow[] = [
 const DEFAULT_ELEMENTS: CanvasElement[] = [
   {
     id: "element-team",
+    name: "팀",
     type: "text",
     kind: "variable",
     field: "팀",
@@ -444,6 +444,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
   },
   {
     id: "element-name",
+    name: "이름",
     type: "text",
     kind: "variable",
     field: "이름",
@@ -461,6 +462,7 @@ const DEFAULT_ELEMENTS: CanvasElement[] = [
   },
   {
     id: "element-title",
+    name: "직책",
     type: "text",
     kind: "variable",
     field: "직책",
@@ -509,6 +511,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
   return [
     {
       id: "element-team",
+      name: "팀",
       type: "text",
       kind: "variable",
       field: "팀",
@@ -526,6 +529,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-name",
+      name: "이름",
       type: "text",
       kind: "variable",
       field: "이름",
@@ -543,6 +547,7 @@ function createPresetElements(width: number, height: number): CanvasElement[] {
     },
     {
       id: "element-title",
+      name: "직책",
       type: "text",
       kind: "variable",
       field: "직책",
@@ -565,6 +570,7 @@ function createTableTentElements(): CanvasElement[] {
   return [
     {
       id: "element-team",
+      name: "팀",
       type: "text",
       kind: "variable",
       field: "팀",
@@ -582,6 +588,7 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-name",
+      name: "이름",
       type: "text",
       kind: "variable",
       field: "이름",
@@ -599,6 +606,7 @@ function createTableTentElements(): CanvasElement[] {
     },
     {
       id: "element-title",
+      name: "직책",
       type: "text",
       kind: "variable",
       field: "직책",
@@ -1467,8 +1475,8 @@ function normalizeProjectName(value: string, fallback: string) {
 }
 
 function getElementLabel(element: CanvasElement, t?: Translate) {
-  if (element.type === "image")
-    return element.name || t?.("imageGeneric") || "Image";
+  if (element.name) return element.name;
+  if (element.type === "image") return t?.("imageGeneric") || "Image";
   if (element.kind === "variable")
     return element.field || t?.("variable") || "Variable";
   return element.value || t?.("fixedText") || "Fixed text";
@@ -1561,8 +1569,18 @@ function normalizeElement(element: unknown): CanvasElement | null {
       ? element.color
       : "#17201f";
   const field = boundedString(element.field, "", MAX_FIELD_LENGTH);
+  const value =
+    kind === "static"
+      ? boundedString(element.value, "", MAX_CELL_LENGTH)
+      : "";
   return {
     ...common,
+    name:
+      boundedString(
+        element.name,
+        kind === "variable" ? field || "Text" : value || "Text",
+        160,
+      ).trim() || "Text",
     type: "text",
     kind,
     field:
@@ -1573,7 +1591,7 @@ function normalizeElement(element: unknown): CanvasElement | null {
         : undefined,
     value:
       kind === "static"
-        ? boundedString(element.value, "", MAX_CELL_LENGTH)
+        ? value
         : undefined,
     fontSize: boundedNumber(element.fontSize, 12, 1, 200),
     fontWeight: boundedNumber(element.fontWeight, 500, 100, 900),
@@ -2934,6 +2952,7 @@ export function BadgeStudio() {
   function addVariableElement(field: string) {
     const element: TextElement = {
       id: makeId("element"),
+      name: field,
       type: "text",
       kind: "variable",
       field,
@@ -2956,6 +2975,7 @@ export function BadgeStudio() {
   function addStaticElement() {
     const element: TextElement = {
       id: makeId("element"),
+      name: t("fixedText"),
       type: "text",
       kind: "static",
       value: t("eventName"),
@@ -2980,6 +3000,7 @@ export function BadgeStudio() {
     const duplicate = {
       ...selectedElement,
       id: makeId("element"),
+      name: `${getElementLabel(selectedElement, t)} ${t("duplicate")}`,
       x: clamp(selectedElement.x + 3, 0, badgeWidth - selectedElement.width),
       y: clamp(
         selectedElement.y + 3,
@@ -4055,15 +4076,6 @@ export function BadgeStudio() {
         {mode === "design" && (
           <div className="design-workspace">
             <aside className="panel left-panel" aria-label={t("designTools")}>
-              <div className="panel-heading">
-                <div>
-                  <h1>{t("badgeDesign")}</h1>
-                </div>
-                <span className="dimension-badge">
-                  {displayNumber(badgeWidth)} × {displayNumber(badgeHeight)} mm
-                </span>
-              </div>
-
               <section className="panel-section">
                 <div className="section-title">
                   <h2>{t("badgeSize")}</h2>
@@ -4099,27 +4111,11 @@ export function BadgeStudio() {
                     />
                   </label>
                 </div>
-                <button
-                  type="button"
-                  className="preset-button"
-                  onClick={() => {
-                    setBadgeWidth(95);
-                    setBadgeHeight(123);
-                    setOutputMode("standard");
-                    setPage({ ...DEFAULT_PAGE });
-                  }}
-                >
-                  <span>{t("lanyardBadge")}</span>
-                  <strong>95 × 123</strong>
-                </button>
               </section>
 
               <section className="panel-section">
                 <div className="section-title">
                   <h2>{t("backgroundImage")}</h2>
-                  <span className="private-label">
-                    <LockKeyhole size={12} /> {t("browserOnly")}
-                  </span>
                 </div>
                 <label className="upload-dropzone">
                   <input
@@ -4470,29 +4466,63 @@ export function BadgeStudio() {
               </div>
               {selectedElement ? (
                 <>
-                  <section className="panel-section selected-summary">
-                    <span className="element-type-icon">
-                      {selectedElement.type === "image" ? (
-                        <ImageIcon size={17} />
-                      ) : (
-                        <Type size={17} />
-                      )}
-                    </span>
-                    <div>
-                      <strong>{getElementLabel(selectedElement, t)}</strong>
-                      <small>
-                        {selectedElement.type === "image"
-                          ? selectedElement.mimeType === "image/svg+xml"
-                            ? t("svgImageLayer")
-                            : t("imageLayer")
-                          : selectedElement.kind === "variable"
-                            ? t("variableTextLayer")
-                            : t("fixedTextLayer")}
-                      </small>
+                  <section className="panel-section element-header">
+                    <label className="element-name-field">
+                      <span className="sr-only">{t("elementName")}</span>
+                      <input
+                        value={selectedElement.name}
+                        maxLength={160}
+                        onFocus={rememberElements}
+                        onChange={(event) =>
+                          updateElement(
+                            selectedElement.id,
+                            { name: event.target.value },
+                            false,
+                          )
+                        }
+                        aria-label={t("elementName")}
+                      />
+                    </label>
+                    <div className="element-header-actions">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateElement(selectedElement.id, {
+                            locked: !selectedElement.locked,
+                          })
+                        }
+                        title={
+                          selectedElement.locked ? t("unlock") : t("lock")
+                        }
+                        aria-label={
+                          selectedElement.locked ? t("unlock") : t("lock")
+                        }
+                      >
+                        {selectedElement.locked ? (
+                          <Unlock size={16} aria-hidden="true" />
+                        ) : (
+                          <Lock size={16} aria-hidden="true" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={duplicateSelected}
+                        title={t("duplicate")}
+                        aria-label={t("duplicate")}
+                      >
+                        <Copy size={16} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-text"
+                        onClick={deleteSelected}
+                        disabled={selectedElement.locked}
+                        title={t("delete")}
+                        aria-label={t("delete")}
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                      </button>
                     </div>
-                    <span className="selected-check">
-                      <Check size={13} />
-                    </span>
                   </section>
 
                   {selectedElement.type === "text" ? (
@@ -4864,41 +4894,6 @@ export function BadgeStudio() {
                     </div>
                   </section>
 
-                  <div className="inspector-actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() =>
-                        updateElement(selectedElement.id, {
-                          locked: !selectedElement.locked,
-                        })
-                      }
-                    >
-                      {selectedElement.locked ? (
-                        <Unlock size={16} />
-                      ) : (
-                        <Lock size={16} />
-                      )}
-                      {selectedElement.locked ? t("unlock") : t("lock")}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={duplicateSelected}
-                    >
-                      <Copy size={16} />
-                      {t("duplicate")}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button danger-text"
-                      onClick={deleteSelected}
-                      disabled={selectedElement.locked}
-                    >
-                      <Trash2 size={16} />
-                      {t("delete")}
-                    </button>
-                  </div>
                 </>
               ) : (
                 <div className="empty-inspector">
@@ -5016,7 +5011,6 @@ export function BadgeStudio() {
                     </h2>
                     <span>{fields.length}</span>
                   </div>
-                  <p>{t("variableConnectionsHelp")}</p>
                   <div className="variable-connection-list">
                     {fields.map((field) => {
                       const linkedElements = elements.filter(
@@ -5026,24 +5020,27 @@ export function BadgeStudio() {
                           element.field === field,
                       );
                       return (
-                        <article className="variable-connection-item" key={field}>
-                          <div className="variable-connection-heading">
-                            <span className="variable-icon">
-                              <Type size={15} />
-                            </span>
+                        <div
+                          className="layer-row variable-connection-row"
+                          key={field}
+                        >
+                          <div
+                            className="layer-main variable-connection-main"
+                          >
+                            <Type size={14} aria-hidden="true" />
                             <span>
                               <strong>{field}</strong>
                               <small>{`{{${field}}}`}</small>
                             </span>
-                            <em>
+                            <span className="sr-only">
                               {t("connectedElementCount", {
                                 count: linkedElements.length,
                               })}
-                            </em>
+                            </span>
                           </div>
-                          <div className="variable-linked-elements">
+                          <div className="variable-element-links">
                             {linkedElements.length ? (
-                              linkedElements.map((element, index) => (
+                              linkedElements.map((element) => (
                                 <button
                                   type="button"
                                   key={element.id}
@@ -5051,20 +5048,10 @@ export function BadgeStudio() {
                                     selectedElementIdRef.current = element.id;
                                     setSelectedElementId(element.id);
                                   }}
+                                  title={getElementLabel(element, t)}
+                                  aria-label={getElementLabel(element, t)}
                                 >
-                                  <Type size={13} />
-                                  <span>
-                                    {t("linkedTextElement", {
-                                      index: index + 1,
-                                    })}
-                                  </span>
-                                  {element.hidden ? (
-                                    <EyeOff size={13} aria-hidden="true" />
-                                  ) : element.locked ? (
-                                    <Lock size={13} aria-hidden="true" />
-                                  ) : (
-                                    <ArrowRight size={13} aria-hidden="true" />
-                                  )}
+                                  {getElementLabel(element, t)}
                                 </button>
                               ))
                             ) : (
@@ -5073,7 +5060,7 @@ export function BadgeStudio() {
                               </span>
                             )}
                           </div>
-                        </article>
+                        </div>
                       );
                     })}
                   </div>
