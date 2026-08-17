@@ -23,7 +23,7 @@ async function render(pathname = "/") {
   );
 }
 
-test("server-renders the BadgeFlow size-first landing page", async () => {
+test("server-renders the LanyardStudio size-first landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -39,7 +39,7 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   );
 
   const html = await response.text();
-  assert.match(html, /<title>BadgeFlow \| 명찰 인쇄 스튜디오<\/title>/i);
+  assert.match(html, /<title>LanyardStudio \| 명찰 인쇄 스튜디오<\/title>/i);
   assert.match(html, /어떤 명찰을/);
   assert.match(html, /바로 시작하기/);
   assert.match(html, /디자인, 명단 연결, 인쇄물 생성까지 한번에/);
@@ -77,14 +77,18 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.doesNotMatch(html, /Your site is taking shape/);
 });
 
-test("keeps image editing, project backup, and PDF rendering connected", async () => {
-  const [studio, storage, css] = await Promise.all([
+test("keeps production editing, project storage, and PDF rendering connected", async () => {
+  const [studio, storage, css, logo] = await Promise.all([
     readFile(
       new URL("../components/BadgeStudio.tsx", import.meta.url),
       "utf8",
     ),
     readFile(new URL("../lib/badgeflow/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(
+      new URL("../public/brand/lanyardstudio-mark.svg", import.meta.url),
+      "utf8",
+    ),
   ]);
 
   assert.match(studio, /type ImageElement = CommonElement/);
@@ -110,6 +114,10 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /savedProjects\.map\(\(project\) =>/);
   assert.match(studio, /onOpenProject={openSavedProject}/);
   assert.match(studio, /onDeleteProject={removeSavedProject}/);
+  assert.match(studio, /onRenameProject={renameSavedProject}/);
+  assert.match(studio, /className="saved-project-rename-form"/);
+  assert.match(studio, /className="editor-project-name"/);
+  assert.match(studio, /normalizeProjectName/);
   assert.match(studio, /role="dialog"/);
   assert.match(studio, /aria-modal="true"/);
   assert.match(studio, /document\.addEventListener\("keydown", closeOnEscape\)/);
@@ -123,6 +131,19 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(studio, /function normalizeProject/);
   assert.match(studio, /MAX_ROWS = 500/);
   assert.match(studio, /const undoElements = useCallback/);
+  assert.match(studio, /const undoData = useCallback/);
+  assert.match(studio, /mode === "data"/);
+  assert.match(studio, /className="data-add-actions"/);
+  assert.match(studio, /newColumnVariable/);
+  assert.doesNotMatch(studio, /\{t\("addRow"\)\}/);
+  assert.match(studio, /type ResizeState =/);
+  assert.match(studio, /function handleResizePointerDown/);
+  assert.match(studio, /onResizePointerDown={handleResizePointerDown}/);
+  assert.match(studio, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
+  assert.match(studio, /deleteSelectedFromShortcut/);
+  assert.match(studio, /className="panel-section variable-connections"/);
+  assert.match(studio, /connectedElementCount/);
+  assert.match(studio, /noLinkedElements/);
   assert.match(studio, /backgroundColor,\s+background,\s+backgroundFit,/);
   assert.match(studio, /for \(const element of elements\)/);
   assert.doesNotMatch(
@@ -156,6 +177,8 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.saved-project-overlay/);
   assert.match(css, /\.saved-project-list/);
   assert.match(css, /\.saved-project-delete/);
+  assert.match(css, /\.saved-project-rename-form/);
+  assert.match(css, /\.editor-project-name/);
   assert.match(css, /\.landing-shell:lang\(ko\)\s*{[^}]*word-break: keep-all/s);
   assert.match(css, /\.service-overview-heading\s*{[^}]*max-width: 900px/s);
   assert.match(css, /\.service-overview-heading h2[^{]*{[^}]*text-wrap: balance/s);
@@ -166,6 +189,9 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.doesNotMatch(css, /\.eyebrow|\.landing-kicker|\.reference-kicker/);
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
+  assert.match(css, /\.selection-handle\s*{[^}]*width: 16px/s);
+  assert.match(css, /\.variable-connection-list/);
+  assert.match(css, /\.data-add-actions/);
   assert.match(storage, /indexedDB\.open/);
   assert.match(storage, /LEGACY_LOCAL_STORAGE_KEY/);
   assert.match(storage, /LOCAL_PROJECTS_KEY/);
@@ -173,6 +199,8 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(storage, /export async function listProjectDrafts/);
   assert.match(storage, /export async function deleteProjectDraft/);
   assert.match(storage, /makeLegacyProject/);
+  assert.match(logo, /A lanyard and badge symbol/);
+  assert.match(logo, /linearGradient id="bg"/);
 });
 
 test("ships an installable multilingual PWA contract", async () => {
@@ -189,6 +217,8 @@ test("ships an installable multilingual PWA contract", async () => {
     /^application\/manifest\+json\b/i,
   );
   const manifest = await manifestResponse.json();
+  assert.equal(manifest.name, "LanyardStudio 명찰 인쇄 스튜디오");
+  assert.equal(manifest.short_name, "LanyardStudio");
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
   assert.deepEqual(
@@ -200,12 +230,16 @@ test("ships an installable multilingual PWA contract", async () => {
     assert.match(i18n, new RegExp(`code: "${locale.replace("-", "\\-")}"`));
   }
   assert.match(i18n, /DICTIONARIES\[locale\]\[key\] \?\? en\[key\]/);
+  assert.match(i18n, /continueDraft: "저장된 프로젝트 이어하기"/);
+  assert.match(i18n, /projectName: "프로젝트 이름"/);
+  assert.match(i18n, /variableConnections: "변수"/);
+  assert.doesNotMatch(i18n, /저장된 작업|작업 단계|작업 순서/);
   assert.match(controls, /beforeinstallprompt/);
   assert.match(
     controls,
     /navigator\.serviceWorker\.register\(withBasePath\("\/sw\.js"\)/,
   );
-  assert.match(serviceWorker, /badgeflow-app-v2/);
+  assert.match(serviceWorker, /lanyardstudio-app-v1/);
   assert.match(serviceWorker, /self\.registration\.scope/);
   assert.match(serviceWorker, /cache\.put\(SCOPE_PATH, copy\)/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);

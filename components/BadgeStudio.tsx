@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  Columns3,
   Copy,
   CreditCard,
   Database,
@@ -29,6 +30,7 @@ import {
   MoveHorizontal,
   MoveVertical,
   Palette,
+  Pencil,
   Plus,
   Printer,
   Redo2,
@@ -67,6 +69,7 @@ import {
   type Translate,
   useI18n,
 } from "@/lib/i18n";
+import { withBasePath } from "@/lib/site";
 
 type Mode = "design" | "data" | "print";
 type AppView = "landing" | "studio";
@@ -116,6 +119,19 @@ type BadgeRow = {
   [key: string]: string;
 };
 
+type DataSnapshot = {
+  fields: string[];
+  rows: BadgeRow[];
+  selectedRowId: string;
+  elements?: CanvasElement[];
+  selectedElementId?: string | null;
+};
+
+type DataHistoryEntry = {
+  includesElements: boolean;
+  snapshot: DataSnapshot;
+};
+
 type PageSettings = {
   preset: PagePreset;
   width: number;
@@ -132,6 +148,20 @@ type DragState = {
   pointerY: number;
   elementX: number;
   elementY: number;
+};
+
+type ResizeDirection = "nw" | "ne" | "sw" | "se";
+
+type ResizeState = {
+  id: string;
+  direction: ResizeDirection;
+  pointerX: number;
+  pointerY: number;
+  elementX: number;
+  elementY: number;
+  elementWidth: number;
+  elementHeight?: number;
+  aspectRatio?: number;
 };
 
 type SnapGuides = {
@@ -194,12 +224,15 @@ const MAX_ROWS = 500;
 const MAX_FIELDS = 50;
 const MAX_FIELD_LENGTH = 80;
 const MAX_CELL_LENGTH = 2_000;
+const MAX_PROJECT_NAME_LENGTH = 80;
 const FORBIDDEN_FIELD_NAMES = new Set([
   "id",
   "__proto__",
   "constructor",
   "prototype",
 ]);
+
+const RESIZE_DIRECTIONS: ResizeDirection[] = ["nw", "ne", "sw", "se"];
 
 const PAGE_PRESETS: Record<
   Exclude<PagePreset, "custom">,
@@ -571,6 +604,7 @@ function LandingPage({
   savedProjects,
   onOpenProject,
   onDeleteProject,
+  onRenameProject,
   onSelectPreset,
   onCustom,
   locale,
@@ -580,6 +614,7 @@ function LandingPage({
   savedProjects: StoredProjectSummary[];
   onOpenProject: (projectId: string) => Promise<boolean>;
   onDeleteProject: (projectId: string) => Promise<void>;
+  onRenameProject: (projectId: string, name: string) => Promise<boolean>;
   onSelectPreset: (preset: BadgePreset) => void;
   onCustom: () => void;
   locale: Locale;
@@ -590,6 +625,11 @@ function LandingPage({
   const [showStartMenu, setShowStartMenu] = useState(false);
   const [showSavedProjects, setShowSavedProjects] = useState(false);
   const [openingProjectId, setOpeningProjectId] = useState<string | null>(null);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(
+    null,
+  );
+  const [renameDraft, setRenameDraft] = useState("");
+  const [isRenamingProject, setIsRenamingProject] = useState(false);
   const [projectListError, setProjectListError] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
     BADGE_PRESETS[0]?.id ?? null,
@@ -598,6 +638,7 @@ function LandingPage({
   const startTriggerRef = useRef<HTMLButtonElement>(null);
   const savedDialogRef = useRef<HTMLElement>(null);
   const savedDialogCloseRef = useRef<HTMLButtonElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const selectedPreset = BADGE_PRESETS.find(
     (preset) => preset.id === selectedPresetId,
   );
@@ -674,6 +715,14 @@ function LandingPage({
     };
   }, [showSavedProjects]);
 
+  useEffect(() => {
+    if (!renamingProjectId) return;
+    window.requestAnimationFrame(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    });
+  }, [renamingProjectId]);
+
   const openSavedProject = async (projectId: string) => {
     setOpeningProjectId(projectId);
     setProjectListError("");
@@ -694,6 +743,34 @@ function LandingPage({
     } catch {
       setProjectListError(t("savedProjectDeleteError"));
     }
+  };
+
+  const beginRenameProject = (project: StoredProjectSummary) => {
+    setProjectListError("");
+    setRenamingProjectId(project.id);
+    setRenameDraft(project.name);
+  };
+
+  const cancelRenameProject = () => {
+    setRenamingProjectId(null);
+    setRenameDraft("");
+  };
+
+  const submitProjectRename = async (project: StoredProjectSummary) => {
+    const name = normalizeProjectName(renameDraft, project.name);
+    if (name === project.name) {
+      cancelRenameProject();
+      return;
+    }
+    setIsRenamingProject(true);
+    setProjectListError("");
+    const renamed = await onRenameProject(project.id, name);
+    setIsRenamingProject(false);
+    if (!renamed) {
+      setProjectListError(t("savedProjectRenameError"));
+      return;
+    }
+    cancelRenameProject();
   };
 
   const startNewBadge = () => {
@@ -717,8 +794,8 @@ function LandingPage({
       </a>
       <header className="landing-header">
         <span className="landing-brand">
-          <span className="brand-mark">B</span>
-          <strong>BadgeFlow</strong>
+          <BrandMark />
+          <strong>LanyardStudio</strong>
         </span>
         <div className="landing-header-actions">
           <AppControls
@@ -851,7 +928,7 @@ function LandingPage({
               aria-label={t("featureDesignVisualLabel")}
             >
               <div className="feature-demo-bar">
-                <strong>BadgeFlow</strong>
+                <strong>LanyardStudio</strong>
                 <span>95 × 123 mm</span>
               </div>
               <div className="feature-editor-layout">
@@ -994,7 +1071,7 @@ function LandingPage({
                     <span className="feature-print-badge" key={name}>
                       <i />
                       <strong>{name}</strong>
-                      <small>BadgeFlow</small>
+                      <small>LanyardStudio</small>
                     </span>
                   ))}
                 </div>
@@ -1234,7 +1311,7 @@ function LandingPage({
                         }
                       >
                         <i />
-                        <b>BadgeFlow</b>
+                        <b>LS</b>
                       </span>
                     </span>
                     <span className="saved-project-copy">
@@ -1252,15 +1329,71 @@ function LandingPage({
                     </span>
                     <ArrowRight size={17} aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    className="saved-project-delete"
-                    disabled={openingProjectId !== null}
-                    onClick={() => void deleteSavedProject(project)}
-                    aria-label={t("deleteSavedProject", { name: project.name })}
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
+                  <div className="saved-project-actions">
+                    <button
+                      type="button"
+                      className="saved-project-rename"
+                      disabled={openingProjectId !== null || isRenamingProject}
+                      onClick={() => beginRenameProject(project)}
+                      aria-label={t("renameSavedProject", {
+                        name: project.name,
+                      })}
+                    >
+                      <Pencil size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="saved-project-delete"
+                      disabled={openingProjectId !== null || isRenamingProject}
+                      onClick={() => void deleteSavedProject(project)}
+                      aria-label={t("deleteSavedProject", {
+                        name: project.name,
+                      })}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  {renamingProjectId === project.id && (
+                    <form
+                      className="saved-project-rename-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void submitProjectRename(project);
+                      }}
+                    >
+                      <label htmlFor={`rename-project-${project.id}`}>
+                        {t("projectName")}
+                      </label>
+                      <input
+                        ref={renameInputRef}
+                        id={`rename-project-${project.id}`}
+                        value={renameDraft}
+                        maxLength={MAX_PROJECT_NAME_LENGTH}
+                        disabled={isRenamingProject}
+                        onChange={(event) => setRenameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          event.preventDefault();
+                          cancelRenameProject();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={isRenamingProject}
+                        onClick={cancelRenameProject}
+                      >
+                        {t("cancel")}
+                      </button>
+                      <button
+                        type="submit"
+                        className="primary-button"
+                        disabled={isRenamingProject || !renameDraft.trim()}
+                      >
+                        {isRenamingProject ? t("saving") : t("saveName")}
+                      </button>
+                    </form>
+                  )}
                 </article>
               ))}
             </div>
@@ -1276,7 +1409,7 @@ function LandingPage({
       )}
 
       <footer className="landing-footer">
-        <span>BadgeFlow</span>
+        <span>LanyardStudio</span>
         <span>{t("localOnly")}</span>
       </footer>
     </div>
@@ -1291,12 +1424,29 @@ function makeId(prefix: string) {
   return `${prefix}-${suffix}`;
 }
 
+function BrandMark({ className = "brand-mark" }: { className?: string }) {
+  return (
+    <img
+      className={className}
+      src={withBasePath("/brand/lanyardstudio-mark.svg")}
+      width={36}
+      height={36}
+      alt=""
+      aria-hidden="true"
+    />
+  );
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
 function displayNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function normalizeProjectName(value: string, fallback: string) {
+  return value.trim().slice(0, MAX_PROJECT_NAME_LENGTH) || fallback;
 }
 
 function getElementLabel(element: CanvasElement, t?: Translate) {
@@ -1309,6 +1459,10 @@ function getElementLabel(element: CanvasElement, t?: Translate) {
 
 function cloneElements(source: CanvasElement[]) {
   return source.map((element) => ({ ...element })) as CanvasElement[];
+}
+
+function cloneRows(source: BadgeRow[]) {
+  return source.map((row) => ({ ...row }));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1843,6 +1997,7 @@ function BadgeContents({
   interactive = false,
   onSelect,
   onPointerDown,
+  onResizePointerDown,
   onPointerMove,
   onPointerUp,
   onKeyMove,
@@ -1864,6 +2019,11 @@ function BadgeContents({
   onPointerDown?: (
     event: ReactPointerEvent<HTMLDivElement>,
     element: CanvasElement,
+  ) => void;
+  onResizePointerDown?: (
+    event: ReactPointerEvent<HTMLSpanElement>,
+    element: CanvasElement,
+    direction: ResizeDirection,
   ) => void;
   onPointerMove?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerUp?: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -1943,6 +2103,7 @@ function BadgeContents({
             ? {
                 role: "button" as const,
                 tabIndex: 0,
+                "aria-pressed": isSelected,
                 "aria-label": t("imageElement", { name: elementLabel || "" }),
                 onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                   event.stopPropagation();
@@ -1950,7 +2111,10 @@ function BadgeContents({
                 },
                 onPointerDown: (
                   event: ReactPointerEvent<HTMLDivElement>,
-                ) => onPointerDown?.(event, element),
+                ) => {
+                  event.currentTarget.focus({ preventScroll: true });
+                  onPointerDown?.(event, element);
+                },
                 onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
                   onKeyMove?.(event, element),
               }
@@ -1972,14 +2136,17 @@ function BadgeContents({
                     element.fit === "stretch" ? "fill" : element.fit,
                 }}
               />
-              {interactive && isSelected && (
-                <>
-                  <span className="selection-handle handle-nw" />
-                  <span className="selection-handle handle-ne" />
-                  <span className="selection-handle handle-sw" />
-                  <span className="selection-handle handle-se" />
-                </>
-              )}
+              {interactive && isSelected && !element.locked &&
+                RESIZE_DIRECTIONS.map((direction) => (
+                  <span
+                    key={direction}
+                    className={`selection-handle handle-${direction}`}
+                    onPointerDown={(event) =>
+                      onResizePointerDown?.(event, element, direction)
+                    }
+                    aria-hidden="true"
+                  />
+                ))}
             </div>
           );
         }
@@ -2005,13 +2172,16 @@ function BadgeContents({
           ? {
               role: "button" as const,
               tabIndex: 0,
+              "aria-pressed": isSelected,
               "aria-label": t("textElement", { name: elementLabel || "" }),
               onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                 event.stopPropagation();
                 onSelect?.(element.id);
               },
-              onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) =>
-                onPointerDown?.(event, element),
+              onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+                event.currentTarget.focus({ preventScroll: true });
+                onPointerDown?.(event, element);
+              },
               onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
                 onKeyMove?.(event, element),
             }
@@ -2025,14 +2195,17 @@ function BadgeContents({
             {...interactionProps}
           >
             {resolveText(element, row)}
-            {interactive && isSelected && (
-              <>
-                <span className="selection-handle handle-nw" />
-                <span className="selection-handle handle-ne" />
-                <span className="selection-handle handle-sw" />
-                <span className="selection-handle handle-se" />
-              </>
-            )}
+            {interactive && isSelected && !element.locked &&
+              RESIZE_DIRECTIONS.map((direction) => (
+                <span
+                  key={direction}
+                  className={`selection-handle handle-${direction}`}
+                  onPointerDown={(event) =>
+                    onResizePointerDown?.(event, element, direction)
+                  }
+                  aria-hidden="true"
+                />
+              ))}
           </div>
         );
       })}
@@ -2060,12 +2233,19 @@ export function BadgeStudio() {
   const [fields, setFields] = useState<string[]>(DEFAULT_FIELDS);
   const [rows, setRows] = useState<BadgeRow[]>(SAMPLE_ROWS);
   const [selectedRowId, setSelectedRowId] = useState("row-1");
+  const [dataHistoryPast, setDataHistoryPast] = useState<DataHistoryEntry[]>(
+    [],
+  );
+  const [dataHistoryFuture, setDataHistoryFuture] = useState<
+    DataHistoryEntry[]
+  >([]);
   const [page, setPage] = useState<PageSettings>(DEFAULT_PAGE);
   const [dpi, setDpi] = useState(300);
   const [outputMode, setOutputMode] = useState<OutputMode>("standard");
   const [newField, setNewField] = useState("");
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [resize, setResize] = useState<ResizeState | null>(null);
   const [snapGuides, setSnapGuides] = useState<SnapGuides>({
     vertical: false,
     horizontal: false,
@@ -2078,8 +2258,15 @@ export function BadgeStudio() {
   const [activeProject, setActiveProject] = useState<ActiveProject | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const stageRef = useRef<HTMLDivElement>(null);
+  const newFieldInputRef = useRef<HTMLInputElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
+  const fieldsRef = useRef<string[]>(DEFAULT_FIELDS);
+  const rowsRef = useRef<BadgeRow[]>(SAMPLE_ROWS);
+  const selectedElementIdRef = useRef<string | null>("element-name");
+  const selectedRowIdRef = useRef("row-1");
+  const activeDataCellKeyRef = useRef<string | null>(null);
+  const dataCellEditRecordedRef = useRef(false);
   const saveRevisionRef = useRef(0);
   const skipNextAutosaveRef = useRef(false);
   const projectSavePromisesRef = useRef<Map<string, Promise<unknown>>>(
@@ -2145,6 +2332,7 @@ export function BadgeStudio() {
       };
       const savePromise = saveProjectDraft({
         ...activeProject,
+        name: normalizeProjectName(activeProject.name, t("untitledProject")),
         updatedAt,
         badgeWidth,
         badgeHeight,
@@ -2190,6 +2378,7 @@ export function BadgeStudio() {
     dpi,
     outputMode,
     activeProject,
+    t,
   ]);
 
   useEffect(() => {
@@ -2201,6 +2390,22 @@ export function BadgeStudio() {
   useEffect(() => {
     elementsRef.current = elements;
   }, [elements]);
+
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
+
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  useEffect(() => {
+    selectedElementIdRef.current = selectedElementId;
+  }, [selectedElementId]);
+
+  useEffect(() => {
+    selectedRowIdRef.current = selectedRowId;
+  }, [selectedRowId]);
 
   useEffect(
     () => () => {
@@ -2220,7 +2425,11 @@ export function BadgeStudio() {
     recordHistory = true,
   ) {
     if (recordHistory) rememberElements();
-    setElements((current) => updater(current));
+    setElements((current) => {
+      const next = updater(current);
+      elementsRef.current = next;
+      return next;
+    });
   }
 
   function updateElement(
@@ -2239,54 +2448,202 @@ export function BadgeStudio() {
     );
   }
 
+  const captureDataHistoryEntry = useCallback(
+    (includesElements = false): DataHistoryEntry => ({
+      includesElements,
+      snapshot: {
+        fields: [...fieldsRef.current],
+        rows: cloneRows(rowsRef.current),
+        selectedRowId: selectedRowIdRef.current,
+        ...(includesElements
+          ? {
+              elements: cloneElements(elementsRef.current),
+              selectedElementId: selectedElementIdRef.current,
+            }
+          : {}),
+      },
+    }),
+    [],
+  );
+
+  const restoreDataHistoryEntry = useCallback((entry: DataHistoryEntry) => {
+    const nextFields = [...entry.snapshot.fields];
+    const nextRows = cloneRows(entry.snapshot.rows);
+    const nextSelectedRowId = nextRows.some(
+      (row) => row.id === entry.snapshot.selectedRowId,
+    )
+      ? entry.snapshot.selectedRowId
+      : nextRows[0]?.id || "";
+    fieldsRef.current = nextFields;
+    rowsRef.current = nextRows;
+    selectedRowIdRef.current = nextSelectedRowId;
+    setFields(nextFields);
+    setRows(nextRows);
+    setSelectedRowId(nextSelectedRowId);
+    if (entry.includesElements && entry.snapshot.elements) {
+      const nextElements = cloneElements(entry.snapshot.elements);
+      elementsRef.current = nextElements;
+      selectedElementIdRef.current = entry.snapshot.selectedElementId ?? null;
+      setElements(nextElements);
+      setSelectedElementId(entry.snapshot.selectedElementId ?? null);
+    }
+  }, []);
+
+  function rememberData(includesElements = false) {
+    const snapshot = captureDataHistoryEntry(includesElements);
+    setDataHistoryPast((current) => [...current.slice(-29), snapshot]);
+    setDataHistoryFuture([]);
+  }
+
+  function resetDataHistory() {
+    setDataHistoryPast([]);
+    setDataHistoryFuture([]);
+    activeDataCellKeyRef.current = null;
+    dataCellEditRecordedRef.current = false;
+  }
+
   const undoElements = useCallback(() => {
     if (!historyPast.length) return;
     const previous = historyPast[historyPast.length - 1];
+    const restored = cloneElements(previous);
     setHistoryPast((current) => current.slice(0, -1));
     setHistoryFuture((current) => [
       cloneElements(elementsRef.current),
       ...current.slice(0, 39),
     ]);
-    setElements(cloneElements(previous));
-    setSelectedElementId((current) =>
-      previous.some((element) => element.id === current) ? current : null,
-    );
+    elementsRef.current = restored;
+    setElements(restored);
+    const nextSelectedId = restored.some(
+      (element) => element.id === selectedElementIdRef.current,
+    )
+      ? selectedElementIdRef.current
+      : null;
+    selectedElementIdRef.current = nextSelectedId;
+    setSelectedElementId(nextSelectedId);
   }, [historyPast]);
 
   const redoElements = useCallback(() => {
     if (!historyFuture.length) return;
     const next = historyFuture[0];
+    const restored = cloneElements(next);
     setHistoryFuture((current) => current.slice(1));
     setHistoryPast((current) => [
       ...current.slice(-39),
       cloneElements(elementsRef.current),
     ]);
-    setElements(cloneElements(next));
+    elementsRef.current = restored;
+    setElements(restored);
   }, [historyFuture]);
+
+  const undoData = useCallback(() => {
+    if (!dataHistoryPast.length) return;
+    const previous = dataHistoryPast[dataHistoryPast.length - 1];
+    setDataHistoryPast((current) => current.slice(0, -1));
+    setDataHistoryFuture((current) => [
+      captureDataHistoryEntry(previous.includesElements),
+      ...current.slice(0, 29),
+    ]);
+    restoreDataHistoryEntry(previous);
+    dataCellEditRecordedRef.current = false;
+  }, [
+    captureDataHistoryEntry,
+    dataHistoryPast,
+    restoreDataHistoryEntry,
+  ]);
+
+  const redoData = useCallback(() => {
+    if (!dataHistoryFuture.length) return;
+    const next = dataHistoryFuture[0];
+    setDataHistoryFuture((current) => current.slice(1));
+    setDataHistoryPast((current) => [
+      ...current.slice(-29),
+      captureDataHistoryEntry(next.includesElements),
+    ]);
+    restoreDataHistoryEntry(next);
+    dataCellEditRecordedRef.current = false;
+  }, [
+    captureDataHistoryEntry,
+    dataHistoryFuture,
+    restoreDataHistoryEntry,
+  ]);
+
+  const deleteSelectedFromShortcut = useCallback(() => {
+    const id = selectedElementIdRef.current;
+    if (!id) return;
+    const selected = elementsRef.current.find((element) => element.id === id);
+    if (!selected || selected.locked) return;
+    const snapshot = cloneElements(elementsRef.current);
+    const next = elementsRef.current.filter((element) => element.id !== id);
+    setHistoryPast((current) => [...current.slice(-39), snapshot]);
+    setHistoryFuture([]);
+    elementsRef.current = next;
+    selectedElementIdRef.current = null;
+    setElements(next);
+    setSelectedElementId(null);
+  }, []);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
+      const isUndo =
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "z";
+      const isRedo =
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "y";
+
+      if (mode === "data") {
+        if (isUndo) {
+          event.preventDefault();
+          if (event.shiftKey) redoData();
+          else undoData();
+        } else if (isRedo) {
+          event.preventDefault();
+          redoData();
+        }
+        return;
+      }
+
       if (
-        target?.matches(
-          "input, textarea, select, [contenteditable='true']",
-        )
+        mode !== "design" ||
+        target?.matches("input, textarea, select, [contenteditable='true']")
       ) {
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+      if (isUndo) {
         event.preventDefault();
         if (event.shiftKey) redoElements();
         else undoElements();
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+      if (isRedo) {
         event.preventDefault();
         redoElements();
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const selected = elementsRef.current.find(
+          (element) => element.id === selectedElementIdRef.current,
+        );
+        if (!selected || selected.locked) return;
+        event.preventDefault();
+        deleteSelectedFromShortcut();
+        return;
+      }
+      if (event.key === "Escape") {
+        selectedElementIdRef.current = null;
+        setSelectedElementId(null);
       }
     };
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [redoElements, undoElements]);
+  }, [
+    deleteSelectedFromShortcut,
+    mode,
+    redoData,
+    redoElements,
+    undoData,
+    undoElements,
+  ]);
 
   function applyProject(project: BadgeProject) {
     setBadgeWidth(project.badgeWidth);
@@ -2304,6 +2661,7 @@ export function BadgeStudio() {
     setFields(project.fields);
     setRows(project.rows);
     setSelectedRowId(project.rows[0]?.id || "");
+    resetDataHistory();
     setPage(project.page);
     setDpi(project.dpi);
     setOutputMode(project.outputMode);
@@ -2344,6 +2702,38 @@ export function BadgeStudio() {
     );
   }
 
+  async function renameSavedProject(projectId: string, nextName: string) {
+    try {
+      await projectSavePromisesRef.current
+        .get(projectId)
+        ?.catch(() => undefined);
+      const stored = await loadProjectDraft<BadgeProject>(projectId);
+      if (!stored) return false;
+      const name = normalizeProjectName(nextName, stored.name);
+      const updatedAt = new Date().toISOString();
+      const { summary } = await saveProjectDraft({
+        ...stored,
+        name,
+        updatedAt,
+        value: {
+          ...stored.value,
+          updatedAt,
+        },
+      });
+      setSavedProjects((current) =>
+        [summary, ...current.filter((project) => project.id !== projectId)].sort(
+          (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+        ),
+      );
+      setActiveProject((current) =>
+        current?.id === projectId ? { ...current, name } : current,
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function startWithPreset(
     preset: BadgePreset,
     projectName = t(preset.nameKey),
@@ -2369,6 +2759,7 @@ export function BadgeStudio() {
     setFields(DEFAULT_FIELDS);
     setRows(SAMPLE_ROWS.map((row) => ({ ...row })));
     setSelectedRowId("row-1");
+    resetDataHistory();
     setPage(
       nextOutputMode === "table-tent"
         ? { ...TABLE_TENT_PAGE }
@@ -2459,10 +2850,11 @@ export function BadgeStudio() {
   }
 
   function deleteSelected() {
-    if (!selectedElementId) return;
+    if (!selectedElementId || selectedElement?.locked) return;
     mutateElements((current) =>
       current.filter((element) => element.id !== selectedElementId),
     );
+    selectedElementIdRef.current = null;
     setSelectedElementId(null);
   }
 
@@ -2501,11 +2893,13 @@ export function BadgeStudio() {
     event.preventDefault();
     event.stopPropagation();
     setSelectedElementId(element.id);
+    selectedElementIdRef.current = element.id;
     if (element.locked) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     rememberElements();
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
     setSnapGuides({ vertical: false, horizontal: false });
+    setResize(null);
     setDrag({
       id: element.id,
       pointerX: event.clientX,
@@ -2515,9 +2909,125 @@ export function BadgeStudio() {
     });
   }
 
+  function handleResizePointerDown(
+    event: ReactPointerEvent<HTMLSpanElement>,
+    element: CanvasElement,
+    direction: ResizeDirection,
+  ) {
+    if (!stageRef.current || element.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.parentElement?.focus({ preventScroll: true });
+    setSelectedElementId(element.id);
+    selectedElementIdRef.current = element.id;
+    rememberElements();
+    setDrag(null);
+    setSnapGuides({ vertical: false, horizontal: false });
+    setResize({
+      id: element.id,
+      direction,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      elementX: element.x,
+      elementY: element.y,
+      elementWidth: element.width,
+      ...(element.type === "image"
+        ? {
+            elementHeight: element.height,
+            aspectRatio: element.aspectRatio,
+          }
+        : {}),
+    });
+  }
+
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!drag || !stageRef.current) return;
+    if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
+    if (resize) {
+      const element = elements.find((item) => item.id === resize.id);
+      if (!element) return;
+      const deltaX =
+        ((event.clientX - resize.pointerX) / rect.width) * badgeWidth;
+      const deltaY =
+        ((event.clientY - resize.pointerY) / rect.height) * badgeHeight;
+      const isWest = resize.direction.includes("w");
+      const isNorth = resize.direction.includes("n");
+
+      if (
+        element.type === "image" &&
+        resize.elementHeight !== undefined &&
+        resize.aspectRatio
+      ) {
+        const horizontalDelta = isWest ? -deltaX : deltaX;
+        const verticalDelta = (isNorth ? -deltaY : deltaY) * resize.aspectRatio;
+        const sizeDelta =
+          Math.abs(horizontalDelta) >= Math.abs(verticalDelta)
+            ? horizontalDelta
+            : verticalDelta;
+        const anchorX = isWest
+          ? resize.elementX + resize.elementWidth
+          : resize.elementX;
+        const anchorY = isNorth
+          ? resize.elementY + resize.elementHeight
+          : resize.elementY;
+        const maximumWidth = Math.max(
+          0.5,
+          Math.min(
+            isWest ? anchorX : badgeWidth - anchorX,
+            (isNorth ? anchorY : badgeHeight - anchorY) * resize.aspectRatio,
+          ),
+        );
+        const minimumWidth = Math.min(5, maximumWidth);
+        const width =
+          Math.round(
+            clamp(
+              resize.elementWidth + sizeDelta,
+              minimumWidth,
+              maximumWidth,
+            ) * 10,
+          ) / 10;
+        const height = Math.round((width / resize.aspectRatio) * 10) / 10;
+        updateElement(
+          resize.id,
+          {
+            x: Math.round((isWest ? anchorX - width : anchorX) * 10) / 10,
+            y: Math.round((isNorth ? anchorY - height : anchorY) * 10) / 10,
+            width,
+            height,
+          },
+          false,
+        );
+      } else {
+        const anchorX = isWest
+          ? resize.elementX + resize.elementWidth
+          : resize.elementX;
+        const maximumWidth = Math.max(
+          0.5,
+          isWest ? anchorX : badgeWidth - anchorX,
+        );
+        const minimumWidth = Math.min(5, maximumWidth);
+        const width =
+          Math.round(
+            clamp(
+              resize.elementWidth + (isWest ? -deltaX : deltaX),
+              minimumWidth,
+              maximumWidth,
+            ) * 10,
+          ) / 10;
+        updateElement(
+          resize.id,
+          {
+            x: Math.round((isWest ? anchorX - width : anchorX) * 10) / 10,
+            width,
+          },
+          false,
+        );
+      }
+      return;
+    }
+
+    if (!drag) return;
     const element = elements.find((item) => item.id === drag.id);
     if (!element) return;
     const rawX =
@@ -2560,6 +3070,7 @@ export function BadgeStudio() {
 
   function handlePointerEnd() {
     setDrag(null);
+    setResize(null);
     setSnapGuides({ vertical: false, horizontal: false });
   }
 
@@ -2588,10 +3099,11 @@ export function BadgeStudio() {
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      setSelectedElementId(element.id);
       mutateElements((current) =>
         current.filter((item) => item.id !== element.id),
       );
+      selectedElementIdRef.current = null;
+      setSelectedElementId(null);
     }
   }
 
@@ -2830,7 +3342,7 @@ export function BadgeStudio() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `BadgeFlow_${badgeWidth}x${badgeHeight}mm.badgeflow.json`;
+    anchor.download = `LanyardStudio_${badgeWidth}x${badgeHeight}mm.lanyardstudio.json`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     setToast(t("toastProjectExported"));
@@ -2878,6 +3390,7 @@ export function BadgeStudio() {
       setHistoryFuture([]);
       setSelectedElementId(project.elements.at(-1)?.id || null);
       setSelectedRowId(project.rows[0]?.id || "");
+      resetDataHistory();
       setToast(t("toastProjectImported"));
     } catch (error) {
       setToast(
@@ -2934,6 +3447,7 @@ export function BadgeStudio() {
           });
           return normalized;
         });
+        rememberData();
         setFields(importedFields);
         setRows(importedRows);
         setSelectedRowId(importedRows[0].id);
@@ -2960,9 +3474,14 @@ export function BadgeStudio() {
       setToast(t("errorFieldCount", { count: MAX_FIELDS }));
       return;
     }
+    rememberData();
     setFields((current) => [...current, value]);
     setRows((current) => current.map((row) => ({ ...row, [value]: "" })));
     setNewField("");
+  }
+
+  function focusNewFieldInput() {
+    newFieldInputRef.current?.focus();
   }
 
   function removeField(field: string) {
@@ -2970,6 +3489,7 @@ export function BadgeStudio() {
       setToast(t("errorFieldMinimum"));
       return;
     }
+    rememberData(true);
     setFields((current) => current.filter((item) => item !== field));
     setRows((current) =>
       current.map((row) => {
@@ -2978,13 +3498,15 @@ export function BadgeStudio() {
         return next;
       }),
     );
-    mutateElements((current) =>
-      current.filter(
-        (element) =>
-          element.type !== "text" ||
-          element.kind !== "variable" ||
-          element.field !== field,
-      ),
+    mutateElements(
+      (current) =>
+        current.filter(
+          (element) =>
+            element.type !== "text" ||
+            element.kind !== "variable" ||
+            element.field !== field,
+        ),
+      false,
     );
   }
 
@@ -2993,6 +3515,7 @@ export function BadgeStudio() {
       setToast(t("errorRowCount", { count: MAX_ROWS }));
       return;
     }
+    rememberData();
     const row: BadgeRow = { id: makeId("row") };
     fields.forEach((field) => {
       row[field] = "";
@@ -3002,6 +3525,8 @@ export function BadgeStudio() {
   }
 
   function removeRow(id: string) {
+    if (!rows.some((row) => row.id === id)) return;
+    rememberData();
     setRows((current) => current.filter((row) => row.id !== id));
     if (selectedRowId === id) {
       const nextRow = rows.find((row) => row.id !== id);
@@ -3010,6 +3535,15 @@ export function BadgeStudio() {
   }
 
   function updateRow(id: string, field: string, value: string) {
+    const cellKey = `${id}:${field}`;
+    if (
+      activeDataCellKeyRef.current !== cellKey ||
+      !dataCellEditRecordedRef.current
+    ) {
+      rememberData();
+      activeDataCellKeyRef.current = cellKey;
+      dataCellEditRecordedRef.current = true;
+    }
     setRows((current) =>
       current.map((row) =>
         row.id === id
@@ -3054,9 +3588,9 @@ export function BadgeStudio() {
         compress: true,
       });
       doc.setProperties({
-        title: `BadgeFlow — ${t("printPreview")}`,
+        title: `LanyardStudio — ${t("printPreview")}`,
         subject: `${badgeWidth} × ${badgeHeight} mm`,
-        creator: "BadgeFlow",
+        creator: "LanyardStudio",
       });
 
       let processedRows = 0;
@@ -3215,7 +3749,7 @@ export function BadgeStudio() {
       }
 
       const date = new Date().toISOString().slice(0, 10);
-      doc.save(`BadgeFlow_${badgeWidth}x${badgeHeight}mm_${date}.pdf`);
+      doc.save(`LanyardStudio_${badgeWidth}x${badgeHeight}mm_${date}.pdf`);
       setToast(t("toastPdfReady"));
     } catch (error) {
       setToast(
@@ -3245,6 +3779,7 @@ export function BadgeStudio() {
         savedProjects={savedProjects}
         onOpenProject={openSavedProject}
         onDeleteProject={removeSavedProject}
+        onRenameProject={renameSavedProject}
         onSelectPreset={startWithPreset}
         onCustom={startCustomSize}
         locale={locale}
@@ -3260,18 +3795,54 @@ export function BadgeStudio() {
         {t("skipEditor")}
       </a>
       <header className="topbar">
-        <button
-          className="brand"
-          type="button"
-          onClick={() => {
-            setMode("design");
-            setView("landing");
-          }}
-          aria-label={t("startScreen")}
-        >
-          <span className="brand-mark">B</span>
-          <strong>BadgeFlow</strong>
-        </button>
+        <div className="topbar-project">
+          <button
+            className="brand"
+            type="button"
+            onClick={() => {
+              setMode("design");
+              setView("landing");
+            }}
+            aria-label={t("startScreen")}
+          >
+            <BrandMark />
+            <strong>LanyardStudio</strong>
+          </button>
+
+          {activeProject && (
+            <label className="editor-project-name">
+              <span>{t("projectName")}</span>
+              <input
+                value={activeProject.name}
+                maxLength={MAX_PROJECT_NAME_LENGTH}
+                onChange={(event) =>
+                  setActiveProject((current) =>
+                    current
+                      ? { ...current, name: event.target.value }
+                      : current,
+                  )
+                }
+                onBlur={() =>
+                  setActiveProject((current) =>
+                    current
+                      ? {
+                          ...current,
+                          name: normalizeProjectName(
+                            current.name,
+                            t("untitledProject"),
+                          ),
+                        }
+                      : current,
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                aria-label={t("projectName")}
+              />
+            </label>
+          )}
+        </div>
 
         <nav className="mode-nav" aria-label={t("steps")}>
           {modeItems.map((item, index) => {
@@ -3552,7 +4123,7 @@ export function BadgeStudio() {
             <section className="canvas-workspace" aria-label={t("badgeCanvas")}>
               <div className="canvas-toolbar">
                 <div>
-                  <span className="status-dot" />
+                  <CreditCard className="canvas-side-icon" size={14} />
                   <strong>{t("front")}</strong>
                   <span>{t("safeArea", { value: safeArea })}</span>
                 </div>
@@ -3586,7 +4157,7 @@ export function BadgeStudio() {
                       {t("loadProject")}
                       <input
                         type="file"
-                        accept=".json,.badgeflow.json,application/json"
+                        accept=".json,.lanyardstudio.json,.badgeflow.json,application/json"
                         onChange={(event) => {
                           void importProject(event.target.files?.[0]);
                           event.currentTarget.value = "";
@@ -3620,7 +4191,10 @@ export function BadgeStudio() {
 
               <div
                 className="canvas-stage"
-                onPointerDown={() => setSelectedElementId(null)}
+                onPointerDown={() => {
+                  selectedElementIdRef.current = null;
+                  setSelectedElementId(null);
+                }}
               >
                 <div className="measurement measurement-top">
                   <span>0</span>
@@ -3652,6 +4226,7 @@ export function BadgeStudio() {
                     interactive
                     onSelect={setSelectedElementId}
                     onPointerDown={handlePointerDown}
+                    onResizePointerDown={handleResizePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerEnd}
                     onKeyMove={handleKeyMove}
@@ -4109,6 +4684,7 @@ export function BadgeStudio() {
                       type="button"
                       className="secondary-button danger-text"
                       onClick={deleteSelected}
+                      disabled={selectedElement.locked}
                     >
                       <Trash2 size={16} />
                       {t("delete")}
@@ -4222,6 +4798,79 @@ export function BadgeStudio() {
                 </div>
               </section>
 
+              {!selectedElement && (
+                <section className="panel-section variable-connections">
+                  <div className="section-title">
+                    <h2>
+                      <Database size={15} />
+                      {t("variableConnections")}
+                    </h2>
+                    <span>{fields.length}</span>
+                  </div>
+                  <p>{t("variableConnectionsHelp")}</p>
+                  <div className="variable-connection-list">
+                    {fields.map((field) => {
+                      const linkedElements = elements.filter(
+                        (element): element is TextElement =>
+                          element.type === "text" &&
+                          element.kind === "variable" &&
+                          element.field === field,
+                      );
+                      return (
+                        <article className="variable-connection-item" key={field}>
+                          <div className="variable-connection-heading">
+                            <span className="variable-icon">
+                              <Type size={15} />
+                            </span>
+                            <span>
+                              <strong>{field}</strong>
+                              <small>{`{{${field}}}`}</small>
+                            </span>
+                            <em>
+                              {t("connectedElementCount", {
+                                count: linkedElements.length,
+                              })}
+                            </em>
+                          </div>
+                          <div className="variable-linked-elements">
+                            {linkedElements.length ? (
+                              linkedElements.map((element, index) => (
+                                <button
+                                  type="button"
+                                  key={element.id}
+                                  onClick={() => {
+                                    selectedElementIdRef.current = element.id;
+                                    setSelectedElementId(element.id);
+                                  }}
+                                >
+                                  <Type size={13} />
+                                  <span>
+                                    {t("linkedTextElement", {
+                                      index: index + 1,
+                                    })}
+                                  </span>
+                                  {element.hidden ? (
+                                    <EyeOff size={13} aria-hidden="true" />
+                                  ) : element.locked ? (
+                                    <Lock size={13} aria-hidden="true" />
+                                  ) : (
+                                    <ArrowRight size={13} aria-hidden="true" />
+                                  )}
+                                </button>
+                              ))
+                            ) : (
+                              <span className="variable-unlinked">
+                                {t("noLinkedElements")}
+                              </span>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
               <div className="reference-note">
                 <strong>A4 · 95 × 123 mm · 4-UP</strong>
                 <p>{t("referenceReady")}</p>
@@ -4248,14 +4897,6 @@ export function BadgeStudio() {
                       onChange={(event) => handleCsv(event.target.files?.[0])}
                     />
                   </label>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={addRow}
-                  >
-                    <Plus size={17} />
-                    {t("addRow")}
-                  </button>
                 </div>
               </div>
 
@@ -4310,9 +4951,17 @@ export function BadgeStudio() {
                             <input
                               value={row[field] || ""}
                               maxLength={MAX_CELL_LENGTH}
+                              onFocus={() => {
+                                activeDataCellKeyRef.current = `${row.id}:${field}`;
+                                dataCellEditRecordedRef.current = false;
+                              }}
                               onChange={(event) =>
                                 updateRow(row.id, field, event.target.value)
                               }
+                              onBlur={() => {
+                                activeDataCellKeyRef.current = null;
+                                dataCellEditRecordedRef.current = false;
+                              }}
                               aria-label={t("rowField", {
                                 row: rowIndex + 1,
                                 name: field,
@@ -4345,10 +4994,25 @@ export function BadgeStudio() {
                 )}
               </div>
 
-              <button type="button" className="add-row-bar" onClick={addRow}>
-                <Plus size={16} />
-                {t("newRow")}
-              </button>
+              <div className="data-add-actions">
+                <button
+                  type="button"
+                  className="data-add-action"
+                  onClick={addRow}
+                >
+                  <Plus size={16} />
+                  {t("newRow")}
+                </button>
+                <button
+                  type="button"
+                  className="data-add-action"
+                  onClick={focusNewFieldInput}
+                  aria-controls="new-field"
+                >
+                  <Columns3 size={16} />
+                  {t("newColumnVariable")}
+                </button>
+              </div>
             </section>
 
             <aside className="data-side panel">
@@ -4387,6 +5051,7 @@ export function BadgeStudio() {
                   <div>
                     <input
                       id="new-field"
+                      ref={newFieldInputRef}
                       value={newField}
                       maxLength={MAX_FIELD_LENGTH}
                       onChange={(event) => setNewField(event.target.value)}
@@ -4421,8 +5086,9 @@ export function BadgeStudio() {
                 type="button"
                 className="secondary-button full-width"
                 onClick={() => {
-                  setFields(DEFAULT_FIELDS);
-                  setRows(SAMPLE_ROWS);
+                  rememberData();
+                  setFields([...DEFAULT_FIELDS]);
+                  setRows(cloneRows(SAMPLE_ROWS));
                   setSelectedRowId(SAMPLE_ROWS[0].id);
                   setToast(t("toastSampleData"));
                 }}

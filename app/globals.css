@@ -250,7 +250,7 @@ select:focus-visible,
 }
 
 .landing-brand .brand-mark {
-  background: #1e3a8a;
+  background: transparent;
 }
 
 .landing-brand strong {
@@ -489,6 +489,36 @@ select:focus-visible,
   gap: 8px;
 }
 
+.saved-project-actions {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.saved-project-rename,
+.saved-project-delete {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 10px;
+  background: white;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.saved-project-rename {
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+.saved-project-rename:hover:not(:disabled) {
+  border-color: #60a5fa;
+  background: #eff6ff;
+}
+
 .saved-project-open {
   display: grid;
   min-width: 0;
@@ -591,23 +621,45 @@ select:focus-visible,
 }
 
 .saved-project-delete {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  align-self: center;
-  place-items: center;
   border: 1px solid #fecaca;
-  border-radius: 10px;
-  background: white;
   color: #b91c1c;
-  transition:
-    border-color 180ms ease,
-    background 180ms ease;
 }
 
 .saved-project-delete:hover:not(:disabled) {
   border-color: #f87171;
   background: #fef2f2;
+}
+
+.saved-project-rename-form {
+  display: grid;
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 11px;
+  background: #eff6ff;
+  padding: 11px;
+}
+
+.saved-project-rename-form label {
+  grid-column: 1 / -1;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.saved-project-rename-form input {
+  min-width: 0;
+  height: 42px;
+  border-color: #93c5fd;
+  background: white;
+}
+
+.saved-project-rename-form button {
+  min-height: 42px;
+  white-space: nowrap;
 }
 
 .saved-project-error {
@@ -1657,6 +1709,13 @@ select:focus-visible,
   backdrop-filter: blur(14px);
 }
 
+.topbar-project {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -1669,21 +1728,56 @@ select:focus-visible,
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   width: 36px;
   height: 36px;
   margin-right: 10px;
-  place-items: center;
   border-radius: 10px;
-  background: var(--ink);
-  color: white;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  background: transparent;
 }
 
 .brand strong {
   display: block;
+}
+
+.editor-project-name {
+  display: block;
+  min-width: 0;
+  flex: 1 1 150px;
+  max-width: 190px;
+}
+
+.editor-project-name > span {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.editor-project-name input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+}
+
+.editor-project-name input:hover {
+  border-color: var(--line);
+  background: var(--panel-muted);
+}
+
+.editor-project-name input:focus {
+  border-color: var(--teal);
+  background: var(--paper);
 }
 
 .brand strong {
@@ -2269,12 +2363,8 @@ select:focus {
   font-size: 12px;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--teal);
-  box-shadow: 0 0 0 3px var(--teal-pale);
+.canvas-side-icon {
+  color: var(--teal);
 }
 
 .toolbar-controls label {
@@ -2515,32 +2605,38 @@ select:focus {
 
 .selection-handle {
   position: absolute;
-  width: 7px;
-  height: 7px;
-  border: 1px solid white;
-  border-radius: 2px;
+  z-index: 1002;
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-radius: 50%;
   background: var(--teal);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  touch-action: none;
 }
 
 .handle-nw {
-  top: -7px;
-  left: -7px;
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize !important;
 }
 
 .handle-ne {
-  top: -7px;
-  right: -7px;
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize !important;
 }
 
 .handle-sw {
-  bottom: -7px;
-  left: -7px;
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize !important;
 }
 
 .handle-se {
-  right: -7px;
-  bottom: -7px;
+  right: -6px;
+  bottom: -6px;
+  cursor: nwse-resize !important;
 }
 
 .measurement {
@@ -2986,12 +3082,125 @@ select:focus {
 
 .empty-inspector {
   display: flex;
-  min-height: 330px;
+  min-height: 220px;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   padding: 30px;
   text-align: center;
+}
+
+.variable-connections {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  background: #f8fafc;
+}
+
+.variable-connections .section-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.variable-connections > p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.variable-connection-list {
+  display: grid;
+  gap: 8px;
+}
+
+.variable-connection-item {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+  padding: 9px;
+}
+
+.variable-connection-heading {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 31px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.variable-connection-heading > span:nth-child(2),
+.variable-connection-heading strong,
+.variable-connection-heading small {
+  display: block;
+  min-width: 0;
+}
+
+.variable-connection-heading strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variable-connection-heading small {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.variable-connection-heading em {
+  color: var(--teal-dark);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.variable-linked-elements {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.variable-linked-elements button {
+  display: grid;
+  min-height: 40px;
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dbeafe;
+  border-radius: 7px;
+  background: #eff6ff;
+  color: var(--ink-soft);
+  padding: 0 8px;
+  text-align: left;
+}
+
+.variable-linked-elements button:hover {
+  border-color: #93c5fd;
+  color: var(--teal-dark);
+}
+
+.variable-linked-elements button span {
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variable-unlinked {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 650;
 }
 
 .empty-inspector > span {
@@ -3264,23 +3473,38 @@ select:focus {
   font-size: 10px;
 }
 
-.add-row-bar {
-  display: flex;
-  width: 100%;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+.data-add-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
   border: 1px solid var(--line);
   border-top: 0;
   border-radius: 0 0 11px 11px;
   background: var(--paper);
+}
+
+.data-add-action {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
   color: var(--teal-dark);
   font-size: 11px;
   font-weight: 750;
+  line-height: 1.35;
+  padding: 0 10px;
+  text-align: center;
 }
 
-.add-row-bar:hover {
+.data-add-action + .data-add-action {
+  border-left: 1px solid var(--line);
+}
+
+.data-add-action:hover {
   background: var(--teal-pale);
 }
 
@@ -3784,6 +4008,14 @@ select:focus {
     grid-template-columns: minmax(170px, 1fr) auto minmax(170px, 1fr);
   }
 
+  .topbar-project .brand strong {
+    display: none;
+  }
+
+  .editor-project-name {
+    max-width: 118px;
+  }
+
   .mode-nav button {
     min-width: 88px;
   }
@@ -4040,6 +4272,18 @@ select:focus {
 
   .saved-project-error {
     margin: 0 16px 16px;
+  }
+
+  .saved-project-rename-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .saved-project-rename-form input {
+    grid-column: 1 / -1;
+  }
+
+  .saved-project-rename-form button {
+    width: 100%;
   }
 
   .landing-header,
@@ -4342,6 +4586,18 @@ select:focus {
   .brand-mark {
     width: 34px;
     height: 34px;
+  }
+
+  .topbar-project {
+    gap: 4px;
+  }
+
+  .topbar-project .brand-mark {
+    margin-right: 0;
+  }
+
+  .editor-project-name {
+    max-width: 108px;
   }
 
   .top-export {

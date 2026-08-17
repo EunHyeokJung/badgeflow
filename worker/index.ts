@@ -1,4 +1,4 @@
-/** Cloudflare Worker entry point for BadgeFlow. */
+/** Cloudflare Worker entry point for LanyardStudio. */
 import {
   DEFAULT_DEVICE_SIZES,
   DEFAULT_IMAGE_SIZES,

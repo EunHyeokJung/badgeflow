@@ -5,8 +5,8 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "BadgeFlow 명찰 인쇄 스튜디오",
-    short_name: "BadgeFlow",
+    name: "LanyardStudio 명찰 인쇄 스튜디오",
+    short_name: "LanyardStudio",
     description:
       "명찰 크기 선택부터 디자인, 명단 연결, 실제 크기 PDF 출력까지",
     id: withBasePath("/"),
@@ -32,8 +32,8 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "BadgeFlow",
-        short_name: "BadgeFlow",
+        name: "LanyardStudio",
+        short_name: "LanyardStudio",
         url: withBasePath("/"),
         icons: [
           {

@@ -1,10 +1,10 @@
-# BadgeFlow
+# LanyardStudio
 
 브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
 [웹 앱 실행](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages 미러](https://eunhyeokjung.github.io/badgeflow/) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [English README](README.en.md)
 
-![BadgeFlow 미리보기](public/og.png)
+![LanyardStudio 미리보기](public/og.png)
 
 ## 주요 기능
 
@@ -24,9 +24,9 @@
 
 ## 앱 설치
 
-BadgeFlow는 별도 앱 스토어 없이 설치하는 PWA입니다.
+LanyardStudio는 별도 앱 스토어 없이 설치하는 PWA입니다.
 
-1. [BadgeFlow 웹 앱](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)을 Chrome, Edge 또는 Safari로 엽니다.
+1. [LanyardStudio 웹 앱](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/)을 Chrome, Edge 또는 Safari로 엽니다.
 2. 상단의 **앱 설치**를 누릅니다. 버튼이 보이지 않으면 브라우저 메뉴의 **앱 설치** 또는 **홈 화면에 추가**를 선택합니다.
 3. 설치 후에는 앱 창과 홈 화면 아이콘으로 실행할 수 있으며, 한 번 연 화면은 네트워크가 불안정해도 다시 열 수 있습니다.
 
@@ -67,7 +67,7 @@ npm run start      # 빌드 결과 로컬 실행
 | --- | --- |
 | 이미지 | PNG, JPEG, WebP, SVG · 파일당 최대 10MB |
 | CSV | UTF-8 권장 · 최대 5MB, 500행, 50열 |
-| 프로젝트 | `.badgeflow.json` · 최대 30MB |
+| 프로젝트 | `.lanyardstudio.json` · 최대 30MB (`.badgeflow.json`도 호환) |
 | PDF | 150, 300, 600 DPI |
 | 저장 | IndexedDB 우선, localStorage 폴백 |
 
@@ -77,7 +77,7 @@ SVG는 스크립트, 외부 리소스 참조, 위험한 CSS를 제거한 뒤 사
 
 ```text
 app/                 Next.js App Router, 메타데이터, 오류 화면
-components/          BadgeFlow 편집기 UI와 PDF 렌더링
+components/          LanyardStudio 편집기 UI와 PDF 렌더링
 lib/badgeflow/       브라우저 저장소 어댑터
 worker/              Cloudflare Worker 엔트리와 보안 헤더
 tests/               서버 렌더링 및 배포 계약 테스트

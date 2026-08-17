@@ -1,6 +1,13 @@
 # Changelog
 
-All notable changes to BadgeFlow are documented here.
+All notable changes to LanyardStudio are documented here.
+
+## 1.2.0 — 2026-08-17
+
+- Renamed the product to LanyardStudio with a new vector mark, PWA icons, favicon, and social preview.
+- Added project renaming from both the saved-project list and the editor header.
+- Added pointer resizing with aspect-ratio and canvas-boundary constraints, plus global Backspace/Delete handling for selected elements.
+- Added variable-to-layer connection details, data-table column actions, and undo/redo support for roster editing.
 
 ## 1.1.0 — 2026-07-28
 

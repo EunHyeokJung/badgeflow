@@ -1,8 +1,8 @@
-# BadgeFlow Architecture
+# LanyardStudio Architecture
 
 ## 목표
 
-BadgeFlow는 계정이나 서버 데이터베이스 없이 명찰 디자인부터 인쇄까지 완료하는 local-first 웹 애플리케이션입니다. 핵심 품질 기준은 실제 크기 인쇄 정확도, 사용자 파일의 로컬 처리, 복구 가능한 편집 상태입니다.
+LanyardStudio는 계정이나 서버 데이터베이스 없이 명찰 디자인부터 인쇄까지 완료하는 local-first 웹 애플리케이션입니다. 핵심 품질 기준은 실제 크기 인쇄 정확도, 사용자 파일의 로컬 처리, 복구 가능한 편집 상태입니다.
 
 ## 데이터 흐름
 

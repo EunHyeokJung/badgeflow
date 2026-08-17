@@ -1,6 +1,6 @@
 {
-  "name": "badgeflow",
-  "version": "1.1.0",
+  "name": "lanyard-studio",
+  "version": "1.2.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -41,7 +41,7 @@
     "wrangler": "^4.114.0"
   },
   "type": "module",
-  "description": "Open-source browser-based name badge design and print studio",
+  "description": "Open-source browser-based lanyard badge design and print studio",
   "license": "MIT",
   "author": {
     "name": "EunHyeokJung",

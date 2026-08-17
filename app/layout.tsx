@@ -6,7 +6,7 @@ import {
 } from "@/lib/site";
 import "./globals.css";
 
-const title = "BadgeFlow | 명찰 인쇄 스튜디오";
+const title = "LanyardStudio | 명찰 인쇄 스튜디오";
 const description =
   "대표 명찰 규격을 선택하고 디자인과 명단을 연결해 실제 크기 PDF로 출력하는 웹 도구";
 const socialDescription =
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
         url: absoluteSiteUrl("/og.png"),
         width: 1536,
         height: 1024,
-        alt: "BadgeFlow 명찰 인쇄 스튜디오",
+        alt: "LanyardStudio 명찰 인쇄 스튜디오",
       },
     ],
   },

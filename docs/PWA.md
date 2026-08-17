@@ -1,6 +1,6 @@
-# BadgeFlow PWA
+# LanyardStudio PWA
 
-BadgeFlow is distributed as an installable Progressive Web App.
+LanyardStudio is distributed as an installable Progressive Web App.
 
 ## App surface
 
@@ -15,7 +15,7 @@ BadgeFlow is distributed as an installable Progressive Web App.
 
 The service worker uses a versioned cache. Navigation uses network-first behavior so published updates win when online and the cached shell is used when offline. Same-origin scripts, styles, fonts, and images are cached after a successful response.
 
-BadgeFlow does not cache cross-origin requests or server data. User projects remain in IndexedDB or the localStorage fallback and are not placed in the service-worker cache.
+LanyardStudio does not cache cross-origin requests or server data. User projects remain in IndexedDB or the localStorage fallback and are not placed in the service-worker cache.
 
 ## Release checklist
 

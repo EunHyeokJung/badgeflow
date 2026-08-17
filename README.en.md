@@ -1,10 +1,10 @@
-# BadgeFlow
+# LanyardStudio
 
-BadgeFlow is an open-source, browser-based name badge designer that connects CSV data to reusable layouts and exports print-ready PDFs at true physical size.
+LanyardStudio is an open-source, browser-based name badge designer that connects CSV data to reusable layouts and exports print-ready PDFs at true physical size.
 
 [Open the web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) · [GitHub Pages mirror](https://eunhyeokjung.github.io/badgeflow/) · [Download the latest release](https://github.com/EunHyeokJung/badgeflow/releases/latest) · [한국어 README](README.md)
 
-![BadgeFlow preview](public/og.png)
+![LanyardStudio preview](public/og.png)
 
 ## Features
 
@@ -23,7 +23,7 @@ Uploaded images and CSV data are processed in your browser and are not sent to a
 
 ## Install the app
 
-Open the [BadgeFlow web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
+Open the [LanyardStudio web app](https://badgeflow-studio.silverhyeok-dev.chatgpt.site/) in Chrome, Edge, or Safari. Use **Install app** in the header, or choose **Install app** / **Add to Home Screen** from the browser menu.
 
 The locale picker changes application UI only. It never rewrites CSV headers, roster values, or text placed on the badge. New untranslated messages fall back to English.
 
