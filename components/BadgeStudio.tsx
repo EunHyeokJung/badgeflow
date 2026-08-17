@@ -19,16 +19,17 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
+  Group,
   Image as ImageIcon,
   ImagePlus,
   Layers3,
   LayoutTemplate,
   LoaderCircle,
   Lock,
+  Minus,
   MousePointer2,
   MoveHorizontal,
   MoveVertical,
-  Minus,
   Palette,
   Pencil,
   Plus,
@@ -41,6 +42,7 @@ import {
   Trash2,
   Type,
   Undo2,
+  Ungroup,
   Unlock,
   Upload,
   X,
@@ -60,18 +62,18 @@ import {
 } from "react";
 import { AppControls } from "@/components/AppControls";
 import {
-  deleteProjectDraft,
-  listProjectDrafts,
-  loadProjectDraft,
-  saveProjectDraft,
-  type StoredProjectSummary,
-} from "@/lib/lanyardstudio/storage";
-import {
   type Locale,
   type MessageKey,
   type Translate,
   useI18n,
 } from "@/lib/i18n";
+import {
+  deleteProjectDraft,
+  listProjectDrafts,
+  loadProjectDraft,
+  type StoredProjectSummary,
+  saveProjectDraft,
+} from "@/lib/lanyardstudio/storage";
 import { withBasePath } from "@/lib/site";
 
 type Mode = "design" | "data" | "print";
@@ -88,6 +90,7 @@ type InspectorSheetState = "collapsed" | "half" | "expanded";
 type CommonElement = {
   id: string;
   name: string;
+  groupId?: string;
   type: "text" | "image" | "shape";
   x: number;
   y: number;
@@ -162,11 +165,11 @@ type PageSettings = {
 };
 
 type DragState = {
-  id: string;
+  anchorId: string;
+  ids: string[];
   pointerX: number;
   pointerY: number;
-  elementX: number;
-  elementY: number;
+  origins: Record<string, { x: number; y: number }>;
 };
 
 type ResizeDirection = "nw" | "ne" | "sw" | "se";
@@ -186,6 +189,13 @@ type ResizeState = {
 type SnapGuides = {
   vertical: boolean;
   horizontal: boolean;
+};
+
+type CanvasContextMenu = {
+  x: number;
+  y: number;
+  targetIds: string[];
+  groupId?: string;
 };
 
 type InspectorSheetDrag = {
@@ -229,7 +239,7 @@ type ActiveProject = Pick<
 >;
 
 const PROJECT_FORMAT = "lanyardstudio" as const;
-const PROJECT_VERSION = 9;
+const PROJECT_VERSION = 10;
 
 const FONT_FAMILIES: ReadonlyArray<{
   value: FontFamilyKey;
@@ -1610,8 +1620,12 @@ function normalizeElement(element: unknown): CanvasElement | null {
   if (!isRecord(element)) return null;
   const common = {
     id: boundedString(element.id, makeId("element"), 120) || makeId("element"),
-    x: boundedNumber(element.x, 0, 0, 500),
-    y: boundedNumber(element.y, 0, 0, 500),
+    groupId:
+      typeof element.groupId === "string" && element.groupId.trim()
+        ? boundedString(element.groupId, "", 120)
+        : undefined,
+    x: boundedNumber(element.x, 0, -500, 500),
+    y: boundedNumber(element.y, 0, -500, 500),
     width: boundedNumber(element.width, 20, 1, 500),
     opacity: boundedNumber(element.opacity, 1, 0, 1),
     rotation: boundedNumber(element.rotation, 0, -180, 180),
@@ -1841,33 +1855,45 @@ function normalizeProject(value: unknown): BadgeProject | null {
         .map(normalizeElement)
         .filter((element): element is CanvasElement => Boolean(element))
         .map((element) => {
-          const width = Math.min(element.width, badgeWidth);
-          const x = clamp(element.x, 0, badgeWidth - width);
+          const width = Math.min(element.width, badgeWidth * 2);
           if (element.type === "image") {
-            const height = Math.min(element.height, badgeHeight);
+            const height = Math.min(element.height, badgeHeight * 2);
+            const sizedElement = { ...element, width, height };
+            const bounds = getElementMoveBounds(
+              sizedElement,
+              badgeWidth,
+              badgeHeight,
+            );
             return {
-              ...element,
-              x,
-              y: clamp(element.y, 0, badgeHeight - height),
-              width,
-              height,
+              ...sizedElement,
+              x: clamp(element.x, bounds.minX, bounds.maxX),
+              y: clamp(element.y, bounds.minY, bounds.maxY),
             };
           }
           if (element.type === "shape") {
-            const height = Math.min(element.height, badgeHeight);
+            const height = Math.min(element.height, badgeHeight * 2);
+            const sizedElement = { ...element, width, height };
+            const bounds = getElementMoveBounds(
+              sizedElement,
+              badgeWidth,
+              badgeHeight,
+            );
             return {
-              ...element,
-              x,
-              y: clamp(element.y, 0, badgeHeight - height),
-              width,
-              height,
+              ...sizedElement,
+              x: clamp(element.x, bounds.minX, bounds.maxX),
+              y: clamp(element.y, bounds.minY, bounds.maxY),
             };
           }
+          const sizedElement = { ...element, width };
+          const bounds = getElementMoveBounds(
+            sizedElement,
+            badgeWidth,
+            badgeHeight,
+          );
           return {
-            ...element,
-            x,
-            y: clamp(element.y, 0, badgeHeight),
-            width,
+            ...sizedElement,
+            x: clamp(element.x, bounds.minX, bounds.maxX),
+            y: clamp(element.y, bounds.minY, bounds.maxY),
           };
         })
         .map((element) => {
@@ -1937,20 +1963,63 @@ function resolveText(
   return value || (showPlaceholder ? `{{${element.field}}}` : "");
 }
 
-function getElementCenter(element: CanvasElement) {
+function getElementVisualHeight(element: CanvasElement) {
+  if (element.type !== "text") return element.height;
+  return Math.max(2.5, element.fontSize * 0.352778 * 1.15);
+}
+
+function getElementRect(element: CanvasElement) {
+  const height = getElementVisualHeight(element);
   return {
-    x: element.x + element.width / 2,
-    y:
-      element.type !== "text"
-        ? element.y + element.height / 2
-        : element.y,
+    left: element.x,
+    top: element.type === "text" ? element.y - height / 2 : element.y,
+    right: element.x + element.width,
+    bottom:
+      element.type === "text" ? element.y + height / 2 : element.y + height,
   };
 }
 
-function getElementMaxY(element: CanvasElement, badgeHeight: number) {
-  return element.type !== "text"
-    ? Math.max(0, badgeHeight - element.height)
-    : badgeHeight;
+function getElementMoveBounds(
+  element: CanvasElement,
+  badgeWidth: number,
+  badgeHeight: number,
+) {
+  const height = getElementVisualHeight(element);
+  const visibleX = Math.min(5, Math.max(1, element.width * 0.25));
+  const visibleY = Math.min(5, Math.max(1, height * 0.25));
+  return {
+    minX: -element.width + visibleX,
+    maxX: badgeWidth - visibleX,
+    minY:
+      element.type === "text"
+        ? -height / 2 + visibleY
+        : -height + visibleY,
+    maxY:
+      element.type === "text"
+        ? badgeHeight + height / 2 - visibleY
+        : badgeHeight - visibleY,
+  };
+}
+
+function getSelectionRect(elements: CanvasElement[]) {
+  if (!elements.length) return null;
+  return elements.reduce(
+    (bounds, element) => {
+      const rect = getElementRect(element);
+      return {
+        left: Math.min(bounds.left, rect.left),
+        top: Math.min(bounds.top, rect.top),
+        right: Math.max(bounds.right, rect.right),
+        bottom: Math.max(bounds.bottom, rect.bottom),
+      };
+    },
+    {
+      left: Number.POSITIVE_INFINITY,
+      top: Number.POSITIVE_INFINITY,
+      right: Number.NEGATIVE_INFINITY,
+      bottom: Number.NEGATIVE_INFINITY,
+    },
+  );
 }
 
 function getPageLayout(
@@ -2233,7 +2302,7 @@ function BadgeContents({
   backgroundFit,
   elements,
   row,
-  selectedElementId,
+  selectedElementIds = [],
   snapGuides,
   interactive = false,
   onSelect,
@@ -2242,6 +2311,7 @@ function BadgeContents({
   onPointerMove,
   onPointerUp,
   onKeyMove,
+  onElementContextMenu,
   t,
 }: {
   badgeWidth: number;
@@ -2253,10 +2323,10 @@ function BadgeContents({
   elements: CanvasElement[];
   row: BadgeRow | undefined;
   t: Translate;
-  selectedElementId?: string | null;
+  selectedElementIds?: string[];
   snapGuides?: SnapGuides;
   interactive?: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, additive?: boolean) => void;
   onPointerDown?: (
     event: ReactPointerEvent<HTMLDivElement>,
     element: CanvasElement,
@@ -2272,6 +2342,10 @@ function BadgeContents({
     event: React.KeyboardEvent<HTMLDivElement>,
     element: CanvasElement,
   ) => void;
+  onElementContextMenu?: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    element: CanvasElement,
+  ) => void;
 }) {
   const stageStyle = {
     "--badge-ratio": `${badgeWidth} / ${badgeHeight}`,
@@ -2280,6 +2354,15 @@ function BadgeContents({
     backgroundSize:
       backgroundFit === "stretch" ? "100% 100%" : backgroundFit,
   } as CSSProperties;
+  const selectionSet = new Set(selectedElementIds);
+  const selectionRect =
+    interactive && selectedElementIds.length > 1
+      ? getSelectionRect(
+          elements.filter(
+            (element) => !element.hidden && selectionSet.has(element.id),
+          ),
+        )
+      : null;
 
   return (
     <div
@@ -2315,9 +2398,21 @@ function BadgeContents({
       {interactive && snapGuides?.vertical && snapGuides.horizontal && (
         <span className="alignment-center-point" aria-hidden="true" />
       )}
+      {selectionRect && (
+        <div
+          className="multi-selection-outline"
+          style={{
+            left: `${(selectionRect.left / badgeWidth) * 100}%`,
+            top: `${(selectionRect.top / badgeHeight) * 100}%`,
+            width: `${((selectionRect.right - selectionRect.left) / badgeWidth) * 100}%`,
+            height: `${((selectionRect.bottom - selectionRect.top) / badgeHeight) * 100}%`,
+          }}
+          aria-hidden="true"
+        />
+      )}
       {elements.map((element, index) => {
         if (element.hidden) return null;
-        const isSelected = selectedElementId === element.id;
+        const isSelected = selectionSet.has(element.id);
         const elementLabel = getElementLabel(element, t);
 
         if (element.type === "image") {
@@ -2343,7 +2438,7 @@ function BadgeContents({
                 "aria-label": t("imageElement", { name: elementLabel || "" }),
                 onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                   event.stopPropagation();
-                  onSelect?.(element.id);
+                  if (event.detail === 0) onSelect?.(element.id, false);
                 },
                 onPointerDown: (
                   event: ReactPointerEvent<HTMLDivElement>,
@@ -2353,6 +2448,8 @@ function BadgeContents({
                 },
                 onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
                   onKeyMove?.(event, element),
+                onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) =>
+                  onElementContextMenu?.(event, element),
               }
             : {};
 
@@ -2372,7 +2469,7 @@ function BadgeContents({
                     element.fit === "stretch" ? "fill" : element.fit,
                 }}
               />
-              {interactive && isSelected && !element.locked &&
+              {interactive && isSelected && selectedElementIds.length === 1 && !element.locked &&
                 RESIZE_DIRECTIONS.map((direction) => (
                   <span
                     key={direction}
@@ -2429,7 +2526,7 @@ function BadgeContents({
                 "aria-label": t("shapeElement", { name: elementLabel }),
                 onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                   event.stopPropagation();
-                  onSelect?.(element.id);
+                  if (event.detail === 0) onSelect?.(element.id, false);
                 },
                 onPointerDown: (
                   event: ReactPointerEvent<HTMLDivElement>,
@@ -2439,6 +2536,8 @@ function BadgeContents({
                 },
                 onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
                   onKeyMove?.(event, element),
+                onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) =>
+                  onElementContextMenu?.(event, element),
               }
             : {};
 
@@ -2450,7 +2549,7 @@ function BadgeContents({
               {...interactionProps}
             >
               <span className="shape-visual" style={visualStyle} />
-              {interactive && isSelected && !element.locked &&
+              {interactive && isSelected && selectedElementIds.length === 1 && !element.locked &&
                 RESIZE_DIRECTIONS.map((direction) => (
                   <span
                     key={direction}
@@ -2491,7 +2590,7 @@ function BadgeContents({
               "aria-label": t("textElement", { name: elementLabel || "" }),
               onClick: (event: ReactMouseEvent<HTMLDivElement>) => {
                 event.stopPropagation();
-                onSelect?.(element.id);
+                if (event.detail === 0) onSelect?.(element.id, false);
               },
               onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
                 event.currentTarget.focus({ preventScroll: true });
@@ -2499,6 +2598,8 @@ function BadgeContents({
               },
               onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) =>
                 onKeyMove?.(event, element),
+              onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) =>
+                onElementContextMenu?.(event, element),
             }
           : {};
 
@@ -2510,7 +2611,7 @@ function BadgeContents({
             {...interactionProps}
           >
             {resolveText(element, row)}
-            {interactive && isSelected && !element.locked &&
+            {interactive && isSelected && selectedElementIds.length === 1 && !element.locked &&
               RESIZE_DIRECTIONS.map((direction) => (
                 <span
                   key={direction}
@@ -2542,9 +2643,12 @@ export function BadgeStudio() {
   const [elements, setElements] = useState<CanvasElement[]>(DEFAULT_ELEMENTS);
   const [historyPast, setHistoryPast] = useState<CanvasElement[][]>([]);
   const [historyFuture, setHistoryFuture] = useState<CanvasElement[][]>([]);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(
+  const [selectedElementId, setSelectedElementIdState] = useState<string | null>(
     "element-name",
   );
+  const [selectedElementIds, setSelectedElementIdsState] = useState<string[]>([
+    "element-name",
+  ]);
   const [fields, setFields] = useState<string[]>(DEFAULT_FIELDS);
   const [rows, setRows] = useState<BadgeRow[]>(SAMPLE_ROWS);
   const [selectedRowId, setSelectedRowId] = useState("row-1");
@@ -2563,6 +2667,8 @@ export function BadgeStudio() {
   const [csvError, setCsvError] = useState("");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [resize, setResize] = useState<ResizeState | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] =
+    useState<CanvasContextMenu | null>(null);
   const [snapGuides, setSnapGuides] = useState<SnapGuides>({
     vertical: false,
     horizontal: false,
@@ -2583,12 +2689,14 @@ export function BadgeStudio() {
   const qrDialogRef = useRef<HTMLElement>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
   const qrLaunchButtonRef = useRef<HTMLButtonElement>(null);
+  const canvasContextMenuRef = useRef<HTMLDivElement>(null);
   const newFieldInputRef = useRef<HTMLInputElement>(null);
   const guideTimerRef = useRef<number | null>(null);
   const elementsRef = useRef<CanvasElement[]>(DEFAULT_ELEMENTS);
   const fieldsRef = useRef<string[]>(DEFAULT_FIELDS);
   const rowsRef = useRef<BadgeRow[]>(SAMPLE_ROWS);
   const selectedElementIdRef = useRef<string | null>("element-name");
+  const selectedElementIdsRef = useRef<string[]>(["element-name"]);
   const selectedRowIdRef = useRef("row-1");
   const activeDataCellKeyRef = useRef<string | null>(null);
   const dataCellEditRecordedRef = useRef(false);
@@ -2600,8 +2708,35 @@ export function BadgeStudio() {
   const inspectorSheetDragRef = useRef<InspectorSheetDrag | null>(null);
   const suppressInspectorSheetClickRef = useRef(false);
 
+  function setSelection(ids: string[], primaryId?: string | null) {
+    const uniqueIds = [...new Set(ids)];
+    const nextPrimaryId =
+      primaryId && uniqueIds.includes(primaryId)
+        ? primaryId
+        : uniqueIds.at(-1) || null;
+    selectedElementIdsRef.current = uniqueIds;
+    selectedElementIdRef.current = nextPrimaryId;
+    setSelectedElementIdsState(uniqueIds);
+    setSelectedElementIdState(nextPrimaryId);
+  }
+
+  function setSelectedElementId(id: string | null) {
+    setSelection(id ? [id] : [], id);
+  }
+
+  const selectedElements = elements.filter((element) =>
+    selectedElementIds.includes(element.id),
+  );
   const selectedElement =
-    elements.find((element) => element.id === selectedElementId) || null;
+    selectedElements.length === 1 ? selectedElements[0] : null;
+  const selectedGroupId =
+    selectedElements.length > 1 &&
+    selectedElements[0]?.groupId &&
+    selectedElements.every(
+      (element) => element.groupId === selectedElements[0].groupId,
+    )
+      ? selectedElements[0].groupId
+      : undefined;
   const layout = useMemo(
     () => getPageLayout(page, badgeWidth, badgeHeight),
     [page, badgeWidth, badgeHeight],
@@ -2750,6 +2885,40 @@ export function BadgeStudio() {
   }, [isQrDialogOpen]);
 
   useEffect(() => {
+    if (!canvasContextMenu) return;
+    const closeMenu = () => setCanvasContextMenu(null);
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(".canvas-context-menu")
+      ) {
+        return;
+      }
+      closeMenu();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    const focusFrame = window.requestAnimationFrame(() =>
+      canvasContextMenuRef.current
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus({ preventScroll: true }),
+    );
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [canvasContextMenu]);
+
+  useEffect(() => {
     elementsRef.current = elements;
   }, [elements]);
 
@@ -2766,11 +2935,15 @@ export function BadgeStudio() {
   }, [selectedElementId]);
 
   useEffect(() => {
-    if (!selectedElementId) return;
+    selectedElementIdsRef.current = selectedElementIds;
+  }, [selectedElementIds]);
+
+  useEffect(() => {
+    if (!selectedElementIds.length) return;
     setInspectorSheetState((current) =>
       current === "collapsed" ? "half" : current,
     );
-  }, [selectedElementId]);
+  }, [selectedElementIds]);
 
   useEffect(() => {
     selectedRowIdRef.current = selectedRowId;
@@ -2854,10 +3027,13 @@ export function BadgeStudio() {
     setSelectedRowId(nextSelectedRowId);
     if (entry.includesElements && entry.snapshot.elements) {
       const nextElements = cloneElements(entry.snapshot.elements);
+      const nextSelectedId = entry.snapshot.selectedElementId ?? null;
       elementsRef.current = nextElements;
-      selectedElementIdRef.current = entry.snapshot.selectedElementId ?? null;
+      selectedElementIdRef.current = nextSelectedId;
+      selectedElementIdsRef.current = nextSelectedId ? [nextSelectedId] : [];
       setElements(nextElements);
-      setSelectedElementId(entry.snapshot.selectedElementId ?? null);
+      setSelectedElementIdState(nextSelectedId);
+      setSelectedElementIdsState(nextSelectedId ? [nextSelectedId] : []);
     }
   }, []);
 
@@ -2891,7 +3067,9 @@ export function BadgeStudio() {
       ? selectedElementIdRef.current
       : null;
     selectedElementIdRef.current = nextSelectedId;
-    setSelectedElementId(nextSelectedId);
+    selectedElementIdsRef.current = nextSelectedId ? [nextSelectedId] : [];
+    setSelectedElementIdState(nextSelectedId);
+    setSelectedElementIdsState(nextSelectedId ? [nextSelectedId] : []);
   }, [historyPast]);
 
   const redoElements = useCallback(() => {
@@ -2940,18 +3118,26 @@ export function BadgeStudio() {
   ]);
 
   const deleteSelectedFromShortcut = useCallback(() => {
-    const id = selectedElementIdRef.current;
-    if (!id) return;
-    const selected = elementsRef.current.find((element) => element.id === id);
-    if (!selected || selected.locked) return;
+    const ids = selectedElementIdsRef.current;
+    if (!ids.length) return;
+    const deletableIds = new Set(
+      elementsRef.current
+        .filter((element) => ids.includes(element.id) && !element.locked)
+        .map((element) => element.id),
+    );
+    if (!deletableIds.size) return;
     const snapshot = cloneElements(elementsRef.current);
-    const next = elementsRef.current.filter((element) => element.id !== id);
+    const next = elementsRef.current.filter(
+      (element) => !deletableIds.has(element.id),
+    );
     setHistoryPast((current) => [...current.slice(-39), snapshot]);
     setHistoryFuture([]);
     elementsRef.current = next;
+    selectedElementIdsRef.current = [];
     selectedElementIdRef.current = null;
     setElements(next);
-    setSelectedElementId(null);
+    setSelectedElementIdsState([]);
+    setSelectedElementIdState(null);
   }, []);
 
   function snapInspectorSheet(next: InspectorSheetState) {
@@ -3090,15 +3276,18 @@ export function BadgeStudio() {
         return;
       }
       if (event.key === "Delete" || event.key === "Backspace") {
-        const selected = elementsRef.current.find(
-          (element) => element.id === selectedElementIdRef.current,
+        const hasDeletableSelection = elementsRef.current.some(
+          (element) =>
+            selectedElementIdsRef.current.includes(element.id) &&
+            !element.locked,
         );
-        if (!selected || selected.locked) return;
+        if (!hasDeletableSelection) return;
         event.preventDefault();
         deleteSelectedFromShortcut();
         return;
       }
       if (event.key === "Escape") {
+        if (document.querySelector(".canvas-context-menu")) return;
         if (
           inspectorSheetState !== "collapsed" &&
           window.matchMedia("(min-width: 681px) and (max-width: 980px)")
@@ -3109,7 +3298,9 @@ export function BadgeStudio() {
           return;
         }
         selectedElementIdRef.current = null;
-        setSelectedElementId(null);
+        selectedElementIdsRef.current = [];
+        setSelectedElementIdState(null);
+        setSelectedElementIdsState([]);
       }
     };
     window.addEventListener("keydown", handleShortcut);
@@ -3450,6 +3641,84 @@ export function BadgeStudio() {
     }
   }
 
+  function getSelectionTargets(element: CanvasElement) {
+    return element.groupId
+      ? elementsRef.current
+          .filter((item) => item.groupId === element.groupId)
+          .map((item) => item.id)
+      : [element.id];
+  }
+
+  function selectCanvasElement(element: CanvasElement, additive = false) {
+    const targets = getSelectionTargets(element);
+    const current = selectedElementIdsRef.current;
+    let next: string[];
+    if (additive) {
+      const allSelected = targets.every((id) => current.includes(id));
+      next = allSelected
+        ? current.filter((id) => !targets.includes(id))
+        : [...new Set([...current, ...targets])];
+    } else if (current.length > 1 && targets.every((id) => current.includes(id))) {
+      next = current;
+    } else {
+      next = targets;
+    }
+    setSelection(next, next.includes(element.id) ? element.id : next.at(-1));
+    return next;
+  }
+
+  function groupElements(targetIds = selectedElementIdsRef.current) {
+    const ids = [...new Set(targetIds)];
+    if (ids.length < 2) return;
+    const groupId = makeId("group");
+    mutateElements((current) =>
+      current.map((element) =>
+        ids.includes(element.id) ? { ...element, groupId } : element,
+      ),
+    );
+    setSelection(ids, ids.at(-1));
+    setCanvasContextMenu(null);
+  }
+
+  function ungroupElements(groupId?: string) {
+    const groupIds = new Set(
+      groupId
+        ? [groupId]
+        : elementsRef.current
+            .filter((element) =>
+              selectedElementIdsRef.current.includes(element.id),
+            )
+            .flatMap((element) => (element.groupId ? [element.groupId] : [])),
+    );
+    if (!groupIds.size) return;
+    mutateElements((current) =>
+      current.map((element) =>
+        element.groupId && groupIds.has(element.groupId)
+          ? { ...element, groupId: undefined }
+          : element,
+      ),
+    );
+    setCanvasContextMenu(null);
+  }
+
+  function handleElementContextMenu(
+    event: ReactMouseEvent<HTMLDivElement>,
+    element: CanvasElement,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    const targets = getSelectionTargets(element);
+    const current = selectedElementIdsRef.current;
+    const targetIds = current.includes(element.id) ? current : targets;
+    if (!current.includes(element.id)) setSelection(targetIds, element.id);
+    setCanvasContextMenu({
+      x: Math.min(event.clientX, window.innerWidth - 184),
+      y: Math.min(event.clientY, window.innerHeight - 176),
+      targetIds,
+      groupId: element.groupId,
+    });
+  }
+
   function duplicateSelected() {
     if (!selectedElement) return;
     if (!canAddElement()) return;
@@ -3457,25 +3726,26 @@ export function BadgeStudio() {
       ...selectedElement,
       id: makeId("element"),
       name: `${getElementLabel(selectedElement, t)} ${t("duplicate")}`,
-      x: clamp(selectedElement.x + 3, 0, badgeWidth - selectedElement.width),
-      y: clamp(
-        selectedElement.y + 3,
-        0,
-        getElementMaxY(selectedElement, badgeHeight),
-      ),
+      x: selectedElement.x + 3,
+      y: selectedElement.y + 3,
+      groupId: undefined,
       locked: false,
     } as CanvasElement;
+    const duplicateBounds = getElementMoveBounds(
+      duplicate,
+      badgeWidth,
+      badgeHeight,
+    );
+    duplicate.x = clamp(duplicate.x, duplicateBounds.minX, duplicateBounds.maxX);
+    duplicate.y = clamp(duplicate.y, duplicateBounds.minY, duplicateBounds.maxY);
     mutateElements((current) => [...current, duplicate]);
     setSelectedElementId(duplicate.id);
+    setCanvasContextMenu(null);
   }
 
   function deleteSelected() {
-    if (!selectedElementId || selectedElement?.locked) return;
-    mutateElements((current) =>
-      current.filter((element) => element.id !== selectedElementId),
-    );
-    selectedElementIdRef.current = null;
-    setSelectedElementId(null);
+    deleteSelectedFromShortcut();
+    setCanvasContextMenu(null);
   }
 
   function flashGuides(guides: SnapGuides) {
@@ -3510,22 +3780,46 @@ export function BadgeStudio() {
     element: CanvasElement,
   ) {
     if (!stageRef.current) return;
-    event.preventDefault();
     event.stopPropagation();
-    setSelectedElementId(element.id);
-    selectedElementIdRef.current = element.id;
+    if (event.button !== 0) return;
+    event.preventDefault();
+    setCanvasContextMenu(null);
+    const nextSelection = selectCanvasElement(
+      element,
+      event.metaKey || event.ctrlKey || event.shiftKey,
+    );
     if (element.locked) return;
+    if (
+      element.groupId &&
+      elementsRef.current.some(
+        (item) =>
+          nextSelection.includes(item.id) &&
+          item.groupId === element.groupId &&
+          item.locked,
+      )
+    ) {
+      return;
+    }
+    const draggableIds = nextSelection.filter((id) => {
+      const item = elementsRef.current.find((candidate) => candidate.id === id);
+      return item && !item.locked;
+    });
+    if (!draggableIds.includes(element.id)) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     rememberElements();
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
     setSnapGuides({ vertical: false, horizontal: false });
     setResize(null);
     setDrag({
-      id: element.id,
+      anchorId: element.id,
+      ids: draggableIds,
       pointerX: event.clientX,
       pointerY: event.clientY,
-      elementX: element.x,
-      elementY: element.y,
+      origins: Object.fromEntries(
+        elementsRef.current
+          .filter((item) => draggableIds.includes(item.id))
+          .map((item) => [item.id, { x: item.x, y: item.y }]),
+      ),
     });
   }
 
@@ -3540,7 +3834,6 @@ export function BadgeStudio() {
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.parentElement?.focus({ preventScroll: true });
     setSelectedElementId(element.id);
-    selectedElementIdRef.current = element.id;
     rememberElements();
     setDrag(null);
     setSnapGuides({ vertical: false, horizontal: false });
@@ -3596,8 +3889,8 @@ export function BadgeStudio() {
         const maximumWidth = Math.max(
           0.5,
           Math.min(
-            isWest ? anchorX : badgeWidth - anchorX,
-            (isNorth ? anchorY : badgeHeight - anchorY) * resize.aspectRatio,
+            badgeWidth * 2,
+            badgeHeight * 2 * resize.aspectRatio,
           ),
         );
         const minimumWidth = Math.min(5, maximumWidth);
@@ -3632,11 +3925,11 @@ export function BadgeStudio() {
           : resize.elementY;
         const maximumWidth = Math.max(
           0.5,
-          isWest ? anchorX : badgeWidth - anchorX,
+          badgeWidth * 2,
         );
         const maximumHeight = Math.max(
           0.5,
-          isNorth ? anchorY : badgeHeight - anchorY,
+          badgeHeight * 2,
         );
         const minimumWidth = Math.min(5, maximumWidth);
         const minimumHeight = Math.min(
@@ -3675,7 +3968,7 @@ export function BadgeStudio() {
           : resize.elementX;
         const maximumWidth = Math.max(
           0.5,
-          isWest ? anchorX : badgeWidth - anchorX,
+          badgeWidth * 2,
         );
         const minimumWidth = Math.min(5, maximumWidth);
         const width =
@@ -3699,42 +3992,82 @@ export function BadgeStudio() {
     }
 
     if (!drag) return;
-    const element = elements.find((item) => item.id === drag.id);
-    if (!element) return;
-    const rawX =
-      drag.elementX + ((event.clientX - drag.pointerX) / rect.width) * badgeWidth;
-    const rawY =
-      drag.elementY + ((event.clientY - drag.pointerY) / rect.height) * badgeHeight;
+    const draggedElements = elements.filter((item) => drag.ids.includes(item.id));
+    const anchor = draggedElements.find((item) => item.id === drag.anchorId);
+    const anchorOrigin = drag.origins[drag.anchorId];
+    if (!anchor || !anchorOrigin || !draggedElements.length) return;
+    const rawDeltaX =
+      ((event.clientX - drag.pointerX) / rect.width) * badgeWidth;
+    const rawDeltaY =
+      ((event.clientY - drag.pointerY) / rect.height) * badgeHeight;
+    const deltaLimits = draggedElements.reduce(
+      (limits, element) => {
+        const origin = drag.origins[element.id];
+        if (!origin) return limits;
+        const bounds = getElementMoveBounds(element, badgeWidth, badgeHeight);
+        return {
+          minX: Math.max(limits.minX, bounds.minX - origin.x),
+          maxX: Math.min(limits.maxX, bounds.maxX - origin.x),
+          minY: Math.max(limits.minY, bounds.minY - origin.y),
+          maxY: Math.min(limits.maxY, bounds.maxY - origin.y),
+        };
+      },
+      {
+        minX: Number.NEGATIVE_INFINITY,
+        maxX: Number.POSITIVE_INFINITY,
+        minY: Number.NEGATIVE_INFINITY,
+        maxY: Number.POSITIVE_INFINITY,
+      },
+    );
+    let nextDeltaX = clamp(rawDeltaX, deltaLimits.minX, deltaLimits.maxX);
+    let nextDeltaY = clamp(rawDeltaY, deltaLimits.minY, deltaLimits.maxY);
     const snapThresholdX = (10 / rect.width) * badgeWidth;
     const snapThresholdY = (10 / rect.height) * badgeHeight;
-    let nextX = clamp(rawX, 0, badgeWidth - element.width);
-    let nextY = clamp(rawY, 0, getElementMaxY(element, badgeHeight));
-    const center = getElementCenter({ ...element, x: nextX, y: nextY });
+    const originSelectionRect = getSelectionRect(
+      draggedElements.map((element) => ({
+        ...element,
+        x: drag.origins[element.id]?.x ?? element.x,
+        y: drag.origins[element.id]?.y ?? element.y,
+      })),
+    );
+    if (!originSelectionRect) return;
+    const center = {
+      x:
+        (originSelectionRect.left + originSelectionRect.right) / 2 +
+        nextDeltaX,
+      y:
+        (originSelectionRect.top + originSelectionRect.bottom) / 2 +
+        nextDeltaY,
+    };
     const snapsToVerticalCenter =
       Math.abs(center.x - badgeWidth / 2) <= snapThresholdX;
     const snapsToHorizontalCenter =
       Math.abs(center.y - badgeHeight / 2) <= snapThresholdY;
 
     if (snapsToVerticalCenter) {
-      nextX = (badgeWidth - element.width) / 2;
+      nextDeltaX += badgeWidth / 2 - center.x;
     }
     if (snapsToHorizontalCenter) {
-      nextY =
-        element.type !== "text"
-          ? (badgeHeight - element.height) / 2
-          : badgeHeight / 2;
+      nextDeltaY += badgeHeight / 2 - center.y;
     }
+    nextDeltaX = clamp(nextDeltaX, deltaLimits.minX, deltaLimits.maxX);
+    nextDeltaY = clamp(nextDeltaY, deltaLimits.minY, deltaLimits.maxY);
 
     setSnapGuides({
       vertical: snapsToVerticalCenter,
       horizontal: snapsToHorizontalCenter,
     });
-    updateElement(
-      drag.id,
-      {
-        x: Math.round(nextX * 10) / 10,
-        y: Math.round(nextY * 10) / 10,
-      },
+    mutateElements(
+      (current) =>
+        current.map((element) => {
+          const origin = drag.origins[element.id];
+          if (!origin || !drag.ids.includes(element.id)) return element;
+          return {
+            ...element,
+            x: Math.round((origin.x + nextDeltaX) * 10) / 10,
+            y: Math.round((origin.y + nextDeltaY) * 10) / 10,
+          };
+        }),
       false,
     );
   }
@@ -3749,6 +4082,11 @@ export function BadgeStudio() {
     event: React.KeyboardEvent<HTMLDivElement>,
     element: CanvasElement,
   ) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectCanvasElement(element, event.metaKey || event.ctrlKey || event.shiftKey);
+      return;
+    }
     if (element.locked) return;
     const amount = event.shiftKey ? 2 : 0.5;
     const keyMap: Record<string, { x: number; y: number }> = {
@@ -3759,22 +4097,46 @@ export function BadgeStudio() {
     };
     if (keyMap[event.key]) {
       event.preventDefault();
-      updateElement(element.id, {
-        x: clamp(element.x + keyMap[event.key].x, 0, badgeWidth - element.width),
-        y: clamp(
-          element.y + keyMap[event.key].y,
-          0,
-          getElementMaxY(element, badgeHeight),
-        ),
-      });
+      const movingIds = selectedElementIdsRef.current.includes(element.id)
+        ? selectedElementIdsRef.current
+        : getSelectionTargets(element);
+      if (
+        element.groupId &&
+        elementsRef.current.some(
+          (item) =>
+            movingIds.includes(item.id) &&
+            item.groupId === element.groupId &&
+            item.locked,
+        )
+      ) {
+        return;
+      }
+      rememberElements();
+      mutateElements(
+        (current) =>
+          current.map((item) => {
+            if (!movingIds.includes(item.id) || item.locked) return item;
+            const bounds = getElementMoveBounds(item, badgeWidth, badgeHeight);
+            return {
+              ...item,
+              x: clamp(
+                item.x + keyMap[event.key].x,
+                bounds.minX,
+                bounds.maxX,
+              ),
+              y: clamp(
+                item.y + keyMap[event.key].y,
+                bounds.minY,
+                bounds.maxY,
+              ),
+            };
+          }),
+        false,
+      );
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      mutateElements((current) =>
-        current.filter((item) => item.id !== element.id),
-      );
-      selectedElementIdRef.current = null;
-      setSelectedElementId(null);
+      deleteSelectedFromShortcut();
     }
   }
 
@@ -4762,11 +5124,7 @@ export function BadgeStudio() {
               <section className="panel-section">
                 <div className="section-title">
                   <h2>{t("imageLogo")}</h2>
-                  <span>{t("addAsLayer")}</span>
                 </div>
-                <p className="section-helper">
-                  {t("imageLogoHelp")}
-                </p>
                 <label className="asset-upload-button">
                   <span className="upload-icon">
                     <ImageIcon size={19} />
@@ -4899,8 +5257,8 @@ export function BadgeStudio() {
               <div
                 className="canvas-stage"
                 onPointerDown={() => {
-                  selectedElementIdRef.current = null;
-                  setSelectedElementId(null);
+                  setSelection([]);
+                  setCanvasContextMenu(null);
                 }}
               >
                 <div className="measurement measurement-top">
@@ -4928,15 +5286,21 @@ export function BadgeStudio() {
                     backgroundFit={backgroundFit}
                     elements={elements}
                     row={undefined}
-                    selectedElementId={selectedElementId}
+                    selectedElementIds={selectedElementIds}
                     snapGuides={snapGuides}
                     interactive
-                    onSelect={setSelectedElementId}
+                    onSelect={(id, additive) => {
+                      const element = elementsRef.current.find(
+                        (item) => item.id === id,
+                      );
+                      if (element) selectCanvasElement(element, additive);
+                    }}
                     onPointerDown={handlePointerDown}
                     onResizePointerDown={handleResizePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerEnd}
                     onKeyMove={handleKeyMove}
+                    onElementContextMenu={handleElementContextMenu}
                     t={t}
                   />
                 </div>
@@ -5008,6 +5372,10 @@ export function BadgeStudio() {
                   <strong>
                     {selectedElement
                       ? getElementLabel(selectedElement, t)
+                      : selectedElements.length > 1
+                        ? t("selectedElementCount", {
+                            count: selectedElements.length,
+                          })
                       : t("inspectorSheetOverview")}
                   </strong>
                   <small>{t("inspectorSheetDragHint")}</small>
@@ -5434,15 +5802,20 @@ export function BadgeStudio() {
                           type="number"
                           step="0.5"
                           value={selectedElement.x}
-                          onChange={(event) =>
+                          onChange={(event) => {
+                            const bounds = getElementMoveBounds(
+                              selectedElement,
+                              badgeWidth,
+                              badgeHeight,
+                            );
                             updateElement(selectedElement.id, {
                               x: clamp(
                                 Number(event.target.value),
-                                0,
-                                badgeWidth - selectedElement.width,
+                                bounds.minX,
+                                bounds.maxX,
                               ),
-                            })
-                          }
+                            });
+                          }}
                         />
                       </label>
                       <label>
@@ -5451,15 +5824,20 @@ export function BadgeStudio() {
                           type="number"
                           step="0.5"
                           value={selectedElement.y}
-                          onChange={(event) =>
+                          onChange={(event) => {
+                            const bounds = getElementMoveBounds(
+                              selectedElement,
+                              badgeWidth,
+                              badgeHeight,
+                            );
                             updateElement(selectedElement.id, {
                               y: clamp(
                                 Number(event.target.value),
-                                0,
-                                getElementMaxY(selectedElement, badgeHeight),
+                                bounds.minY,
+                                bounds.maxY,
                               ),
-                            })
-                          }
+                            });
+                          }}
                         />
                       </label>
                       <label>
@@ -5475,11 +5853,12 @@ export function BadgeStudio() {
                               5,
                               selectedElement.type === "image"
                                 ? Math.min(
-                                    badgeWidth - selectedElement.x,
-                                    (badgeHeight - selectedElement.y) *
+                                    badgeWidth * 2,
+                                    badgeHeight *
+                                      2 *
                                       selectedElement.aspectRatio,
                                   )
-                                : badgeWidth - selectedElement.x,
+                                : badgeWidth * 2,
                             );
                             updateElement(
                               selectedElement.id,
@@ -5520,11 +5899,11 @@ export function BadgeStudio() {
                                   : 5,
                                 selectedElement.type === "image"
                                   ? Math.min(
-                                      badgeHeight - selectedElement.y,
-                                      (badgeWidth - selectedElement.x) /
+                                      badgeHeight * 2,
+                                      (badgeWidth * 2) /
                                         selectedElement.aspectRatio,
                                     )
-                                  : badgeHeight - selectedElement.y,
+                                  : badgeHeight * 2,
                               );
                               updateElement(
                                 selectedElement.id,
@@ -5624,6 +6003,44 @@ export function BadgeStudio() {
                   </section>
 
                 </>
+              ) : selectedElements.length > 1 ? (
+                <section className="panel-section multi-selection-inspector">
+                  <div className="multi-selection-heading">
+                    <span className="multi-selection-icon" aria-hidden="true">
+                      <MousePointer2 size={18} />
+                    </span>
+                    <strong>
+                      {t("selectedElementCount", {
+                        count: selectedElements.length,
+                      })}
+                    </strong>
+                  </div>
+                  <div className="multi-selection-actions">
+                    {selectedGroupId ? (
+                      <button
+                        type="button"
+                        onClick={() => ungroupElements(selectedGroupId)}
+                      >
+                        <Ungroup size={16} aria-hidden="true" />
+                        {t("ungroupElements")}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => groupElements()}>
+                        <Group size={16} aria-hidden="true" />
+                        {t("groupElements")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="danger-text"
+                      onClick={deleteSelected}
+                      disabled={selectedElements.every((element) => element.locked)}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                      {t("delete")}
+                    </button>
+                  </div>
+                </section>
               ) : (
                 <div className="empty-inspector">
                   <span>
@@ -5634,7 +6051,7 @@ export function BadgeStudio() {
                 </div>
               )}
 
-              {!selectedElement && (
+              {!selectedElement && selectedElements.length === 0 && (
                 <>
                   <section className="panel-section layer-panel">
                     <div className="section-title">
@@ -5648,12 +6065,17 @@ export function BadgeStudio() {
                       {[...elements].reverse().map((element) => (
                         <div
                           key={element.id}
-                          className={`layer-row ${selectedElementId === element.id ? "is-selected" : ""}`}
+                          className={`layer-row ${selectedElementIds.includes(element.id) ? "is-selected" : ""}`}
                         >
                           <button
                             type="button"
                             className="layer-main"
-                            onClick={() => setSelectedElementId(element.id)}
+                            onClick={(event) =>
+                              selectCanvasElement(
+                                element,
+                                event.metaKey || event.ctrlKey || event.shiftKey,
+                              )
+                            }
                           >
                             {element.type === "image" ? (
                               <ImageIcon size={14} />
@@ -5794,8 +6216,7 @@ export function BadgeStudio() {
                                   type="button"
                                   onClick={() => {
                                     const element = linkedElements[0];
-                                    selectedElementIdRef.current = element.id;
-                                    setSelectedElementId(element.id);
+                                    selectCanvasElement(element);
                                   }}
                                   title={getElementLabel(linkedElements[0], t)}
                                   aria-label={getElementLabel(linkedElements[0], t)}
@@ -6465,6 +6886,54 @@ export function BadgeStudio() {
           </div>
         )}
       </main>
+
+      {canvasContextMenu && (
+        <div
+          ref={canvasContextMenuRef}
+          className="canvas-context-menu"
+          role="menu"
+          aria-label={t("selectionActions")}
+          style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {canvasContextMenu.targetIds.length > 1 &&
+            !canvasContextMenu.groupId && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => groupElements(canvasContextMenu.targetIds)}
+            >
+              <Group size={16} aria-hidden="true" />
+              {t("groupElements")}
+            </button>
+          )}
+          {canvasContextMenu.groupId && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => ungroupElements(canvasContextMenu.groupId)}
+            >
+              <Ungroup size={16} aria-hidden="true" />
+              {t("ungroupElements")}
+            </button>
+          )}
+          {canvasContextMenu.targetIds.length === 1 && (
+            <button type="button" role="menuitem" onClick={duplicateSelected}>
+              <Copy size={16} aria-hidden="true" />
+              {t("duplicate")}
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            className="is-danger"
+            onClick={deleteSelected}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            {t("delete")}
+          </button>
+        </div>
+      )}
 
       {isQrDialogOpen && (
         <div className="qr-dialog-overlay">

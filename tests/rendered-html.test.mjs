@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function collectFiles(directory) {
@@ -157,7 +157,7 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /function exportProject/);
   assert.match(studio, /function importProject/);
   assert.match(studio, /const PROJECT_FORMAT = "lanyardstudio"/);
-  assert.match(studio, /const PROJECT_VERSION = 9/);
+  assert.match(studio, /const PROJECT_VERSION = 10/);
   assert.match(studio, /const shouldMigratePersonName =/);
   assert.match(studio, /field: "사람 이름"/);
   assert.match(studio, /type FontFamilyKey =/);
@@ -186,6 +186,16 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /onResizePointerDown={handleResizePointerDown}/);
   assert.match(studio, /event\.key === "Delete" \|\| event\.key === "Backspace"/);
   assert.match(studio, /deleteSelectedFromShortcut/);
+  assert.match(studio, /groupId\?: string/);
+  assert.match(studio, /function getElementMoveBounds/);
+  assert.match(studio, /function selectCanvasElement/);
+  assert.match(studio, /event\.metaKey \|\| event\.ctrlKey \|\| event\.shiftKey/);
+  assert.match(studio, /function groupElements/);
+  assert.match(studio, /function ungroupElements/);
+  assert.match(studio, /className="canvas-context-menu"/);
+  assert.match(studio, /multi-selection-inspector/);
+  assert.doesNotMatch(studio, /t\("addAsLayer"\)/);
+  assert.doesNotMatch(studio, /t\("imageLogoHelp"\)/);
   assert.match(studio, /className="panel-section variable-connections"/);
   const variableConnectionsMarkup = studio.slice(
     studio.indexOf('className="panel-section variable-connections"'),
@@ -194,7 +204,7 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.doesNotMatch(variableConnectionsMarkup, /\{\{\$\{field\}\}\}/);
   assert.match(
     studio,
-    /\{!selectedElement && \(\s*<>\s*<section className="panel-section layer-panel"/s,
+    /\{!selectedElement && selectedElements\.length === 0 && \(\s*<>\s*<section className="panel-section layer-panel"/s,
   );
   assert.match(studio, /function renameField/);
   assert.match(studio, /addVariableElement\(field\)/);
@@ -283,6 +293,9 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(css, /\.layer-list/);
   assert.match(css, /\.alignment-guide/);
   assert.match(css, /\.selection-handle\s*{[^}]*width: 16px/s);
+  assert.match(css, /\.badge-surface\.is-interactive\s*{[^}]*overflow: visible/s);
+  assert.match(css, /\.multi-selection-outline/);
+  assert.match(css, /\.canvas-context-menu/);
   assert.match(css, /\.variable-connection-list/);
   assert.match(css, /\.element-header-actions/);
   assert.match(css, /\.variable-element-links/);

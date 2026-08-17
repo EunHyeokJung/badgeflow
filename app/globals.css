@@ -2644,6 +2644,7 @@ select:focus {
 }
 
 .badge-surface.is-interactive {
+  overflow: visible;
   touch-action: none;
 }
 
@@ -2728,6 +2729,14 @@ select:focus {
   border-radius: 50%;
   background: var(--orange);
   box-shadow: 0 0 0 2px rgba(200, 77, 10, 0.35);
+  pointer-events: none;
+}
+
+.multi-selection-outline {
+  position: absolute;
+  z-index: 1001;
+  border: 1px dashed var(--teal);
+  outline: 3px solid rgba(37, 99, 235, 0.08);
   pointer-events: none;
 }
 
@@ -3013,6 +3022,119 @@ select:focus {
   border-color: #fecaca;
   background: var(--danger-pale);
   color: var(--danger);
+}
+
+.multi-selection-inspector {
+  display: grid;
+  gap: 12px;
+  background: var(--panel-muted);
+}
+
+.multi-selection-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.multi-selection-heading strong {
+  font-size: 12px;
+}
+
+.multi-selection-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.multi-selection-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.multi-selection-actions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.multi-selection-actions button:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.multi-selection-actions button.danger-text:hover:not(:disabled) {
+  border-color: #fecaca;
+  background: var(--danger-pale);
+  color: var(--danger);
+}
+
+.canvas-context-menu {
+  position: fixed;
+  z-index: 1200;
+  display: grid;
+  width: 176px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 5px;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.2);
+  animation: context-menu-in 120ms ease-out both;
+}
+
+.canvas-context-menu button {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.canvas-context-menu button:hover,
+.canvas-context-menu button:focus-visible {
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+}
+
+.canvas-context-menu button.is-danger {
+  color: var(--danger);
+}
+
+.canvas-context-menu button.is-danger:hover,
+.canvas-context-menu button.is-danger:focus-visible {
+  background: var(--danger-pale);
+}
+
+@keyframes context-menu-in {
+  from {
+    transform: translateY(-3px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 .input-with-unit {
@@ -4378,6 +4500,10 @@ select:focus {
 }
 
 @media (max-width: 980px) {
+  .multi-selection-actions button {
+    min-height: 44px;
+  }
+
   .landing-main {
     padding-top: 48px;
   }
