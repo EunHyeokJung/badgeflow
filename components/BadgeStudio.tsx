@@ -33,7 +33,6 @@ import {
   Printer,
   Redo2,
   Ruler,
-  Settings2,
   ShieldCheck,
   Trash2,
   Type,
@@ -3681,14 +3680,10 @@ export function BadgeStudio() {
               </div>
             </section>
 
-            <aside className="panel right-panel" aria-label={t("elementProperties")}>
-              <div className="panel-heading compact">
-                <div>
-                  <h2>{t("elementProperties")}</h2>
-                </div>
-                <Settings2 size={19} />
-              </div>
-
+            <aside
+              className="panel right-panel"
+              aria-label={t("elementProperties")}
+            >
               {selectedElement ? (
                 <>
                   <section className="panel-section selected-summary">

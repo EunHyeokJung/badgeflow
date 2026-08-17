@@ -130,6 +130,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
     /SETUP|INSPECTOR|DATA SOURCE|SCHEMA|PRINT PREVIEW|REFERENCE READY/,
   );
   assert.doesNotMatch(studio, /className="eyebrow"/);
+  assert.doesNotMatch(
+    studio,
+    /<h2>\{t\("elementProperties"\)\}<\/h2>/,
+  );
+  assert.doesNotMatch(studio, /Settings2/);
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.preset-card\.is-selected/);
