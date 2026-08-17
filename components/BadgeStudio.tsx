@@ -2602,8 +2602,6 @@ export function BadgeStudio() {
 
   const selectedElement =
     elements.find((element) => element.id === selectedElementId) || null;
-  const selectedRow =
-    rows.find((row) => row.id === selectedRowId) || rows[0];
   const layout = useMemo(
     () => getPageLayout(page, badgeWidth, badgeHeight),
     [page, badgeWidth, badgeHeight],
@@ -4895,19 +4893,6 @@ export function BadgeStudio() {
                       {t("backup")}
                     </button>
                   </div>
-                  <label>
-                    {t("previewData")}
-                    <select
-                      value={selectedRow?.id || ""}
-                      onChange={(event) => setSelectedRowId(event.target.value)}
-                    >
-                      {rows.map((row, index) => (
-                        <option key={row.id} value={row.id}>
-                          {row[fields[0]] || t("badgeNumber", { count: index + 1 })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
               </div>
 
@@ -4942,7 +4927,7 @@ export function BadgeStudio() {
                     background={background}
                     backgroundFit={backgroundFit}
                     elements={elements}
-                    row={selectedRow}
+                    row={undefined}
                     selectedElementId={selectedElementId}
                     snapGuides={snapGuides}
                     interactive

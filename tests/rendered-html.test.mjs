@@ -166,6 +166,8 @@ test("keeps production editing, project storage, and PDF rendering connected", a
   assert.match(studio, /fontFamily: getFontFamily\(element\.fontFamily\)/);
   assert.match(studio, /const fontFamily = getFontFamily\(element\.fontFamily\)/);
   assert.match(studio, /t\("fontFamily"\)/);
+  assert.match(studio, /row=\{undefined\}/);
+  assert.doesNotMatch(studio, /t\("previewData"\)/);
   assert.match(studio, /format: PROJECT_FORMAT/);
   assert.match(studio, /\.lanyardstudio\.json/);
   assert.match(studio, /function normalizeProject/);
@@ -354,6 +356,7 @@ test("ships an installable multilingual PWA contract", async () => {
   assert.match(i18n, /DICTIONARIES\[locale\]\[key\] \?\? en\[key\]/);
   assert.match(i18n, /continueDraft: "저장된 프로젝트 이어하기"/);
   assert.match(i18n, /projectName: "프로젝트 이름"/);
+  assert.doesNotMatch(i18n, /previewData:/);
   assert.match(i18n, /variableConnections: "변수"/);
   assert.doesNotMatch(i18n, /저장된 작업|작업 단계|작업 순서/);
   assert.match(controls, /beforeinstallprompt/);

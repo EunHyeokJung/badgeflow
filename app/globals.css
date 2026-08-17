@@ -2562,11 +2562,6 @@ select:focus {
   font-weight: 700;
 }
 
-.toolbar-controls select {
-  width: 140px;
-  height: 34px;
-}
-
 .toolbar-controls,
 .toolbar-icon-group,
 .project-tools {
