@@ -56,7 +56,7 @@ The primary deployment uses the vinext Cloudflare Worker build. Pushes to
 mirror includes base-path-aware PWA assets; Worker response headers remain
 specific to the primary deployment.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), and [docs/PWA.md](docs/PWA.md) for contribution and implementation details.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/I18N.md](docs/I18N.md), [docs/PWA.md](docs/PWA.md), and the [preset product sources](docs/PRESET_PRODUCT_SOURCES.md) for contribution and implementation details.
 
 ## Security
 

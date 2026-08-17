@@ -151,11 +151,12 @@ type BadgePreset = {
   tagKey?: MessageKey;
   featured?: boolean;
   outputMode?: OutputMode;
+  productNoteKey?: MessageKey;
   productExamples?: Array<{
     nameKo: string;
     nameEn: string;
     size: string;
-    fit: "exact" | "check";
+    fit: "exact" | "check" | "paper";
   }>;
 };
 
@@ -211,6 +212,8 @@ const PAGE_PRESETS: Record<
 };
 
 const DEFAULT_FIELDS = ["이름", "팀", "직책"];
+// Commercial product specifications were last checked on 2026-08-17.
+// Keep the purchase-time size reminder visible when updating these examples.
 const BADGE_PRESETS: BadgePreset[] = [
   {
     id: "lanyard-large",
@@ -222,8 +225,6 @@ const BADGE_PRESETS: BadgePreset[] = [
     tag: "",
     tagKey: "mostPopular",
     featured: true,
-    // Product specifications checked against retailer and price-comparison
-    // listings on 2026-08-17. Keep the purchase-time size reminder visible.
     productExamples: [
       {
         nameKo: "하나제이 미디어명찰 세로",
@@ -253,6 +254,20 @@ const BADGE_PRESETS: BadgePreset[] = [
     height: 105,
     a4Count: 4,
     tag: "ISO A7",
+    productExamples: [
+      {
+        nameKo: "Bigpoint 보호형 카드 포켓 A7 세로",
+        nameEn: "Bigpoint Protected Card Pocket A7 · Portrait",
+        size: "74 × 105 mm",
+        fit: "exact",
+      },
+      {
+        nameKo: "LION 카드케이스 A7",
+        nameEn: "LION Card Case A7",
+        size: "74 × 105 mm",
+        fit: "exact",
+      },
+    ],
   },
   {
     id: "b7-pass",
@@ -263,6 +278,20 @@ const BADGE_PRESETS: BadgePreset[] = [
     a4Count: 4,
     tag: "",
     tagKey: "largePortrait",
+    productExamples: [
+      {
+        nameKo: "알파 클리어케이스 B7 세로형",
+        nameEn: "Alpha Clear Case B7 · Portrait",
+        size: "91 × 128 mm",
+        fit: "exact",
+      },
+      {
+        nameKo: "TRUSCO 소프트 카드케이스 B7",
+        nameEn: "TRUSCO Soft Card Case B7",
+        size: "91 × 128 mm",
+        fit: "exact",
+      },
+    ],
   },
   {
     id: "id-card",
@@ -272,6 +301,20 @@ const BADGE_PRESETS: BadgePreset[] = [
     height: 54,
     a4Count: 10,
     tag: "CR80 · ID-1",
+    productExamples: [
+      {
+        nameKo: "아트사인 신분증W케이스 가로",
+        nameEn: "ArtSign ID W Case · Landscape",
+        size: "86 × 54 mm",
+        fit: "check",
+      },
+      {
+        nameKo: "아트사인 M9055 신분증케이스 가로",
+        nameEn: "ArtSign M9055 ID Case · Landscape",
+        size: "86 × 54 mm",
+        fit: "check",
+      },
+    ],
   },
   {
     id: "a4-table-tent",
@@ -283,6 +326,21 @@ const BADGE_PRESETS: BadgePreset[] = [
     tag: "",
     tagKey: "tableTent",
     outputMode: "table-tent",
+    productNoteKey: "paperProductDisclaimer",
+    productExamples: [
+      {
+        nameKo: "두성종이 OA팬시페이퍼 180g",
+        nameEn: "Doosung OA Fancy Paper 180 gsm",
+        size: "A4 · 210 × 297 mm",
+        fit: "paper",
+      },
+      {
+        nameKo: "삼원특수지 매직터치 180g",
+        nameEn: "Samwon Magic Touch 180 gsm",
+        size: "A4 · 210 × 297 mm",
+        fit: "paper",
+      },
+    ],
   },
   {
     id: "name-card",
@@ -293,6 +351,20 @@ const BADGE_PRESETS: BadgePreset[] = [
     a4Count: 8,
     tag: "",
     tagKey: "landscape",
+    productExamples: [
+      {
+        nameKo: "네임모아 스마트명찰 가로",
+        nameEn: "Namemoa Smart Name Badge · Landscape",
+        size: "90 × 60 mm",
+        fit: "exact",
+      },
+      {
+        nameKo: "DURABLE 8135 시큐리티 명찰",
+        nameEn: "DURABLE 8135 Security Name Badge",
+        size: "90 × 60 mm",
+        fit: "exact",
+      },
+    ],
   },
 ];
 
@@ -1039,9 +1111,11 @@ function LandingPage({
                                 </span>
                                 <em>
                                   {t(
-                                    product.fit === "exact"
-                                      ? "productInnerSize"
-                                      : "productOuterSizeCheck",
+                                    product.fit === "paper"
+                                      ? "productPaperSize"
+                                      : product.fit === "exact"
+                                        ? "productInnerSize"
+                                        : "productOuterSizeCheck",
                                     { size: product.size },
                                   )}
                                 </em>
@@ -1049,7 +1123,13 @@ function LandingPage({
                             ))}
                           </span>
                           <span className="preset-products-note">
-                            {t("productSizeDisclaimer")}
+                            {t(
+                              preset.productNoteKey ??
+                                "productSizeDisclaimer",
+                              {
+                                size: `${displayNumber(preset.width)} × ${displayNumber(preset.height)} mm`,
+                              },
+                            )}
                           </span>
                         </span>
                       )}

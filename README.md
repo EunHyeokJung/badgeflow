@@ -84,7 +84,7 @@ tests/               서버 렌더링 및 배포 계약 테스트
 docs/                아키텍처 문서
 ```
 
-상세한 데이터 흐름과 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md), 번역 추가 방법은 [다국어 가이드](docs/I18N.md)를 참고하세요.
+상세한 데이터 흐름과 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md), 번역 추가 방법은 [다국어 가이드](docs/I18N.md), 대표 규격에 표시되는 시중 상품의 근거는 [상품 규격 출처](docs/PRESET_PRODUCT_SOURCES.md)를 참고하세요.
 
 ## 배포
 

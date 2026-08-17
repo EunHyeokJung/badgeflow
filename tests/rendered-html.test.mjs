@@ -63,7 +63,12 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /하나제이 미디어명찰 세로/);
   assert.match(html, /하나제이 고급 미디어명찰 세로/);
   assert.match(html, /고무나라 700 미디어 목걸이명찰 세로/);
-  assert.match(html, /구매 전 내지 95 × 123 mm를 확인/);
+  assert.match(html, /Bigpoint 보호형 카드 포켓 A7 세로/);
+  assert.match(html, /알파 클리어케이스 B7 세로형/);
+  assert.match(html, /아트사인 신분증W케이스 가로/);
+  assert.match(html, /두성종이 OA팬시페이퍼 180g/);
+  assert.match(html, /네임모아 스마트명찰 가로/);
+  assert.match(html, /구매 전 95 × 123 mm 내지 규격을 확인/);
   assert.match(html, /규격 직접 입력/);
   assert.match(html, /이 규격으로 만들기/);
   assert.doesNotMatch(html, /이 규격으로 시작/);

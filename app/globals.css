@@ -1506,7 +1506,7 @@ select:focus-visible,
 
 .preset-products-title {
   color: #1e40af;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 850;
 }
 
@@ -1522,7 +1522,7 @@ select:focus-visible,
   align-items: baseline;
   gap: 8px;
   color: #334155;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 720;
   line-height: 1.4;
 }
@@ -1533,7 +1533,7 @@ select:focus-visible,
 
 .preset-product-item em {
   color: #1d4ed8;
-  font-size: 8px;
+  font-size: 9px;
   font-style: normal;
   font-weight: 760;
   white-space: nowrap;
@@ -1541,7 +1541,7 @@ select:focus-visible,
 
 .preset-products-note {
   color: #64748b;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   line-height: 1.5;
 }
