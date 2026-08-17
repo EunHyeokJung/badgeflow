@@ -123,6 +123,11 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.preset-card\.is-selected/);
+  assert.match(css, /\.preset-card\.is-selected\s*{[^}]*background: #eff6ff/s);
+  assert.doesNotMatch(
+    css,
+    /\.preset-card\.is-featured\s*{[^}]*background: #1e3a8a/s,
+  );
   assert.match(css, /\.preset-actions/);
   assert.match(css, /\.create-selected-preset-button/);
   assert.match(css, /\.service-overview/);
