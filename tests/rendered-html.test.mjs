@@ -59,6 +59,11 @@ test("server-renders the BadgeFlow size-first landing page", async () => {
   assert.match(html, /A4 1장당 1명/);
   assert.match(html, /B7 컨퍼런스 패스/);
   assert.match(html, /CR80 · ID-1/);
+  assert.match(html, /시중 상품 예시/);
+  assert.match(html, /하나제이 미디어명찰 세로/);
+  assert.match(html, /하나제이 고급 미디어명찰 세로/);
+  assert.match(html, /고무나라 700 미디어 목걸이명찰 세로/);
+  assert.match(html, /구매 전 내지 95 × 123 mm를 확인/);
   assert.match(html, /규격 직접 입력/);
   assert.match(html, /이 규격으로 만들기/);
   assert.doesNotMatch(html, /이 규격으로 시작/);
@@ -123,6 +128,8 @@ test("keeps image editing, project backup, and PDF rendering connected", async (
   assert.match(css, /\.badge-image-element/);
   assert.match(css, /\.preset-grid/);
   assert.match(css, /\.preset-card\.is-selected/);
+  assert.match(css, /\.preset-products/);
+  assert.match(css, /\.preset-product-item/);
   assert.match(css, /\.preset-card\.is-selected\s*{[^}]*background: #eff6ff/s);
   assert.doesNotMatch(
     css,

@@ -1496,6 +1496,56 @@ select:focus-visible,
   line-height: 1.55;
 }
 
+.preset-products {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+  border-top: 1px solid #dbe4f0;
+  padding-top: 10px;
+}
+
+.preset-products-title {
+  color: #1e40af;
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.preset-product-list {
+  display: grid;
+  gap: 5px;
+}
+
+.preset-product-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  color: #334155;
+  font-size: 9px;
+  font-weight: 720;
+  line-height: 1.4;
+}
+
+.preset-product-item > span {
+  min-width: 0;
+}
+
+.preset-product-item em {
+  color: #1d4ed8;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.preset-products-note {
+  color: #64748b;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .preset-card.is-featured .preset-copy b {
   color: #2563eb;
 }
@@ -4245,6 +4295,17 @@ select:focus {
 
   .preset-copy small {
     min-height: 0;
+  }
+
+  .preset-product-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1px;
+    font-size: 10px;
+  }
+
+  .preset-product-item em,
+  .preset-products-note {
+    font-size: 9px;
   }
 
   .landing-footer {

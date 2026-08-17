@@ -151,6 +151,12 @@ type BadgePreset = {
   tagKey?: MessageKey;
   featured?: boolean;
   outputMode?: OutputMode;
+  productExamples?: Array<{
+    nameKo: string;
+    nameEn: string;
+    size: string;
+    fit: "exact" | "check";
+  }>;
 };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -216,6 +222,28 @@ const BADGE_PRESETS: BadgePreset[] = [
     tag: "",
     tagKey: "mostPopular",
     featured: true,
+    // Product specifications checked against retailer and price-comparison
+    // listings on 2026-08-17. Keep the purchase-time size reminder visible.
+    productExamples: [
+      {
+        nameKo: "하나제이 미디어명찰 세로",
+        nameEn: "HANAJAY Media Badge · Portrait",
+        size: "95 × 123 mm",
+        fit: "exact",
+      },
+      {
+        nameKo: "하나제이 고급 미디어명찰 세로",
+        nameEn: "HANAJAY Premium Media Badge · Portrait",
+        size: "95 × 123 mm",
+        fit: "exact",
+      },
+      {
+        nameKo: "고무나라 700 미디어 목걸이명찰 세로",
+        nameEn: "Komunara 700 Media Lanyard Badge · Portrait",
+        size: "103 × 133 mm",
+        fit: "check",
+      },
+    ],
   },
   {
     id: "a7-event",
@@ -937,6 +965,11 @@ function LandingPage({
                   className={`preset-card ${preset.featured ? "is-featured" : ""} ${isSelected ? "is-selected" : ""}`}
                   onClick={() => setSelectedPresetId(preset.id)}
                   aria-pressed={isSelected}
+                  aria-describedby={
+                    preset.productExamples
+                      ? `preset-products-${preset.id}`
+                      : undefined
+                  }
                   aria-label={t("startSize", {
                     name: presetName,
                     width: displayNumber(preset.width),
@@ -985,6 +1018,41 @@ function LandingPage({
                         {displayNumber(preset.height)} mm
                       </b>
                       <small>{t(preset.descriptionKey)}</small>
+                      {preset.productExamples && (
+                        <span
+                          id={`preset-products-${preset.id}`}
+                          className="preset-products"
+                        >
+                          <span className="preset-products-title">
+                            {t("productExamples")}
+                          </span>
+                          <span className="preset-product-list">
+                            {preset.productExamples.map((product) => (
+                              <span
+                                className="preset-product-item"
+                                key={product.nameEn}
+                              >
+                                <span>
+                                  {locale === "ko"
+                                    ? product.nameKo
+                                    : product.nameEn}
+                                </span>
+                                <em>
+                                  {t(
+                                    product.fit === "exact"
+                                      ? "productInnerSize"
+                                      : "productOuterSizeCheck",
+                                    { size: product.size },
+                                  )}
+                                </em>
+                              </span>
+                            ))}
+                          </span>
+                          <span className="preset-products-note">
+                            {t("productSizeDisclaimer")}
+                          </span>
+                        </span>
+                      )}
                     </span>
                   </div>
                   <span className="preset-card-footer">
