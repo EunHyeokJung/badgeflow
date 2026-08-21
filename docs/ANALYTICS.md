@@ -9,7 +9,8 @@ Use one GA4 property and one web data stream for `silverhyeok.dev` and its
 services. Reuse the same measurement ID on:
 
 - `silverhyeok.dev`
-- `lanyardstudio.silverhyeok.dev`
+- `lanyard-studio.com`
+- `lanyardstudio.silverhyeok.dev` (multilingual moved-site notice)
 - future `*.silverhyeok.dev` services
 - services mounted below the apex domain, such as `/lanyardstudio`
 
@@ -18,9 +19,9 @@ integration also sends `service_name=lanyardstudio`; register `service_name` as
 an event-scoped custom dimension when a stable product-level filter is useful.
 
 In GA4, open **Admin → Data streams → Web → Configure tag settings → Configure
-your domains** and include `silverhyeok.dev` plus its subdomains. Keep the
-default highest-level cookie domain unless a service has a specific reason to
-override it.
+your domains** and include `silverhyeok.dev`, its subdomains, and
+`lanyard-studio.com`. Keep the default highest-level cookie domain unless a
+service has a specific reason to override it.
 
 ## Cloudflare Pages
 
@@ -33,6 +34,10 @@ NEXT_PUBLIC_ANALYTICS_SERVICE_NAME=lanyardstudio
 
 These are build-time public identifiers, not secrets. After changing either
 value, trigger a new Pages deployment.
+
+The static moved-site notice uses the same public measurement ID directly and
+sends `service_name=lanyardstudio-moved` so legacy-domain visits remain
+distinguishable from the main application.
 
 ## Future services
 

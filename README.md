@@ -2,7 +2,7 @@
 
 브라우저에서 명찰을 디자인하고 CSV 데이터를 연결해 실제 크기 인쇄용 PDF를 만드는 오픈소스 도구입니다.
 
-[웹 앱 실행](https://lanyardstudio.silverhyeok.dev/) · [GitHub 저장소](https://github.com/EunHyeokJung/lanyardstudio) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [English README](README.en.md)
+[웹 앱 실행](https://lanyard-studio.com/) · [GitHub 저장소](https://github.com/EunHyeokJung/lanyardstudio) · [최신 릴리스 다운로드](https://github.com/EunHyeokJung/lanyardstudio/releases/latest) · [English README](README.en.md)
 
 ![LanyardStudio 미리보기](public/og.png)
 
@@ -27,7 +27,7 @@
 
 LanyardStudio는 별도 앱 스토어 없이 설치하는 PWA입니다.
 
-1. [LanyardStudio 웹 앱](https://lanyardstudio.silverhyeok.dev/)을 Chrome, Edge 또는 Safari로 엽니다.
+1. [LanyardStudio 웹 앱](https://lanyard-studio.com/)을 Chrome, Edge 또는 Safari로 엽니다.
 2. 상단의 **앱 설치**를 누릅니다. 버튼이 보이지 않으면 브라우저 메뉴의 **앱 설치** 또는 **홈 화면에 추가**를 선택합니다.
 3. 설치 후에는 앱 창과 홈 화면 아이콘으로 실행할 수 있으며, 한 번 연 화면은 네트워크가 불안정해도 다시 열 수 있습니다.
 
@@ -91,7 +91,7 @@ docs/                아키텍처 문서
 
 ## 배포
 
-공식 프로덕션은 `main` 브랜치에서 정적 export한 뒤 [Cloudflare Pages](https://lanyardstudio.silverhyeok.dev/)로 자동 배포합니다. GitHub Pages 배포도 미러로 유지하며, vinext 빌드는 Cloudflare Worker 호환 여부를 검증하는 용도로 사용합니다.
+공식 프로덕션은 `main` 브랜치에서 정적 export한 뒤 [Cloudflare Pages](https://lanyard-studio.com/)로 자동 배포합니다. 이전 주소인 `lanyardstudio.silverhyeok.dev`는 `legacy-site/`의 다국어 이전 안내 페이지를 제공합니다. GitHub Pages 배포도 미러로 유지하며, vinext 빌드는 Cloudflare Worker 호환 여부를 검증하는 용도로 사용합니다.
 
 ```bash
 npm ci
@@ -104,6 +104,8 @@ npm run build:cloudflare-pages
 GitHub Pages 빌드는 `/lanyardstudio/` base path를 적용해 PWA manifest, 아이콘, 서비스 워커까지 하위 경로에서 동작합니다. 플랫폼별 비밀 값은 저장소에 커밋하지 마세요.
 
 Cloudflare Pages에서는 빌드 명령을 `npm run build:cloudflare-pages`, 출력 디렉터리를 `out`으로 설정합니다. GA4를 사용하려면 같은 웹 스트림의 `NEXT_PUBLIC_GA_MEASUREMENT_ID`를 빌드 환경변수로 등록하세요. 값이 없으면 분석 스크립트는 출력되지 않습니다.
+
+이전 안내 사이트는 `npm run deploy:moved-site`로 별도의 Cloudflare Pages 프로젝트에 배포합니다.
 
 ## 기여
 

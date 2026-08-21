@@ -2,6 +2,11 @@
 
 All notable changes to LanyardStudio are documented here.
 
+## 1.7.1 — 2026-08-22
+
+- Moved the primary Cloudflare Pages domain to `lanyard-studio.com` and updated canonical URLs and deployment documentation.
+- Added a separate multilingual moved-site notice for `lanyardstudio.silverhyeok.dev` with automatic language detection, manual language selection, accessibility support, and GA4 tracking.
+
 ## 1.7.0 — 2026-08-18
 
 - Added brand bars with multi-logo upload, per-logo drag cropping and zoom, horizontal or vertical automatic spacing, reordering, background color, padding, and gap controls.
