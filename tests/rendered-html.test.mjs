@@ -359,7 +359,7 @@ test("keeps Cloudflare Pages and optional GA4 deployment configuration portable"
   assert.match(nextConfig, /STATIC_EXPORT/);
   assert.match(nextConfig, /NEXT_PUBLIC_BASE_PATH/);
   assert.match(packageJson, /build:cloudflare-pages/);
-  assert.match(packageJson, /lanyardstudio\.silverhyeok\.dev/);
+  assert.match(packageJson, /lanyard-studio\.com/);
   assert.match(cloudflareHeaders, /Content-Security-Policy/);
   assert.match(cloudflareHeaders, /www\.googletagmanager\.com/);
   assert.match(cloudflareHeaders, /google-analytics\.com/);
@@ -447,10 +447,39 @@ test("defines a GitHub Pages static-export contract", async () => {
   assert.match(workflow, /actions\/upload-pages-artifact@v4/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.match(sitePaths, /NEXT_PUBLIC_BASE_PATH/);
-  assert.match(sitePaths, /lanyardstudio\.silverhyeok\.dev/);
+  assert.match(sitePaths, /lanyard-studio\.com/);
   assert.match(packageJson, /EunHyeokJung\/lanyardstudio/);
   assert.match(readme, /EunHyeokJung\/lanyardstudio/);
   assert.match(readmeEn, /EunHyeokJung\/lanyardstudio/);
+});
+
+test("ships a secure multilingual notice for the previous domain", async () => {
+  const [html, css, script, headers, redirects] = await Promise.all([
+    readFile(new URL("../legacy-site/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../legacy-site/styles.css", import.meta.url), "utf8"),
+    readFile(new URL("../legacy-site/moved.js", import.meta.url), "utf8"),
+    readFile(new URL("../legacy-site/_headers", import.meta.url), "utf8"),
+    readFile(new URL("../legacy-site/_redirects", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(html, /LanyardStudio has moved/);
+  assert.match(html, /https:\/\/lanyard-studio\.com\//);
+  assert.match(html, /rel="canonical"/);
+  assert.match(html, /name="robots" content="noindex, follow"/);
+  assert.match(html, /id="language-select"/);
+  assert.match(script, /"zh-CN"/);
+  assert.match(script, /"zh-TW"/);
+  for (const locale of ["ko", "en", "ja", "es", "fr", "de"]) {
+    assert.match(script, new RegExp(`\\b${locale}: \\{`));
+  }
+  assert.match(script, /navigator\.languages/);
+  assert.match(script, /G-WES0G3FJY5/);
+  assert.match(script, /service_name: "lanyardstudio-moved"/);
+  assert.match(css, /min-height: 44px/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(headers, /Content-Security-Policy/);
+  assert.match(headers, /frame-ancestors 'none'/);
+  assert.match(redirects, /\/\* \/index\.html 200/);
 });
 
 test("renders a recoverable not-found page", async () => {

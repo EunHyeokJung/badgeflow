@@ -1,5 +1,4 @@
-const DEFAULT_SITE_URL =
-  "https://lanyardstudio.silverhyeok.dev/";
+const DEFAULT_SITE_URL = "https://lanyard-studio.com/";
 
 function normalizeBasePath(value: string | undefined) {
   const trimmed = value?.trim().replace(/^\/+|\/+$/g, "") ?? "";

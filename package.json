@@ -1,6 +1,6 @@
 {
   "name": "lanyard-studio",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -9,7 +9,8 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "build:pages": "GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/lanyardstudio NEXT_PUBLIC_SITE_URL=https://eunhyeokjung.github.io/lanyardstudio/ next build",
-    "build:cloudflare-pages": "STATIC_EXPORT=true NEXT_PUBLIC_SITE_URL=https://lanyardstudio.silverhyeok.dev/ next build",
+    "build:cloudflare-pages": "STATIC_EXPORT=true NEXT_PUBLIC_SITE_URL=https://lanyard-studio.com/ next build",
+    "deploy:moved-site": "wrangler pages deploy legacy-site --project-name lanyardstudio-moved --branch main",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "biome lint .",
@@ -51,7 +52,7 @@
     "email": "silverhyeok.dev@gmail.com",
     "url": "https://github.com/EunHyeokJung"
   },
-  "homepage": "https://lanyardstudio.silverhyeok.dev/",
+  "homepage": "https://lanyard-studio.com/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/EunHyeokJung/lanyardstudio.git"
