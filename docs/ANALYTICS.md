@@ -23,6 +23,11 @@ your domains** and include `silverhyeok.dev`, its subdomains, and
 `lanyard-studio.com`. Keep the default highest-level cookie domain unless a
 service has a specific reason to override it.
 
+The application and the multilingual moved-site notice also configure the
+Google tag linker for `lanyard-studio.com` and
+`lanyardstudio.silverhyeok.dev`, preserving campaign and session parameters
+when visitors follow the moved-site link to the primary domain.
+
 ## Cloudflare Pages
 
 Configure both Preview and Production when analytics is wanted in both:

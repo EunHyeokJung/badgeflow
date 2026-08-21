@@ -1,5 +1,9 @@
 const STORAGE_KEY = "lanyardstudio-moved-locale-v1";
 const ANALYTICS_ID = "G-WES0G3FJY5";
+const ANALYTICS_DOMAINS = [
+  "lanyard-studio.com",
+  "lanyardstudio.silverhyeok.dev",
+];
 
 const translations = {
   ko: {
@@ -141,6 +145,9 @@ function initializeAnalytics() {
   window.gtag("js", new Date());
   window.gtag("config", ANALYTICS_ID, {
     service_name: "lanyardstudio-moved",
+    linker: {
+      domains: ANALYTICS_DOMAINS,
+    },
   });
 
   const script = document.createElement("script");
