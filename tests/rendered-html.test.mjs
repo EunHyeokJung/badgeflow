@@ -354,6 +354,9 @@ test("keeps Cloudflare Pages and optional GA4 deployment configuration portable"
   assert.match(layout, /<body>[\s\S]*<GoogleAnalytics \/>[\s\S]*<\/body>/);
   assert.match(analytics, /NEXT_PUBLIC_GA_MEASUREMENT_ID/);
   assert.match(analytics, /service_name/);
+  assert.match(analytics, /linker/);
+  assert.match(analytics, /lanyard-studio\.com/);
+  assert.match(analytics, /lanyardstudio\.silverhyeok\.dev/);
   assert.match(analytics, /return null/);
   assert.doesNotMatch(analytics, /G-[A-Z0-9]{6,}/);
   assert.match(nextConfig, /STATIC_EXPORT/);
@@ -475,6 +478,9 @@ test("ships a secure multilingual notice for the previous domain", async () => {
   assert.match(script, /navigator\.languages/);
   assert.match(script, /G-WES0G3FJY5/);
   assert.match(script, /service_name: "lanyardstudio-moved"/);
+  assert.match(script, /ANALYTICS_DOMAINS/);
+  assert.match(script, /lanyard-studio\.com/);
+  assert.match(script, /lanyardstudio\.silverhyeok\.dev/);
   assert.match(css, /min-height: 44px/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(headers, /Content-Security-Policy/);
